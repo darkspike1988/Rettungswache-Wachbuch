@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- gefuehrter Einrichtungsassistent (`/einrichtung/`): neu angelegte Wachen
+  fuehren den ersten Admin-Login in 3 einfachen Schritten (Name/Standort,
+  Module, Fertig) statt der vollen Einstellungsseite; jederzeit ueberspringbar
 - Kaffeekasse: konfigurierbare, gebuehrenfrei nutzbare Einzahlwege
   (PayPal.me-Link, Wero-Link/-Kontakt, IBAN mit Kontoinhaber für
   Echtzeitüberweisung), sichtbar für alle, editierbar nur für Admins

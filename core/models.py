@@ -31,6 +31,7 @@ class Station(models.Model):
     coffee_account_holder = models.CharField(
         max_length=120, blank=True, verbose_name="Kontoinhaber/in",
     )
+    onboarded = models.BooleanField(default=False, verbose_name="Einrichtung abgeschlossen")
 
     class Meta:
         ordering = ["name"]

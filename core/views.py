@@ -24,6 +24,8 @@ from .forms import (
     HandoverStatusForm,
     MembershipAssignmentForm,
     MembershipEditForm,
+    SetupBasicsForm,
+    SetupModulesForm,
     StationSettingsForm,
     WasteSourceForm,
 )
@@ -77,6 +79,8 @@ def access(request):
 @membership_required(CONTENT_ROLES)
 def dashboard(request):
     station = request.membership.station
+    if request.membership.role == Membership.Role.ADMIN and not station.onboarded:
+        return redirect("setup_wizard")
     now = timezone.now()
     active = prioritized_handovers(station)
     events = CalendarEvent.objects.none()
@@ -114,6 +118,74 @@ def prioritized_handovers(station):
         )
         .order_by("priority_rank", "status_rank", "-updated_at")
     )
+
+
+SETUP_STEPS = ["basics", "modules", "done"]
+SETUP_TITLES = {
+    "basics": "Name und Standort",
+    "modules": "Module aktivieren",
+    "done": "Fertig eingerichtet",
+}
+SETUP_HINTS = {
+    "basics": "So heisst die Wache im Kopfbereich der Anwendung.",
+    "modules": "Nur aktivierte Module erscheinen im Menue. Jederzeit spaeter unter Einstellungen aenderbar.",
+    "done": "",
+}
+SETUP_FORMS = {
+    "basics": SetupBasicsForm,
+    "modules": SetupModulesForm,
+}
+
+
+@membership_required({Membership.Role.ADMIN})
+def setup_wizard(request, step="basics"):
+    if step not in SETUP_STEPS:
+        raise Http404
+    station = request.membership.station
+    step_index = SETUP_STEPS.index(step)
+    context = {
+        "step": step,
+        "steps": SETUP_STEPS,
+        "step_index": step_index,
+        "step_number": step_index + 1,
+        "step_count": len(SETUP_STEPS),
+        "step_title": SETUP_TITLES[step],
+        "step_hint": SETUP_HINTS[step],
+        "station": station,
+    }
+
+    if request.method == "POST" and "skip_all" in request.POST:
+        station.onboarded = True
+        station.save(update_fields=["onboarded"])
+        audit(request.user, station, "station.onboarding_skipped", station, {"step": step})
+        messages.info(
+            request,
+            "Einrichtung übersprungen - alles lässt sich jederzeit unter Einstellungen anpassen.",
+        )
+        return redirect("dashboard")
+
+    if step == "done":
+        if request.method == "POST":
+            station.onboarded = True
+            station.save(update_fields=["onboarded"])
+            audit(request.user, station, "station.onboarding_completed", station, {})
+            messages.success(request, "Einrichtung abgeschlossen.")
+            return redirect("dashboard")
+        return render(request, "core/setup_wizard.html", context)
+
+    form_class = SETUP_FORMS[step]
+    form = form_class(request.POST or None, instance=station)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            changed_fields = [field for field in form.changed_data if field in form.fields]
+            form.save()
+            if changed_fields:
+                audit(request.user, station, "station.onboarding_step_saved", station, {
+                    "step": step, "fields": changed_fields,
+                })
+        return redirect("setup_wizard", step=SETUP_STEPS[step_index + 1])
+    context["form"] = form
+    return render(request, "core/setup_wizard.html", context)
 
 
 def page_for(request, queryset, per_page=20):

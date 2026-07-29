@@ -68,6 +68,12 @@ Loopback. Fuer andere Geraete ist ein abgesicherter Reverse-Proxy mit TLS oder
 Tailscale Serve erforderlich. `SECURE_COOKIES=false` ist ausschliesslich fuer
 diesen lokalen HTTP-Schnellstart vorgesehen.
 
+Der erste Login des per `grant_station_admin` freigeschalteten Kontos fuehrt
+automatisch in einen gefuehrten Einrichtungsassistenten (`/einrichtung/`): Name
+und Standort, Module aktivieren, fertig - jederzeit ueberspringbar und spaeter
+unter `/einstellungen/` aenderbar. Fuer eine Demo bietet sich
+`DEFAULT_STATION_NAME=Rettungswache Demo` in `.env` an.
+
 Tests:
 
 ```bash

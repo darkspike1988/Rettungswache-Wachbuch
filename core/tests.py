@@ -32,6 +32,7 @@ class PilotTestCase(TestCase):
             name="Testwache",
             slug="testwache",
             feeds_enabled=True,
+            onboarded=True,
         )
         self.user = User.objects.create_user("member@example.org", first_name="Mara")
         self.membership = Membership.objects.create(
@@ -40,6 +41,67 @@ class PilotTestCase(TestCase):
             role=Membership.Role.MEMBER,
         )
         self.client.force_login(self.user)
+
+
+class SetupWizardTests(TestCase):
+    def setUp(self):
+        self.station = Station.objects.create(name="Neue Wache", slug="neue-wache")
+        self.admin = User.objects.create_user("admin@example.org", first_name="Nora")
+        self.membership = Membership.objects.create(
+            user=self.admin, station=self.station, role=Membership.Role.ADMIN,
+        )
+        self.member = User.objects.create_user("member@example.org", first_name="Mo")
+        Membership.objects.create(
+            user=self.member, station=self.station, role=Membership.Role.MEMBER,
+        )
+
+    def test_new_admin_is_redirected_to_wizard(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("dashboard"))
+        self.assertRedirects(response, reverse("setup_wizard"))
+
+    def test_member_is_not_redirected_to_wizard(self):
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_member_cannot_access_wizard(self):
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("setup_wizard"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_wizard_walkthrough_completes_and_unlocks_dashboard(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(reverse("setup_wizard"), {
+            "name": "Rettungswache Demo", "location": "Musterstadt",
+        })
+        self.assertRedirects(response, reverse("setup_wizard", args=["modules"]))
+        response = self.client.post(reverse("setup_wizard", args=["modules"]), {
+            "calendar_enabled": "on", "coffee_enabled": "on",
+        })
+        self.assertRedirects(response, reverse("setup_wizard", args=["done"]))
+        response = self.client.post(reverse("setup_wizard", args=["done"]))
+        self.assertRedirects(response, reverse("dashboard"))
+
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.name, "Rettungswache Demo")
+        self.assertTrue(self.station.calendar_enabled)
+        self.assertFalse(self.station.birthdays_enabled)
+        self.assertTrue(self.station.onboarded)
+        self.assertTrue(AuditEvent.objects.filter(action="station.onboarding_completed").exists())
+        self.assertTrue(AuditEvent.objects.filter(action="station.onboarding_step_saved").exists())
+
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_skip_marks_onboarded_without_changes(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(reverse("setup_wizard"), {"skip_all": "1"})
+        self.assertRedirects(response, reverse("dashboard"))
+        self.station.refresh_from_db()
+        self.assertTrue(self.station.onboarded)
+        self.assertEqual(self.station.name, "Neue Wache")
+        self.assertTrue(AuditEvent.objects.filter(action="station.onboarding_skipped").exists())
 
 
 class SecurityAndAccessTests(PilotTestCase):

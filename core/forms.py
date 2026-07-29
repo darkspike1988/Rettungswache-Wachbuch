@@ -171,6 +171,22 @@ class StationSettingsForm(forms.ModelForm):
         }
 
 
+class SetupBasicsForm(forms.ModelForm):
+    class Meta:
+        model = Station
+        fields = ["name", "location"]
+        labels = {
+            "name": "Name der Rettungswache",
+            "location": "Standort (Anzeige im Kopfbereich unter dem Namen)",
+        }
+
+
+class SetupModulesForm(forms.ModelForm):
+    class Meta:
+        model = Station
+        fields = ["calendar_enabled", "birthdays_enabled", "coffee_enabled", "feeds_enabled"]
+
+
 class WasteSourceForm(forms.ModelForm):
     class Meta:
         model = FeedSource

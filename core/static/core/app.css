@@ -127,6 +127,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .status-label.success { color: var(--success); background: var(--success-soft); }
 .status-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
 
+.setup-progress { display: flex; gap: .4rem; margin-bottom: 1.5rem; }
+.setup-dot { width: 2.5rem; height: .4rem; background: var(--line); border-radius: 999px; }
+.setup-dot.done { background: var(--accent); }
+.setup-dot.active { background: var(--accent-dark); }
+
 .day-card + .day-card { margin-top: 1rem; }
 .day-card-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem; padding-bottom: .75rem; margin-bottom: .75rem; border-bottom: 1px solid var(--line); }
 .day-team { color: var(--muted); font-size: .85rem; font-weight: 650; }

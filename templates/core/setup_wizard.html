@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Einrichtung | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading narrow">
+  <p class="context-line">Einrichtung &middot; Schritt {{ step_number }} von {{ step_count }}</p>
+  <h1>{{ step_title }}</h1>
+  {% if step_hint %}<p class="lead">{{ step_hint }}</p>{% endif %}
+</header>
+
+<div class="setup-progress" aria-hidden="true">
+  {% for s in steps %}<span class="setup-dot{% if s == step %} active{% endif %}{% if forloop.counter0 < step_index %} done{% endif %}"></span>{% endfor %}
+</div>
+
+{% if step == "done" %}
+  <div class="section-block narrow prose">
+    <p><strong>{{ station.name }}</strong>{% if station.location %} &middot; {{ station.location }}{% endif %} ist eingerichtet.</p>
+    <p>
+      Aktive Module:
+      {% if station.calendar_enabled %}Kalender{% endif %}{% if station.birthdays_enabled %}, Geburtstage{% endif %}{% if station.coffee_enabled %}, Kaffeekasse{% endif %}{% if station.feeds_enabled %}, Externe Meldungen{% endif %}
+    </p>
+    <p class="field-hint">
+      Adresse, Zahlungswege für die Kaffeekasse und alles andere lassen sich
+      jederzeit unter "Mehr &rarr; Einstellungen" ergänzen oder ändern.
+    </p>
+  </div>
+  <form method="post" class="form-actions narrow">
+    {% csrf_token %}
+    <button class="button primary" type="submit">Fertig, zur Übersicht</button>
+  </form>
+{% else %}
+  <form method="post" class="form-card narrow">
+    {% csrf_token %}
+    {% include "core/form_errors.html" %}
+    {{ form.as_p }}
+    <div class="form-actions">
+      <button class="button primary" type="submit">Weiter</button>
+      <button class="button secondary" type="submit" name="skip_all" value="1">Später einrichten</button>
+    </div>
+  </form>
+{% endif %}
+{% endblock %}
