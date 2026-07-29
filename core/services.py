@@ -1,7 +1,13 @@
 from django.db import transaction
 from django.utils import timezone
 
-from .models import AuditEvent, DailyTeamNote, HandoverEntry, HandoverRevision
+from .models import (
+    AuditEvent,
+    DailyTeamNote,
+    HandoverAcknowledgement,
+    HandoverEntry,
+    HandoverRevision,
+)
 
 
 def audit(actor, station, action, obj, metadata=None):
@@ -86,6 +92,18 @@ def change_handover_status(handover, status, membership):
         "fields": ["status"], "version": locked.version
     })
     return locked
+
+
+@transaction.atomic
+def acknowledge_handover(handover, membership):
+    acknowledgement, created = HandoverAcknowledgement.objects.get_or_create(
+        handover=handover, user=membership.user,
+    )
+    if created:
+        audit(membership.user, membership.station, "handover.acknowledged", handover, {
+            "version": handover.version,
+        })
+    return acknowledgement
 
 
 @transaction.atomic

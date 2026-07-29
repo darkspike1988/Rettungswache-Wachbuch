@@ -10,6 +10,7 @@
     {{ form.as_p }}
     {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
     <button class="button primary" type="submit">Anmelden</button>
+    <p class="field-hint"><a href="{% url 'password_reset' %}">Passwort vergessen?</a></p>
   </form>
 </section>
 {% endblock %}

@@ -10,6 +10,8 @@ betriebliche Freigabe.
 - [ ] Anwendung ist nur ueber den vorgesehenen TLS-Einstieg erreichbar
 - [ ] Identitaetsheader koennen nicht von Clients gefaelscht werden
 - [ ] Rollenmatrix wurde mit mehreren Testkonten geprueft
+- [ ] `manage.py check --deploy` meldet keine Warnung (auch nicht wachbuch.W001)
+- [ ] Passwort-Reset wurde mit einem echten Postfach durchgetestet
 - [ ] Backup wurde in einer isolierten Datenbank wiederhergestellt
 - [ ] Abhaengigkeiten und Container-Images wurden gescannt
 - [ ] Monitoring, Alarmierung, Patch- und Incident-Prozess sind aktiv
@@ -20,7 +22,8 @@ betriebliche Freigabe.
 - [ ] Patienten-, Einsatz- und Gesundheitsdaten sind organisatorisch untersagt
 - [ ] Rollen, Kalenderzweck und optionale Kassenregeln sind abgenommen
 - [ ] Hinweise zu externen Quellen sind fachlich geprueft
-- [ ] Aufbewahrungs- und Loeschfristen sind je Datenart festgelegt
+- [ ] Aufbewahrungs- und Loeschfristen sind je Datenart festgelegt und unter
+      `/einstellungen/` eingetragen; `purge_expired` laeuft regelmaessig
 
 ## Datenschutz und Mitbestimmung
 

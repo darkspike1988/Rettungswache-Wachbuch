@@ -301,3 +301,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .pagination { justify-content: space-between; gap: .25rem; }
   .pagination span { font-size: .78rem; }
 }
+
+.search-form { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.search-form input[type="search"] { flex: 1; min-width: 12rem; min-height: 44px; padding: .4rem .7rem; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); }
+.urgent-callout { border-left: 4px solid var(--danger); }
+.urgent-callout h2 { color: var(--danger); }

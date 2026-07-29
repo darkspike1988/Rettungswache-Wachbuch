@@ -14,6 +14,17 @@
   <div class="form-actions"><button class="button primary" type="submit">Speichern</button></div>
 </form>
 
+<section class="section-block narrow" aria-label="Hinweis zu Löschfristen">
+  <h2>Löschfristen</h2>
+  <p class="field-hint">
+    <code>0</code> bedeutet: keine automatische Löschung. Die Fristen legt die
+    verantwortliche Stelle fest, nicht die Software. Gelöscht wird erst, wenn
+    der Betrieb <code>manage.py purge_expired</code> ausführt (siehe
+    <code>docs/OPERATIONS.md</code>). Kassenbuchungen sind wegen ihrer
+    Aufbewahrungspflicht bewusst ausgenommen.
+  </p>
+</section>
+
 <section class="section-block narrow" aria-label="Ort und Kreis anhand der Adresse">
   <h2>Ort/Kreis automatisch ermitteln</h2>
   <p class="field-hint">

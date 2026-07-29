@@ -43,6 +43,17 @@ class Station(models.Model):
         max_length=120, blank=True, verbose_name="Kontoinhaber/in",
     )
     onboarded = models.BooleanField(default=False, verbose_name="Einrichtung abgeschlossen")
+    # 0 = keine automatische Loeschung. Die Fristen legt die verantwortliche
+    # Stelle fest; Kassenbuchungen bleiben bewusst ausgenommen.
+    retention_handover_days = models.PositiveIntegerField(
+        default=0, verbose_name="Erledigte Uebergaben loeschen nach (Tagen)",
+    )
+    retention_calendar_days = models.PositiveIntegerField(
+        default=0, verbose_name="Vergangene Termine loeschen nach (Tagen)",
+    )
+    retention_audit_days = models.PositiveIntegerField(
+        default=0, verbose_name="Audit-Ereignisse loeschen nach (Tagen)",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -168,6 +179,30 @@ class HandoverRevision(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValidationError("Uebergaberevisionen duerfen nicht geloescht werden.")
+
+
+class HandoverAcknowledgement(models.Model):
+    """Bestaetigung, dass ein dringender Eintrag gelesen wurde. Bewusst ohne
+    Auswertung je Person - nur die Wache sieht, wer noch fehlt."""
+
+    handover = models.ForeignKey(
+        HandoverEntry, on_delete=models.CASCADE, related_name="acknowledgements",
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="handover_acknowledgements",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["handover", "user"], name="unique_handover_acknowledgement",
+            )
+        ]
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.user} hat {self.handover_id} gelesen"
 
 
 class DailyTeamNote(models.Model):

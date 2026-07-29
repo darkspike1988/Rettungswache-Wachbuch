@@ -40,6 +40,7 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
 - `HandoverEntry`, `HandoverRevision`: Arbeitsstand, optionaler Tagesbezug (`for_date`)
   und unveraenderte Revisionen
 - `DailyTeamNote`: Team je Tag fuer das Wochenprotokoll, eine Zeile je Wache und Datum
+- `HandoverAcknowledgement`: Lesebestaetigung je Person und dringendem Eintrag
 - `FeedSource`, `FeedItem`: optionale externe Quellen (RSS, Verkehr-CSV,
   Abfallkalender-ICS); global oder ueber `station` einer einzelnen Wache
   zugeordnet

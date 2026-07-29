@@ -11,15 +11,23 @@ Betreibers.
 
 | Anforderung | Stand |
 | --- | --- |
-| Rechtsgrundlage je Modul, Informationspflicht (Art. 13 DSGVO) | Datenschutzerklaerung unter `/datenschutz/` vorbereitet, Angaben zur verantwortlichen Stelle ueber `OPERATOR_*`/`DPO_CONTACT` zu ergaenzen |
+| Rechtsgrundlage je Modul, Informationspflicht (Art. 13 DSGVO) | Datenschutzerklaerung unter `/datenschutz/` vorbereitet, Angaben zur verantwortlichen Stelle ueber `OPERATOR_*`/`DPO_CONTACT` zu ergaenzen. Fehlen sie im Produktivbetrieb, warnt `manage.py check --deploy` mit `wachbuch.W001` |
 | Verzeichnis von Verarbeitungstaetigkeiten, DSFA-Schwellenwertpruefung | offen, Aufgabe des Betreibers (siehe `docs/SECURITY-PRIVACY.md`) |
 | Datenminimierung, Zweckbindung | technisch durchgesetzt: keine Patienten-/Einsatzdaten-Felder, Geburtstage nur mit Einwilligung, Audit ohne Freitextkopien |
-| Loesch-/Aufbewahrungsfristen | noch offen, richtet sich nach dem Loeschkonzept/der Aktenordnung des Traegers |
+| Loesch-/Aufbewahrungsfristen | technisch umgesetzt: Fristen je Wache unter `/einstellungen/`, Ausfuehrung ueber `manage.py purge_expired`. Welche Fristen gelten, entscheidet weiterhin der Traeger; Kassenbuchungen sind wegen Aufbewahrungspflichten ausgenommen |
 | Betroffenenrechte, Aufsichtsbehoerde | in der Datenschutzerklaerung benannt: Landesbeauftragte fuer Datenschutz und Informationsfreiheit NRW (LDI NRW) |
 | Auftragsverarbeitung bei externem Hosting | AVV mit dem Hosting-/Betriebsdienstleister durch den Betreiber abzuschliessen |
 
 Als oeffentliche Stelle in NRW gilt fuer einen Kreis ergaenzend zur DSGVO das
 Datenschutzgesetz Nordrhein-Westfalen (DSG NRW).
+
+### Lesebestaetigung und Auswertungsverbot
+
+Dringende Eintraege koennen quittiert werden. Gespeichert wird nur, *dass* eine
+Person einen Eintrag gelesen hat - es gibt keine Auswertung ueber Personen
+hinweg, keine Zeitmessung und keine Erinnerungsfunktion. Die Bestaetigung
+unterliegt trotzdem der Mitbestimmung, weil sie personenbezogen ist; sie sollte
+also in der Dienstvereinbarung ausdruecklich erwaehnt werden.
 
 ## Personalvertretung (LPVG NRW)
 

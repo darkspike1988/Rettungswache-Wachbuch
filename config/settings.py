@@ -144,6 +144,22 @@ SECURE_SSL_REDIRECT = False
 # The shared tailnet hostname must not impose preload/subdomain policy on other apps.
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
 
+# Ohne EMAIL_HOST schreibt Django Nachrichten in die Konsole statt sie zu
+# versenden. Der Passwort-Reset funktioniert dann nur im Testbetrieb.
+EMAIL_HOST = os.getenv("EMAIL_HOST", "").strip()
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
+    EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL")
+    EMAIL_TIMEOUT = 10
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "wachbuch@localhost").strip()
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 3
+
 TRUST_TAILSCALE_HEADERS = env_bool("TRUST_TAILSCALE_HEADERS")
 TAILSCALE_ADMIN_LOGIN = os.getenv("TAILSCALE_ADMIN_LOGIN", "").strip().lower()
 DEFAULT_STATION_NAME = os.getenv("DEFAULT_STATION_NAME", "Rettungswache").strip()

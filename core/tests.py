@@ -1,15 +1,18 @@
 import json
+import re
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from .forms import WachbuchUserCreationForm
 from .feed_sync import fetch_source, sync_closure_csv, sync_rss, sync_waste_ics
 from .geocoding import GeocodingError, lookup_district
 from .models import (
@@ -333,6 +336,38 @@ class WeeklyProtocolTests(PilotTestCase):
         self.assertContains(response, "Fahrzeugcheck")
         self.assertContains(response, "Allgemeiner Hinweis")
 
+    def test_week_can_be_exported_as_pdf(self):
+        today = timezone.localdate()
+        HandoverEntry.objects.create(
+            station=self.station, category=HandoverEntry.Category.TASK,
+            title="Fahrzeugcheck", details="x", author=self.user, for_date=today,
+        )
+        DailyTeamNote.objects.create(
+            station=self.station, date=today, note="Dotzki/Huber", updated_by=self.user,
+        )
+        year, week, _ = today.isocalendar()
+        response = self.client.get(
+            reverse("handover_week_pdf"), {"jahr": year, "kw": week}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("wochenprotokoll-kw", response["Content-Disposition"])
+        payload = b"".join(response.streaming_content)
+        self.assertTrue(payload.startswith(b"%PDF-"))
+        self.assertGreater(len(payload), 1000)
+        self.assertTrue(AuditEvent.objects.filter(action="handover.week_exported").exists())
+
+    def test_pdf_export_of_a_foreign_station_is_not_possible(self):
+        other = Station.objects.create(name="Fremd", slug="fremd-pdf")
+        HandoverEntry.objects.create(
+            station=other, category=HandoverEntry.Category.TASK,
+            title="Geheimer Fremdeintrag", details="x", author=self.user,
+            for_date=timezone.localdate(),
+        )
+        response = self.client.get(reverse("handover_week_pdf"))
+        payload = b"".join(response.streaming_content)
+        self.assertNotIn(b"Geheimer Fremdeintrag", payload)
+
     def test_shift_lead_sets_daily_team_note(self):
         self.membership.role = Membership.Role.SHIFT_LEAD
         self.membership.save(update_fields=["role"])
@@ -561,6 +596,182 @@ class BirthdayAndCoffeeTests(PilotTestCase):
             "coffee_paypal_link": "https://paypal.me/hack",
         })
         self.assertEqual(response.status_code, 403)
+
+
+class PasswordResetTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "mara@example.org", email="mara@example.org", password="alt-passwort-123",
+        )
+
+    def request_reset(self, address):
+        return self.client.post(reverse("password_reset"), {"email": address}, follow=True)
+
+    def test_reset_mail_is_sent_and_new_password_works(self):
+        response = self.request_reset("mara@example.org")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        link = re.search(r"/passwort-neu/[^\s]+/", mail.outbox[0].body).group()
+
+        follow = self.client.get(link, follow=True)
+        form_url = follow.redirect_chain[-1][0] if follow.redirect_chain else link
+        done = self.client.post(form_url, {
+            "new_password1": "ganz-neues-passwort-42",
+            "new_password2": "ganz-neues-passwort-42",
+        })
+        self.assertEqual(done.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("ganz-neues-passwort-42"))
+
+    def test_reset_finds_account_when_only_the_username_is_the_address(self):
+        User.objects.filter(pk=self.user.pk).update(email="")
+        self.request_reset("mara@example.org")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["mara@example.org"])
+
+    def test_unknown_address_reveals_nothing_and_sends_nothing(self):
+        response = self.request_reset("niemand@example.org")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_login_page_links_to_password_reset(self):
+        response = self.client.get(reverse("login"))
+        self.assertContains(response, reverse("password_reset"))
+
+    def test_admin_cannot_create_user_without_email(self):
+        form = WachbuchUserCreationForm({
+            "username": "ohne@example.org", "password1": "x", "password2": "x",
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn("email", form.errors)
+
+
+class AcknowledgementTests(PilotTestCase):
+    def make_urgent(self):
+        return HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.SAFETY,
+            priority=HandoverEntry.Priority.URGENT,
+            title="Defekte Absturzsicherung",
+            details="Bitte nicht benutzen.",
+            author=self.user,
+        )
+
+    def test_urgent_entry_can_be_acknowledged_once(self):
+        handover = self.make_urgent()
+        url = reverse("handover_acknowledge", args=[handover.pk])
+        self.assertRedirects(
+            self.client.post(url), reverse("handover_detail", args=[handover.pk])
+        )
+        self.client.post(url)
+        self.assertEqual(handover.acknowledgements.count(), 1)
+        self.assertEqual(
+            AuditEvent.objects.filter(action="handover.acknowledged").count(), 1
+        )
+
+    def test_normal_entry_cannot_be_acknowledged(self):
+        handover = HandoverEntry.objects.create(
+            station=self.station, category=HandoverEntry.Category.TASK,
+            title="Normal", details="x", author=self.user,
+        )
+        response = self.client.post(reverse("handover_acknowledge", args=[handover.pk]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_dashboard_lists_unconfirmed_urgent_entries_then_clears(self):
+        handover = self.make_urgent()
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, "Defekte Absturzsicherung")
+        self.assertContains(response, "noch nicht von dir best")
+
+        self.client.post(reverse("handover_acknowledge", args=[handover.pk]))
+        response = self.client.get(reverse("dashboard"))
+        self.assertNotContains(response, "noch nicht von dir best")
+
+    def test_detail_shows_who_confirmed(self):
+        handover = self.make_urgent()
+        self.client.post(reverse("handover_acknowledge", args=[handover.pk]))
+        response = self.client.get(reverse("handover_detail", args=[handover.pk]))
+        self.assertContains(response, "Mara")
+        self.assertContains(response, "als gelesen best")
+
+    def test_acknowledging_a_foreign_station_entry_is_not_found(self):
+        other = Station.objects.create(name="Fremd", slug="fremd-ack")
+        handover = HandoverEntry.objects.create(
+            station=other, category=HandoverEntry.Category.SAFETY,
+            priority=HandoverEntry.Priority.URGENT,
+            title="Fremd", details="x", author=self.user,
+        )
+        response = self.client.post(reverse("handover_acknowledge", args=[handover.pk]))
+        self.assertEqual(response.status_code, 404)
+
+
+class RetentionTests(PilotTestCase):
+    def make_done_handover(self, days_ago):
+        handover = HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.TASK,
+            status=HandoverEntry.Status.DONE,
+            title=f"Erledigt vor {days_ago} Tagen",
+            details="x",
+            author=self.user,
+        )
+        moment = timezone.now() - timedelta(days=days_ago)
+        HandoverEntry.objects.filter(pk=handover.pk).update(completed_at=moment)
+        return handover
+
+    def test_nothing_is_deleted_without_a_configured_period(self):
+        self.make_done_handover(400)
+        call_command("purge_expired")
+        self.assertEqual(HandoverEntry.objects.count(), 1)
+
+    def test_dry_run_reports_but_keeps_everything(self):
+        self.make_done_handover(400)
+        self.station.retention_handover_days = 30
+        self.station.save(update_fields=["retention_handover_days"])
+        call_command("purge_expired", "--dry-run")
+        self.assertEqual(HandoverEntry.objects.count(), 1)
+
+    def test_only_entries_past_the_period_are_deleted(self):
+        old = self.make_done_handover(400)
+        recent = self.make_done_handover(5)
+        open_entry = HandoverEntry.objects.create(
+            station=self.station, category=HandoverEntry.Category.TASK,
+            title="Noch offen", details="x", author=self.user,
+        )
+        self.station.retention_handover_days = 30
+        self.station.save(update_fields=["retention_handover_days"])
+
+        call_command("purge_expired")
+
+        self.assertFalse(HandoverEntry.objects.filter(pk=old.pk).exists())
+        self.assertTrue(HandoverEntry.objects.filter(pk=recent.pk).exists())
+        self.assertTrue(HandoverEntry.objects.filter(pk=open_entry.pk).exists())
+        self.assertTrue(AuditEvent.objects.filter(action="retention.purged").exists())
+
+    def test_coffee_entries_are_never_purged(self):
+        CoffeeEntry.objects.create(
+            station=self.station, member=self.user, amount_cents=500,
+            reason="Einzahlung", created_by=self.user,
+        )
+        self.station.retention_handover_days = 1
+        self.station.retention_audit_days = 1
+        self.station.save(update_fields=["retention_handover_days", "retention_audit_days"])
+        call_command("purge_expired")
+        self.assertEqual(CoffeeEntry.objects.count(), 1)
+
+    def test_other_stations_are_untouched(self):
+        other = Station.objects.create(name="Andere", slug="andere")
+        keeper = HandoverEntry.objects.create(
+            station=other, category=HandoverEntry.Category.TASK,
+            status=HandoverEntry.Status.DONE, title="Fremd", details="x", author=self.user,
+        )
+        HandoverEntry.objects.filter(pk=keeper.pk).update(
+            completed_at=timezone.now() - timedelta(days=999)
+        )
+        self.station.retention_handover_days = 30
+        self.station.save(update_fields=["retention_handover_days"])
+        call_command("purge_expired")
+        self.assertTrue(HandoverEntry.objects.filter(pk=keeper.pk).exists())
 
 
 class LegalPagesTests(TestCase):

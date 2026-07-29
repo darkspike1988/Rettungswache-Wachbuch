@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from io import BytesIO
 
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -6,7 +7,7 @@ from django.core.paginator import Paginator
 from django.db import connection, transaction
 from django.core.exceptions import PermissionDenied
 from django.db.models import Case, IntegerField, Q, Sum, Value, When
-from django.http import Http404, JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -31,6 +32,7 @@ from .forms import (
     WasteSourceForm,
 )
 from .geocoding import GeocodingError, lookup_district
+from .pdf import build_week_pdf
 from .models import (
     AuditEvent,
     BirthdayPreference,
@@ -43,6 +45,7 @@ from .models import (
     Membership,
 )
 from .services import (
+    acknowledge_handover,
     audit,
     change_handover_status,
     create_handover,
@@ -99,10 +102,15 @@ def dashboard(request):
         events = CalendarEvent.objects.filter(
             station=station, ends_at__gte=now
         ).order_by("starts_at")[:3]
+    unread_urgent = active.filter(priority=HandoverEntry.Priority.URGENT).exclude(
+        acknowledgements__user=request.user
+    )
     context = {
         "open_handovers": active[:5],
         "open_count": active.count(),
         "urgent_count": active.filter(priority=HandoverEntry.Priority.URGENT).count(),
+        "unread_urgent": unread_urgent[:5],
+        "unread_urgent_count": unread_urgent.count(),
         "events": events,
         "calendar_enabled": station.calendar_enabled,
     }
@@ -225,6 +233,7 @@ def upcoming_birthdays(station):
 @membership_required(CONTENT_ROLES)
 def handover_list(request):
     scope = request.GET.get("ansicht", "aktiv")
+    query = request.GET.get("q", "").strip()
     if scope == "archiv":
         handovers = HandoverEntry.objects.filter(
             station=request.membership.station,
@@ -235,9 +244,15 @@ def handover_list(request):
         handovers = prioritized_handovers(request.membership.station)
         if scope == "dringend":
             handovers = handovers.filter(priority=HandoverEntry.Priority.URGENT)
+    if query:
+        handovers = handovers.filter(
+            Q(title__icontains=query) | Q(details__icontains=query)
+        )
     return render(request, "core/handover_list.html", {
         "page_obj": page_for(request, handovers),
         "scope": scope,
+        "query": query,
+        "result_count": handovers.count() if query else None,
     })
 
 
@@ -272,12 +287,33 @@ def handover_detail(request, pk):
         Membership.Role.SHIFT_LEAD,
         Membership.Role.ADMIN,
     }
+    needs_ack = handover.priority == HandoverEntry.Priority.URGENT
     return render(request, "core/handover_detail.html", {
         "handover": handover,
         "status_form": HandoverStatusForm(instance=handover),
         "can_change_status": can_change_status,
         "can_edit": may_edit_handover(request.membership, handover),
+        "needs_acknowledgement": needs_ack,
+        "acknowledged_by_me": needs_ack and handover.acknowledgements.filter(
+            user=request.user
+        ).exists(),
+        "acknowledgements": handover.acknowledgements.select_related("user") if needs_ack else [],
+        "team_size": Membership.objects.filter(
+            station=request.membership.station, is_active=True,
+        ).exclude(role=Membership.Role.AUDITOR).count() if needs_ack else 0,
     })
+
+
+@membership_required(CONTENT_ROLES)
+@require_POST
+def handover_acknowledge(request, pk):
+    handover = get_object_or_404(
+        HandoverEntry, pk=pk, station=request.membership.station,
+        priority=HandoverEntry.Priority.URGENT,
+    )
+    acknowledge_handover(handover, request.membership)
+    messages.success(request, "Danke, als gelesen vermerkt.")
+    return redirect("handover_detail", pk=pk)
 
 
 @membership_required(CONTENT_ROLES)
@@ -320,17 +356,10 @@ def _week_start(year, week):
         return today - timedelta(days=today.isoweekday() - 1)
 
 
-@membership_required(CONTENT_ROLES)
-def handover_week(request):
-    station = request.membership.station
-    today = timezone.localdate()
-    default_year, default_week, _ = today.isocalendar()
-    monday = _week_start(
-        request.GET.get("jahr", default_year), request.GET.get("kw", default_week)
-    )
+def week_protocol(station, monday):
+    """Tage der Woche mit Team und Eintraegen sowie die Eintraege ohne
+    Tagesbezug - gemeinsame Grundlage fuer Web-Ansicht und PDF."""
     week_days = [monday + timedelta(days=offset) for offset in range(7)]
-    year, week, _ = monday.isocalendar()
-
     team_notes = {
         note.date: note
         for note in DailyTeamNote.objects.filter(station=station, date__in=week_days)
@@ -345,12 +374,47 @@ def handover_week(request):
         {"date": day, "team_note": team_notes.get(day), "entries": day_entries[day]}
         for day in week_days
     ]
-
     general_entries = (
         HandoverEntry.objects.filter(station=station, for_date__isnull=True)
         .exclude(status=HandoverEntry.Status.DONE)
         .select_related("author")[:20]
     )
+    return days, general_entries
+
+
+@membership_required(CONTENT_ROLES)
+def handover_week_pdf(request):
+    station = request.membership.station
+    today = timezone.localdate()
+    default_year, default_week, _ = today.isocalendar()
+    monday = _week_start(
+        request.GET.get("jahr", default_year), request.GET.get("kw", default_week)
+    )
+    year, week, _ = monday.isocalendar()
+    days, general_entries = week_protocol(station, monday)
+
+    buffer = BytesIO()
+    build_week_pdf(buffer, station, year, week, days, general_entries)
+    buffer.seek(0)
+    filename = f"wochenprotokoll-kw{week:02d}-{year}.pdf"
+    response = FileResponse(buffer, as_attachment=True, filename=filename)
+    audit(request.user, station, "handover.week_exported", station, {
+        "year": year, "week": week,
+    })
+    return response
+
+
+@membership_required(CONTENT_ROLES)
+def handover_week(request):
+    station = request.membership.station
+    today = timezone.localdate()
+    default_year, default_week, _ = today.isocalendar()
+    monday = _week_start(
+        request.GET.get("jahr", default_year), request.GET.get("kw", default_week)
+    )
+    week_days = [monday + timedelta(days=offset) for offset in range(7)]
+    year, week, _ = monday.isocalendar()
+    days, general_entries = week_protocol(station, monday)
 
     previous_monday = monday - timedelta(days=7)
     next_monday = monday + timedelta(days=7)

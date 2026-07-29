@@ -7,10 +7,20 @@
 </header>
 
 <nav class="filter-nav" aria-label="Übergaben filtern">
-  <a href="{% url 'handover_list' %}"{% if scope == 'aktiv' %} aria-current="page"{% endif %}>Aktiv</a>
-  <a href="?ansicht=dringend"{% if scope == 'dringend' %} aria-current="page"{% endif %}>Dringend</a>
-  <a href="?ansicht=archiv"{% if scope == 'archiv' %} aria-current="page"{% endif %}>Archiv</a>
+  <a href="{% url 'handover_list' %}{% if query %}?q={{ query|urlencode }}{% endif %}"{% if scope == 'aktiv' %} aria-current="page"{% endif %}>Aktiv</a>
+  <a href="?ansicht=dringend{% if query %}&amp;q={{ query|urlencode }}{% endif %}"{% if scope == 'dringend' %} aria-current="page"{% endif %}>Dringend</a>
+  <a href="?ansicht=archiv{% if query %}&amp;q={{ query|urlencode }}{% endif %}"{% if scope == 'archiv' %} aria-current="page"{% endif %}>Archiv</a>
 </nav>
+
+<form method="get" class="search-form" role="search">
+  {% if scope != 'aktiv' %}<input type="hidden" name="ansicht" value="{{ scope }}">{% endif %}
+  <label class="visually-hidden" for="suche">Übergaben durchsuchen</label>
+  <input type="search" id="suche" name="q" value="{{ query }}" placeholder="In Titel und Text suchen">
+  <button class="button secondary" type="submit">Suchen</button>
+  {% if query %}<a class="button secondary" href="{% if scope == 'aktiv' %}{% url 'handover_list' %}{% else %}?ansicht={{ scope }}{% endif %}">Zurücksetzen</a>{% endif %}
+</form>
+
+{% if query %}<p class="context-line">{{ result_count }} Treffer für &bdquo;{{ query }}&ldquo; in dieser Ansicht.</p>{% endif %}
 
 <section class="section-block flush" aria-label="Übergabeliste">
   <div class="item-list">
@@ -20,7 +30,7 @@
         <span class="row-content"><strong>{{ item.title }}</strong><small>{{ item.get_category_display }} &middot; {{ item.get_status_display }} &middot; {{ item.author.first_name|default:item.author.username }}</small></span>
         <time datetime="{{ item.updated_at|date:'c' }}">{{ item.updated_at|date:"d.m.Y H:i" }}</time>
       </a>
-    {% empty %}<p class="empty-state">In dieser Ansicht gibt es keine Übergaben.</p>{% endfor %}
+    {% empty %}<p class="empty-state">{% if query %}Keine Übergabe passt zu dieser Suche.{% else %}In dieser Ansicht gibt es keine Übergaben.{% endif %}</p>{% endfor %}
   </div>
 </section>
 {% include "core/pagination.html" %}

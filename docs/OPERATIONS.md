@@ -93,3 +93,26 @@ Dump ein, prueft Schluesseltabellen und entfernt die Testdatenbank wieder.
 
 Bei Stoerungen keine Tabellen manuell bearbeiten. Zuerst Logs und letzten Dump
 sichern, dann die Ursache reproduzierbar ueber Anwendung oder Migration beheben.
+
+## Loeschfristen ausfuehren
+
+Die Fristen stehen je Wache unter `/einstellungen/`; geloescht wird nur, wenn
+der Betrieb den Befehl anstoesst. Er laeuft im `migrate`-Container, weil das
+Anwendungskonto Audit-Ereignisse und Revisionen auf Datenbankebene nicht
+loeschen darf:
+
+```bash
+docker compose run --rm migrate python manage.py purge_expired --dry-run
+docker compose run --rm migrate python manage.py purge_expired
+```
+
+Der Lauf schreibt je Wache ein Audit-Ereignis `retention.purged` mit den
+Stueckzahlen. Kassenbuchungen bleiben ausgenommen.
+
+## Passwort-Reset
+
+Ohne `EMAIL_HOST` in `.env` schreibt Django Nachrichten nur in das
+Containerlog. Fuer den Betrieb werden `EMAIL_HOST`, `EMAIL_PORT`,
+`EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` und `DEFAULT_FROM_EMAIL` gesetzt und
+der Ablauf einmal mit einem echten Postfach getestet. Konten ohne
+E-Mail-Adresse koennen den Reset nicht nutzen; `/team/` markiert sie.

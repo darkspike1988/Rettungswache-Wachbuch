@@ -10,6 +10,20 @@
   <a class="button primary" href="{% url 'handover_create' %}">Übergabe anlegen</a>
 </header>
 
+{% if unread_urgent_count %}
+<section class="section-block urgent-callout" aria-labelledby="unread-urgent">
+  <h2 id="unread-urgent">{% if unread_urgent_count == 1 %}Ein dringender Eintrag{% else %}{{ unread_urgent_count }} dringende Einträge{% endif %} noch nicht von dir bestätigt</h2>
+  <div class="item-list nested">
+    {% for item in unread_urgent %}
+      <a class="list-row" href="{% url 'handover_detail' item.pk %}">
+        <span class="status-label priority-urgent">Dringend</span>
+        <span class="row-content"><strong>{{ item.title }}</strong><small>{{ item.get_category_display }} &middot; {{ item.get_status_display }}</small></span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <div class="overview-layout">
   <section class="section-block" aria-labelledby="active-handovers">
     <div class="section-heading">

@@ -9,8 +9,10 @@ Dienstplanungs- oder Patientendokumentationssystem.
 
 ## Funktionen
 
-- versionierte Uebergaben mit Prioritaet und Status
-- Wochenprotokoll mit Team je Tag, analog zum Papier-Uebergabebogen
+- versionierte Uebergaben mit Prioritaet, Status und nachvollziehbarer Korrektur
+- Volltextsuche in Titel und Text der Uebergaben
+- Lesebestaetigung fuer dringende Eintraege
+- Wochenprotokoll mit Team je Tag, analog zum Papier-Uebergabebogen, als PDF exportierbar
 - einfacher Wachenkalender
 - freiwillige Geburtstagsanzeige ohne Geburtsjahr
 - unveraenderliches Kaffeekassen-Ledger mit Korrekturbuchungen
@@ -19,7 +21,8 @@ Dienstplanungs- oder Patientendokumentationssystem.
 - optionale Ort-/Kreis-Ermittlung aus der Wachenadresse (offener Geocoding-Dienst)
 - Kaffeekasse mit optionalen, gebuehrenfrei nutzbaren Einzahlwegen (PayPal.me, Wero, Echtzeitueberweisung)
 - stationsbezogene Rollen und nachvollziehbare Audit-Ereignisse
-- lokaler Login oder Anmeldung ueber Tailscale-Identitaetsheader
+- lokaler Login mit Passwort-Reset per E-Mail oder Anmeldung ueber Tailscale
+- konfigurierbare Loeschfristen je Wache
 - responsive, JavaScript-freie Oberflaeche mit hellem und dunklem Farbschema
 - Impressum, Datenschutz- und Barrierefreiheitserklaerung als ausfuellbares Seiten-Geruest
 
@@ -130,6 +133,34 @@ selbst gehostete Instanz; alternativ die oeffentliche
 `nominatim.openstreetmap.org` unter Beachtung von deren Nutzungsbedingungen
 (niedrige Anfragerate, klarer User-Agent). Admins loesen die Ermittlung manuell
 unter `/einstellungen/` aus, es laeuft kein automatischer Hintergrundabgleich.
+
+## Passwort-Reset und Konten
+
+Konten legen technische Administratoren unter `/django-admin/` an; die
+E-Mail-Adresse ist dabei Pflicht, sonst kann sich die Person das Passwort
+spaeter nicht selbst zuruecksetzen. Unter `/team/` markiert das Wachbuch
+Mitglieder ohne Adresse sichtbar.
+
+Fuer den Versand werden in `.env` die `EMAIL_*`-Werte gesetzt. Ohne
+`EMAIL_HOST` schreibt Django die Nachrichten nur in das Containerlog - fuer
+einen Test brauchbar, fuer den Betrieb nicht. Angemeldete Personen aendern ihr
+Passwort selbst unter `Mehr -> Passwort aendern`.
+
+## Loeschfristen
+
+Unter `/einstellungen/` legt die Wache je Datenart fest, nach wie vielen Tagen
+geloescht wird (`0` = keine automatische Loeschung). Geloescht wird erst, wenn
+der Betrieb den Befehl ausfuehrt:
+
+```bash
+docker compose run --rm migrate python manage.py purge_expired --dry-run
+docker compose run --rm migrate python manage.py purge_expired
+```
+
+Der Befehl laeuft bewusst im `migrate`-Container: das Anwendungskonto darf
+Audit-Ereignisse und Revisionen auf Datenbankebene nicht loeschen.
+Kassenbuchungen sind wegen ihrer Aufbewahrungspflicht ausgenommen. Die Fristen
+legt die verantwortliche Stelle fest, nicht die Software.
 
 ## Rechtliches (Impressum, Datenschutz, Barrierefreiheit)
 

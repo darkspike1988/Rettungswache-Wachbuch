@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Passwort-Reset per E-Mail (`/passwort-vergessen/`) samt Passwortwechsel unter
+  `Mehr -> Passwort aendern`. Neue Konten brauchen im Django-Admin zwingend
+  eine E-Mail-Adresse; `/team/` markiert Konten ohne Adresse. SMTP wird ueber
+  die `EMAIL_*`-Werte in `.env` konfiguriert.
+- Volltextsuche in den Uebergaben (Titel und Text), kombinierbar mit den
+  vorhandenen Ansichten Aktiv/Dringend/Archiv.
+- Lesebestaetigung fuer dringende Eintraege: Wer sie gelesen hat, quittiert das
+  einmal; die Uebersicht zeigt die eigenen offenen Bestaetigungen. Es gibt
+  bewusst keine Auswertung ueber Personen hinweg.
+- Wochenprotokoll als PDF-Export, im Aufbau am Papierbogen orientiert.
+- Loeschfristen je Wache unter `/einstellungen/` plus Befehl
+  `manage.py purge_expired` (mit `--dry-run`). Der Befehl braucht die
+  Owner-Rolle und laesst Kassenbuchungen unberuehrt.
+- Deploy-Check `wachbuch.W001` meldet fehlende Betreiberangaben, damit die
+  Rechtstexte im Produktivbetrieb nicht mit Platzhaltern online gehen.
 - Uebergaben sind jetzt bearbeitbar (`/uebergaben/<id>/bearbeiten/`): Verfasserin
   oder Verfasser korrigiert eigene Eintraege, Schichtleitung und Admin auch
   fremde; jede Aenderung erhoeht die Version, schreibt eine unveraenderliche

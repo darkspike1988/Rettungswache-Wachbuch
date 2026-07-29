@@ -1,7 +1,9 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from django import forms
+from django.contrib.auth.forms import PasswordResetForm, UserChangeForm, UserCreationForm
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import (
@@ -14,6 +16,46 @@ from .models import (
     Station,
     validate_iban,
 )
+
+
+class EmailRequiredMixin:
+    """Ohne hinterlegte E-Mail-Adresse kann sich niemand das Passwort selbst
+    zuruecksetzen, deshalb ist die Adresse bei jedem Konto Pflicht."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["email"].required = True
+
+
+class WachbuchUserCreationForm(EmailRequiredMixin, UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ("username", "email")
+
+
+class WachbuchUserChangeForm(EmailRequiredMixin, UserChangeForm):
+    class Meta(UserChangeForm.Meta):
+        model = User
+
+
+class WachbuchPasswordResetForm(PasswordResetForm):
+    """Konten werden hier ueblicherweise mit der E-Mail-Adresse als Benutzername
+    angelegt. Damit der Reset auch dann funktioniert, wenn das E-Mail-Feld leer
+    geblieben ist, wird zusaetzlich der Benutzername geprueft."""
+
+    def get_users(self, email):
+        matches = User.objects.filter(
+            Q(email__iexact=email) | Q(username__iexact=email), is_active=True,
+        )
+        for user in matches:
+            if not user.has_usable_password():
+                continue
+            target = user.email or (user.username if "@" in user.username else "")
+            if not target:
+                continue
+            # Nur fuer den Versand dieser Nachricht, wird nicht gespeichert.
+            user.email = target
+            yield user
 
 
 class DateTimeLocalInput(forms.DateTimeInput):
@@ -147,7 +189,27 @@ class MembershipEditForm(forms.Form):
         self.fields["is_active"].initial = membership.is_active
 
 
+def _retention_field(label):
+    return forms.IntegerField(
+        required=False, min_value=0, label=label,
+        help_text="0 oder leer = keine automatische Loeschung.",
+    )
+
+
 class StationSettingsForm(forms.ModelForm):
+    retention_handover_days = _retention_field("Erledigte Uebergaben loeschen nach (Tagen)")
+    retention_calendar_days = _retention_field("Vergangene Termine loeschen nach (Tagen)")
+    retention_audit_days = _retention_field("Audit-Ereignisse loeschen nach (Tagen)")
+
+    def clean_retention_handover_days(self):
+        return self.cleaned_data.get("retention_handover_days") or 0
+
+    def clean_retention_calendar_days(self):
+        return self.cleaned_data.get("retention_calendar_days") or 0
+
+    def clean_retention_audit_days(self):
+        return self.cleaned_data.get("retention_audit_days") or 0
+
     class Meta:
         model = Station
         fields = [
@@ -161,6 +223,9 @@ class StationSettingsForm(forms.ModelForm):
             "birthdays_enabled",
             "coffee_enabled",
             "feeds_enabled",
+            "retention_handover_days",
+            "retention_calendar_days",
+            "retention_audit_days",
         ]
         labels = {
             "name": "Name der Rettungswache",

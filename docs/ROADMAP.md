@@ -14,6 +14,12 @@
 - helles und dunkles Farbschema (`prefers-color-scheme`, nachtdiensttauglich)
 - Impressum, Datenschutz- und Barrierefreiheitserklaerung als Seiten-Geruest
   mit deutlich markierten Platzhaltern fuer die verantwortliche Stelle
+- Passwort-Reset per E-Mail, Passwortwechsel im Profil, E-Mail-Pflicht bei
+  jedem neuen Konto
+- Volltextsuche in den Uebergaben, Lesebestaetigung fuer dringende Eintraege
+- Wochenprotokoll als PDF-Export
+- konfigurierbare Loeschfristen je Wache samt `purge_expired`-Befehl
+- Deploy-Check, der fehlende Betreiberangaben in den Rechtstexten meldet
 - automatisierte Fach- und Zugriffstests
 
 ## Phase 1 - geschlossener Test
@@ -23,7 +29,9 @@
 - Impressum-/Datenschutz-/Barrierefreiheitserklaerung mit echten Angaben der
   verantwortlichen Stelle fuellen (`OPERATOR_*`-Variablen, siehe README und
   `docs/COMPLIANCE-NRW.md`)
-- Loeschfristen technisch umsetzen, sobald sie freigegeben sind
+- Loeschfristen mit der verantwortlichen Stelle festlegen und unter
+  `/einstellungen/` eintragen; `purge_expired` als regelmaessigen Job einplanen
+- SMTP-Zugang fuer den Passwort-Reset bereitstellen und einmal durchtesten
 - Backup/Restore, Monitoring, Updates und Incident-Ablauf testen
 
 ## Phase 2 - formaler betrieblicher Pilot

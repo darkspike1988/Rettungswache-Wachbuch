@@ -1,5 +1,8 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.contrib.auth.models import User
 
+from .forms import WachbuchUserChangeForm, WachbuchUserCreationForm
 from .models import (
     AuditEvent,
     BirthdayPreference,
@@ -8,6 +11,7 @@ from .models import (
     DailyTeamNote,
     FeedItem,
     FeedSource,
+    HandoverAcknowledgement,
     HandoverEntry,
     HandoverRevision,
     Membership,
@@ -65,6 +69,11 @@ class HandoverRevisionAdmin(ReadOnlyAdmin):
     list_display = ("handover", "version", "changed_by", "created_at")
 
 
+@admin.register(HandoverAcknowledgement)
+class HandoverAcknowledgementAdmin(ReadOnlyAdmin):
+    list_display = ("handover", "user", "created_at")
+
+
 @admin.register(DailyTeamNote)
 class DailyTeamNoteAdmin(ReadOnlyAdmin):
     list_display = ("station", "date", "note", "updated_by", "updated_at")
@@ -106,6 +115,22 @@ class FeedItemAdmin(ReadOnlyAdmin):
 class AuditEventAdmin(ReadOnlyAdmin):
     list_display = ("created_at", "actor", "station", "action", "object_type", "object_id")
     list_filter = ("station", "action", "object_type")
+
+
+admin.site.unregister(User)
+
+
+@admin.register(User)
+class WachbuchUserAdmin(DjangoUserAdmin):
+    """Wie der Django-Standard, aber die E-Mail-Adresse ist Pflicht - sonst
+    kann das Konto den Passwort-Reset nicht nutzen."""
+
+    add_form = WachbuchUserCreationForm
+    form = WachbuchUserChangeForm
+    add_fieldsets = (
+        (None, {"classes": ("wide",), "fields": ("username", "email", "password1", "password2")}),
+    )
+    list_display = ("username", "email", "first_name", "is_active", "is_staff")
 
 
 admin.site.site_header = "Wachbuch-Verwaltung"
