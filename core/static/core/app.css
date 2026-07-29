@@ -333,3 +333,150 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .list-row:hover, .more-list a:hover { transform: translateX(2px); }
   .status-label { transition: background-color .15s ease; }
 }
+
+/* ---------------------------------------------------------------------------
+   Bewegung zwischen Seiten. Cross-Document View Transitions sind reines CSS:
+   Browser ohne Unterstuetzung blenden schlicht um, alles bleibt bedienbar.
+   Kopfbereich, Navigation und Fusszeile bekommen eigene Namen und bleiben
+   dadurch stehen, waehrend nur der Inhalt wechselt.
+   --------------------------------------------------------------------------- */
+@view-transition { navigation: auto; }
+
+.app-header { view-transition-name: wb-header; }
+.app-nav { view-transition-name: wb-nav; }
+.site-footer { view-transition-name: wb-footer; }
+.page-shell { view-transition-name: wb-content; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wb-slide-out { to { opacity: 0; transform: translateY(-.75rem); } }
+  @keyframes wb-slide-in { from { opacity: 0; transform: translateY(1rem); } }
+  ::view-transition-old(wb-content) { animation: wb-slide-out .18s ease-in both; }
+  ::view-transition-new(wb-content) { animation: wb-slide-in .26s cubic-bezier(.2, .7, .3, 1) both; }
+}
+
+/* Wer reduzierte Bewegung wuenscht, bekommt keine - auch nicht hier. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   Feature-Tour: horizontale Slides ueber Scroll-Snap. Bedienbar per Wischen,
+   Mausrad, Tastatur (Container ist fokussierbar) und ueber die Sprungmarken
+   darunter - ohne eine Zeile JavaScript.
+   --------------------------------------------------------------------------- */
+.tour { position: relative; margin-top: 1.5rem; }
+.tour-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: min(28rem, 88%);
+  gap: 1rem;
+  padding: .25rem .25rem 1rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: .25rem;
+  scrollbar-width: thin;
+}
+.tour-slide {
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--accent);
+  border-radius: var(--radius);
+}
+.tour-slide h3 { margin: 0; font-size: 1.15rem; }
+.tour-slide p { margin: 0; max-width: 40ch; color: var(--muted); }
+.tour-step {
+  width: 2.25rem; height: 2.25rem;
+  display: grid; place-items: center;
+  color: var(--surface); background: var(--accent-dark);
+  border-radius: 50%; font-weight: 800;
+}
+.tour-slide .status-label { margin-top: auto; }
+.tour-dots { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .25rem; }
+.tour-dots a {
+  min-width: 44px; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--muted); text-decoration: none; font-size: .85rem; font-weight: 700;
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.tour-dots a:hover, .tour-dots a:focus-visible { color: var(--accent-dark); background: var(--hover-surface); border-color: var(--line-strong); }
+.tour-hint { margin: .5rem 0 0; color: var(--muted); font-size: .85rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+  .tour-track { scroll-behavior: smooth; }
+  .tour-slide { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  .tour-slide:hover { transform: translateY(-3px); box-shadow: 0 .75rem 1.5rem -.75rem rgba(0,0,0,.25); }
+}
+
+/* ---------------------------------------------------------------------------
+   Feinheiten: Karten heben sich beim Zeigen leicht, Aufklappbloecke fahren
+   sanft auf, Statuszeichen erscheinen mit kurzem Aufpoppen. Alles rein
+   dekorativ - ohne Bewegung bleibt jede Information vollstaendig lesbar.
+   --------------------------------------------------------------------------- */
+.details-block summary::marker, .details-help summary::marker { color: var(--accent-dark); }
+
+.ack-meter { margin: .75rem 0 0; }
+.ack-meter-track { height: .5rem; overflow: hidden; background: var(--chip-bg); border-radius: 999px; }
+.ack-meter-fill { height: 100%; background: var(--success); border-radius: 999px; }
+.ack-meter-label { margin: .4rem 0 0; color: var(--muted); font-size: .85rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wb-pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+  @keyframes wb-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  .section-block { transition: box-shadow .2s ease, border-color .2s ease; }
+  .overview-layout .section-block:hover,
+  .day-card:hover { box-shadow: 0 .6rem 1.4rem -.9rem rgba(0,0,0,.28); }
+
+  .status-label { animation: wb-pop .22s cubic-bezier(.2, .8, .3, 1.2) both; }
+  .ack-meter-fill { transform-origin: left; animation: wb-grow .55s cubic-bezier(.2, .7, .3, 1) both; }
+
+  /* Aufklappbloecke: moderne Browser animieren die Hoehe, aeltere klappen
+     schlicht um. Beides ist bedienbar. */
+  .details-block::details-content, .details-help::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition: block-size .25s ease, content-visibility .25s allow-discrete;
+  }
+  .details-block[open]::details-content, .details-help[open]::details-content {
+    block-size: auto;
+  }
+  .details-block summary::marker, .details-help summary::marker { transition: color .15s ease; }
+  .tour-dots a { transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
+  .skip-link { transition: top .15s ease; }
+}
+
+/* Fuellstaende als Klassen - die CSP erlaubt keine Inline-Styles. */
+.ack-meter-fill.fill-0 { width: 0%; }
+.ack-meter-fill.fill-5 { width: 5%; }
+.ack-meter-fill.fill-10 { width: 10%; }
+.ack-meter-fill.fill-15 { width: 15%; }
+.ack-meter-fill.fill-20 { width: 20%; }
+.ack-meter-fill.fill-25 { width: 25%; }
+.ack-meter-fill.fill-30 { width: 30%; }
+.ack-meter-fill.fill-35 { width: 35%; }
+.ack-meter-fill.fill-40 { width: 40%; }
+.ack-meter-fill.fill-45 { width: 45%; }
+.ack-meter-fill.fill-50 { width: 50%; }
+.ack-meter-fill.fill-55 { width: 55%; }
+.ack-meter-fill.fill-60 { width: 60%; }
+.ack-meter-fill.fill-65 { width: 65%; }
+.ack-meter-fill.fill-70 { width: 70%; }
+.ack-meter-fill.fill-75 { width: 75%; }
+.ack-meter-fill.fill-80 { width: 80%; }
+.ack-meter-fill.fill-85 { width: 85%; }
+.ack-meter-fill.fill-90 { width: 90%; }
+.ack-meter-fill.fill-95 { width: 95%; }
+.ack-meter-fill.fill-100 { width: 100%; }
+
+/* Lange URLs als Linktext duerfen die Seite nicht breiter machen als das
+   Fenster (Designregel: kein horizontales Scrollen ab 320 Pixel). */
+.prose a, .summary-list dd a, .field-hint a { overflow-wrap: anywhere; }

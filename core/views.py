@@ -343,6 +343,10 @@ def handover_detail(request, pk):
         Membership.Role.ADMIN,
     }
     needs_ack = handover.priority == HandoverEntry.Priority.URGENT
+    team_size = Membership.objects.filter(
+        station=request.membership.station, is_active=True,
+    ).exclude(role=Membership.Role.AUDITOR).count() if needs_ack else 0
+    ack_count = handover.acknowledgements.count() if needs_ack else 0
     return render(request, "core/handover_detail.html", {
         "handover": handover,
         "status_form": HandoverStatusForm(instance=handover),
@@ -353,9 +357,11 @@ def handover_detail(request, pk):
             user=request.user
         ).exists(),
         "acknowledgements": handover.acknowledgements.select_related("user") if needs_ack else [],
-        "team_size": Membership.objects.filter(
-            station=request.membership.station, is_active=True,
-        ).exclude(role=Membership.Role.AUDITOR).count() if needs_ack else 0,
+        "team_size": team_size,
+        "ack_count": ack_count,
+        # In 5er-Schritten als CSS-Klasse: die Content-Security-Policy
+        # verbietet Inline-Styles, deshalb keine berechnete style-Angabe.
+        "ack_step": round(ack_count / team_size * 20) * 5 if team_size else 0,
     })
 
 

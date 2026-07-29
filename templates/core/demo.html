@@ -26,6 +26,56 @@
   {% endif %}
 </header>
 
+<section class="tour" aria-labelledby="tour-heading">
+  <h2 id="tour-heading">Was das Wachbuch kann</h2>
+  <p class="tour-hint">Wischen, scrollen oder mit den Zahlen unten springen.</p>
+  <div class="tour-track" tabindex="0" role="group" aria-label="Funktionen, horizontal scrollbar">
+    <article class="tour-slide" id="tour-1" aria-labelledby="tour-1-title">
+      <span class="tour-step" aria-hidden="true">1</span>
+      <h3 id="tour-1-title">Übergaben statt Zettel</h3>
+      <p>Jeder Eintrag hat Kategorie, Priorität und Status. Korrekturen bleiben
+         nachvollziehbar: jede Änderung erzeugt eine unveränderliche Revision.</p>
+      <span class="status-label priority-urgent">Dringend</span>
+    </article>
+    <article class="tour-slide" id="tour-2" aria-labelledby="tour-2-title">
+      <span class="tour-step" aria-hidden="true">2</span>
+      <h3 id="tour-2-title">Wochenprotokoll wie der Papierbogen</h3>
+      <p>Kalenderwoche mit Team je Tag und einem Abschnitt für Allgemeines -
+         nur eben durchsuchbar. Zum Abheften gibt es den PDF-Export.</p>
+      <span class="status-label neutral">KW 31</span>
+    </article>
+    <article class="tour-slide" id="tour-3" aria-labelledby="tour-3-title">
+      <span class="tour-step" aria-hidden="true">3</span>
+      <h3 id="tour-3-title">Dringendes wird quittiert</h3>
+      <p>Bei dringenden Einträgen bestätigt jede Person einmal, dass sie sie
+         gelesen hat. Ohne Auswertung über Personen hinweg.</p>
+      <span class="status-label success">Gelesen</span>
+    </article>
+    <article class="tour-slide" id="tour-4" aria-labelledby="tour-4-title">
+      <span class="tour-step" aria-hidden="true">4</span>
+      <h3 id="tour-4-title">Kaffeekasse, die stimmt</h3>
+      <p>Buchungen lassen sich nicht still ändern, nur durch eine Gegenbuchung
+         korrigieren. Einzahlwege wie PayPal oder Echtzeitüberweisung sind
+         hinterlegbar.</p>
+      <span class="status-label neutral">47,50 €</span>
+    </article>
+    <article class="tour-slide" id="tour-5" aria-labelledby="tour-5-title">
+      <span class="tour-step" aria-hidden="true">5</span>
+      <h3 id="tour-5-title">Selbst gehostet, freie Software</h3>
+      <p>AGPL-3.0, läuft auf eurem eigenen Server. Keine Lizenzkosten, keine
+         Abhängigkeit von einem Anbieter, Löschfristen selbst festlegbar.</p>
+      <span class="status-label neutral">AGPL-3.0</span>
+    </article>
+  </div>
+  <nav class="tour-dots" aria-label="Zu einer Funktion springen">
+    <a href="#tour-1"><span aria-hidden="true">1</span><span class="visually-hidden">Übergaben</span></a>
+    <a href="#tour-2"><span aria-hidden="true">2</span><span class="visually-hidden">Wochenprotokoll</span></a>
+    <a href="#tour-3"><span aria-hidden="true">3</span><span class="visually-hidden">Lesebestätigung</span></a>
+    <a href="#tour-4"><span aria-hidden="true">4</span><span class="visually-hidden">Kaffeekasse</span></a>
+    <a href="#tour-5"><span aria-hidden="true">5</span><span class="visually-hidden">Freie Software</span></a>
+  </nav>
+</section>
+
 {% if demo_available %}
 <section class="section-block prose">
   <h2>Einfach ausprobieren</h2>

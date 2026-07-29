@@ -841,6 +841,25 @@ class AcknowledgementTests(PilotTestCase):
         self.assertContains(response, "Mara")
         self.assertContains(response, "als gelesen best")
 
+    def test_progress_uses_a_class_not_an_inline_style(self):
+        """Die Content-Security-Policy verwirft Inline-Styles - der Fuellstand
+        muss deshalb ueber eine Klasse kommen."""
+        handover = self.make_urgent()
+        response = self.client.get(reverse("handover_detail", args=[handover.pk]))
+        self.assertContains(response, "ack-meter-fill fill-0")
+        self.assertNotContains(response, 'style="width')
+
+        self.client.post(reverse("handover_acknowledge", args=[handover.pk]))
+        response = self.client.get(reverse("handover_detail", args=[handover.pk]))
+        # Eine Person von einer im Team.
+        self.assertContains(response, "ack-meter-fill fill-100")
+
+    def test_progress_class_exists_in_the_stylesheet(self):
+        from pathlib import Path
+        stylesheet = Path("core/static/core/app.css").read_text(encoding="utf-8")
+        for step in (0, 25, 50, 100):
+            self.assertIn(f".ack-meter-fill.fill-{step}", stylesheet)
+
     def test_acknowledging_a_foreign_station_entry_is_not_found(self):
         other = Station.objects.create(name="Fremd", slug="fremd-ack")
         handover = HandoverEntry.objects.create(

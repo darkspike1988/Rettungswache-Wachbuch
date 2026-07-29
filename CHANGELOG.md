@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Sanfte Seitenwechsel ueber Cross-Document View Transitions: Kopfbereich,
+  Navigation und Fusszeile bleiben stehen, nur der Inhalt wechselt. Reines CSS,
+  Browser ohne Unterstuetzung blenden schlicht um.
+- Feature-Tour auf der Demoseite als horizontale Slides (CSS-Scroll-Snap),
+  bedienbar per Wischen, Mausrad, Tastatur und Sprungmarken - ohne JavaScript.
+- Fortschrittsbalken bei der Lesebestaetigung, dazu Karten mit leichtem Anheben,
+  sanft aufklappende Detailbloecke und kurz aufpoppende Statuszeichen. Alles
+  vollstaendig aus bei `prefers-reduced-motion`.
+- Fehler behoben: Der Fuellstand des Fortschrittsbalkens kam als Inline-Style
+  und wurde deshalb von der Content-Security-Policy verworfen - der Balken war
+  immer voll. Der Wert kommt jetzt als CSS-Klasse, die CSP bleibt unangetastet.
+- Fehler behoben: Die lange Quellcode-URL auf der Demoseite liess die Seite auf
+  schmalen Bildschirmen horizontal scrollen.
 - Die Demo zeigt jetzt die echte Anwendung statt einer nachgebauten Vorschau.
   Mit `DEMO_MODE=true` und `manage.py seed_demo` entsteht eine Demowache mit
   erfundenen Daten; Besucher starten unter `/demo/` eine Sitzung als Demokonto

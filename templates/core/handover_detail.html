@@ -21,7 +21,13 @@
         <button class="button primary" type="submit">Gelesen</button>
       </form>
     {% endif %}
-    <p class="context-line">{{ acknowledgements|length }} von {{ team_size }} im Team{% if acknowledgements %}: {% for ack in acknowledgements %}{{ ack.user.first_name|default:ack.user.username }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</p>
+    <div class="ack-meter">
+      <div class="ack-meter-track" role="img"
+           aria-label="{{ ack_count }} von {{ team_size }} im Team haben bestätigt">
+        <div class="ack-meter-fill fill-{{ ack_step }}"></div>
+      </div>
+      <p class="ack-meter-label">{{ ack_count }} von {{ team_size }} im Team{% if acknowledgements %}: {% for ack in acknowledgements %}{{ ack.user.first_name|default:ack.user.username }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</p>
+    </div>
   </section>
   {% endif %}
   {% if can_change_status %}<form method="post" action="{% url 'handover_status' handover.pk %}" class="section-block inline-form">{% csrf_token %}<div class="field"><label for="{{ status_form.status.id_for_label }}">Status</label>{{ status_form.status }}</div><button class="button primary" type="submit">Status aktualisieren</button></form>{% endif %}

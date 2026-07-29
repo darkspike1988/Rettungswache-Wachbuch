@@ -63,6 +63,26 @@ Verkehr gleichzeitig, sondern einen ausgewaehlten Inhaltstyp.
   darstellen.
 - Bei 320 CSS-Pixel darf die Gesamtseite nicht horizontal scrollen.
 
+## Bewegung
+
+Bewegung ist Dekoration, niemals Traeger einer Information. Umgesetzt sind
+gestaffeltes Einblenden der Seitenabschnitte, sanfte Seitenwechsel ueber
+Cross-Document View Transitions, aufklappende Detailbloecke und leichte
+Rueckmeldung an Bedienelementen - alles in CSS, ohne JavaScript und ohne
+Layoutsprung.
+
+Verbindlich dabei:
+
+1. Jede Animation endet nach hoechstens 0,35 Sekunden.
+2. Unter `prefers-reduced-motion: reduce` bleibt jede Animation aus, auch die
+   Seitenwechsel.
+3. Kein Inhalt ist erst nach einer Animation lesbar oder bedienbar.
+4. Slides und andere Scrollbereiche scrollen in sich, die Gesamtseite bleibt
+   ab 320 Pixel frei von horizontalem Scrollen.
+
+Fuellstaende und andere berechnete Groessen kommen als CSS-Klasse, nicht als
+`style`-Attribut: die Content-Security-Policy erlaubt keine Inline-Styles.
+
 ## Barrierefreiheit
 
 Ziel ist WCAG 2.2 AA mit einer strengeren internen Touchziel-Vorgabe von 44
