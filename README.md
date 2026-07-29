@@ -153,6 +153,28 @@ Fuer den Versand werden in `.env` die `EMAIL_*`-Werte gesetzt. Ohne
 einen Test brauchbar, fuer den Betrieb nicht. Angemeldete Personen aendern ihr
 Passwort selbst unter `Mehr -> Passwort aendern`.
 
+## Demobetrieb
+
+Fuer eine oeffentliche Schaufenster-Instanz, auf der Interessierte das Wachbuch
+ausprobieren sollen:
+
+```dotenv
+DEMO_MODE=true
+```
+
+```bash
+docker compose exec web python manage.py seed_demo
+```
+
+Danach koennen Besucher unter `/demo/` eine Sitzung als Demokonto starten und
+die vollstaendige Oberflaeche bedienen. Ein Banner weist durchgehend auf den
+Demobetrieb hin, der `maintenance`-Container setzt die Daten taeglich zurueck.
+
+Der Demobetrieb gehoert auf eine eigene Instanz. Auf einem System mit echten
+Wachendaten muss `DEMO_MODE=false` bleiben - sonst kann jeder Besucher eine
+Sitzung starten. `manage.py check --deploy` weist mit `wachbuch.W002` darauf
+hin, solange der Demobetrieb aktiv ist.
+
 ## Zwei-Faktor-Anmeldung
 
 Jede Person richtet den zweiten Faktor selbst unter

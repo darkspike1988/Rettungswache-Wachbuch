@@ -312,3 +312,24 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .manual-key { display: inline-block; padding: .5rem .75rem; background: var(--chip-bg); border-radius: var(--radius); font-size: 1.05rem; letter-spacing: .08em; }
 .recovery-codes { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .5rem; margin: 1rem 0 0; padding: 0; list-style: none; }
 .recovery-codes code { display: block; padding: .5rem; text-align: center; background: var(--chip-bg); border-radius: var(--radius); font-size: 1rem; }
+
+.demo-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .5rem 1.25rem; padding: .6rem 1rem; color: var(--text); background: var(--warning-soft); border-bottom: 1px solid var(--line-strong); font-size: .9rem; text-align: center; }
+.demo-banner a { white-space: nowrap; }
+
+/* Zurueckhaltende Bewegung: nur beim Erscheinen, nie laenger als eine
+   Drittelsekunde, und vollstaendig abschaltbar ueber die Systemeinstellung. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wb-rise { from { opacity: 0; transform: translateY(.6rem); } to { opacity: 1; transform: none; } }
+  @keyframes wb-fade { from { opacity: 0; } to { opacity: 1; } }
+  .page-shell > * { animation: wb-rise .3s cubic-bezier(.2, .7, .3, 1) both; }
+  .page-shell > *:nth-child(2) { animation-delay: .05s; }
+  .page-shell > *:nth-child(3) { animation-delay: .1s; }
+  .page-shell > *:nth-child(n+4) { animation-delay: .15s; }
+  .app-header, .app-nav { animation: wb-fade .35s ease-out both; }
+  .button, .list-row, .more-list a, .app-nav a, .filter-nav a {
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease;
+  }
+  .button:active { transform: translateY(1px); }
+  .list-row:hover, .more-list a:hover { transform: translateX(2px); }
+  .status-label { transition: background-color .15s ease; }
+}

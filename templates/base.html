@@ -55,6 +55,13 @@
     </nav>
   {% endif %}
 
+  {% if is_demo_session %}
+    <div class="demo-banner" role="status">
+      <span><strong>Demozugang</strong> &middot; Alle Daten sind erfunden und werden regelmäßig zurückgesetzt.</span>
+      <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer">Quellcode ansehen</a>
+    </div>
+  {% endif %}
+
   <main id="inhalt" class="page-shell">
     {% if messages %}
       <div class="messages" aria-live="polite">

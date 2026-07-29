@@ -22,6 +22,10 @@ def application_metadata(request):
     }
 
 
+def demo_session(request):
+    return {"is_demo_session": bool(request.session.get("is_demo_session"))}
+
+
 def operator_metadata(request):
     return {
         "operator_name": settings.OPERATOR_NAME,

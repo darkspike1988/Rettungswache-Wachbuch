@@ -12,6 +12,25 @@ REQUIRED_OPERATOR_SETTINGS = [
 
 
 @register("wachbuch")
+def check_demo_mode(app_configs, **kwargs):
+    """Im Demobetrieb bekommt jeder Besucher eine Sitzung. Das ist gewollt,
+    darf aber nie unbemerkt auf einer echten Wache laufen."""
+    if not settings.DEMO_MODE:
+        return []
+    return [
+        Warning(
+            "DEMO_MODE ist aktiv: jeder Besucher kann eine Sitzung als Demokonto "
+            "starten.",
+            hint=(
+                "Auf einer Instanz mit echten Wachendaten muss DEMO_MODE=false "
+                "gesetzt sein."
+            ),
+            id="wachbuch.W002",
+        )
+    ]
+
+
+@register("wachbuch")
 def check_operator_settings(app_configs, **kwargs):
     """Ohne diese Angaben zeigen Impressum, Datenschutz- und
     Barrierefreiheitserklaerung nur Platzhalter. Sobald die Anwendung

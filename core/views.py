@@ -1,7 +1,9 @@
 from datetime import date, timedelta
 from io import BytesIO
 
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
@@ -51,6 +53,7 @@ from .models import (
     FeedSource,
     HandoverEntry,
     Membership,
+    Station,
 )
 from .throttle import password_reset_is_throttled
 from .services import (
@@ -96,8 +99,39 @@ def accessibility(request):
     return render(request, "core/accessibility.html")
 
 
+DEMO_SESSION_KEY = "is_demo_session"
+
+
 def demo(request):
-    return render(request, "core/demo.html")
+    return render(request, "core/demo.html", {
+        "demo_available": settings.DEMO_MODE and _demo_visitor() is not None,
+    })
+
+
+def _demo_visitor():
+    """Das Demokonto, sofern die Demowache eingerichtet ist."""
+    if not settings.DEMO_MODE:
+        return None
+    station = Station.objects.filter(slug=settings.DEMO_STATION_SLUG, is_active=True).first()
+    if station is None:
+        return None
+    membership = Membership.objects.select_related("user").filter(
+        station=station, user__username=settings.DEMO_USERNAME, is_active=True,
+    ).first()
+    return membership.user if membership else None
+
+
+@require_POST
+def demo_start(request):
+    """Meldet Besucher als Demokonto an. Nur bei DEMO_MODE=true erreichbar -
+    eine Instanz mit echten Wachendaten laesst das nicht zu."""
+    visitor = _demo_visitor()
+    if visitor is None:
+        raise Http404
+    login(request, visitor, backend="django.contrib.auth.backends.ModelBackend")
+    request.session[DEMO_SESSION_KEY] = True
+    # Kein Hinweis als Meldung: der dauerhafte Banner sagt bereits dasselbe.
+    return redirect("dashboard")
 
 
 def access(request):

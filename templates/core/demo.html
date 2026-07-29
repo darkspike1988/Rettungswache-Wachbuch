@@ -4,13 +4,42 @@
 {% block content %}
 <header class="page-heading heading-with-action">
   <div>
-    <p class="context-line">Vorschau ohne Anmeldung</p>
+    <p class="context-line">{% if demo_available %}Zum Ausprobieren{% else %}Vorschau ohne Anmeldung{% endif %}</p>
     <h1>So sieht euer Wachbuch aus</h1>
-    <p class="lead">Nicht-interaktive Beispielansicht mit erfundenen Daten. Keine echte Wache, kein Login nötig, nichts wird gespeichert.</p>
+    <p class="lead">
+      {% if demo_available %}
+        Die vollständige Anwendung mit erfundenen Daten einer Musterwache -
+        anklickbar, ohne Konto und ohne echte Wachendaten.
+      {% else %}
+        Beispielansicht mit erfundenen Daten. Keine echte Wache, kein Login nötig, nichts wird gespeichert.
+      {% endif %}
+    </p>
   </div>
-  <a class="button primary" href="{% url 'login' %}">Für eure Wache anmelden</a>
+  {% if demo_available %}
+    <form method="post" action="{% url 'demo_start' %}" class="form-actions">
+      {% csrf_token %}
+      <button class="button primary" type="submit">Demo starten</button>
+      <a class="button secondary" href="{% url 'login' %}">Für eure Wache anmelden</a>
+    </form>
+  {% else %}
+    <a class="button primary" href="{% url 'login' %}">Für eure Wache anmelden</a>
+  {% endif %}
 </header>
 
+{% if demo_available %}
+<section class="section-block prose">
+  <h2>Einfach ausprobieren</h2>
+  <p>
+    Mit <strong>Demo starten</strong> landest du direkt in der echten Anwendung
+    - anklickbar, mit erfundenen Daten einer Musterwache. Du kannst Übergaben
+    anlegen, das Wochenprotokoll durchblättern und die Kaffeekasse ansehen.
+    Der Bestand wird regelmäßig zurückgesetzt, es entsteht kein Konto und es
+    werden keine echten Daten berührt.
+  </p>
+</section>
+{% endif %}
+
+{% if not demo_available %}
 <div class="demo-frame" aria-label="Beispielhafte Ansicht nach der Anmeldung, keine echten Daten">
   <div class="demo-frame-bar">
     <span class="demo-frame-dot"></span><span class="demo-frame-dot"></span><span class="demo-frame-dot"></span>
@@ -65,6 +94,7 @@
     </section>
   </div>
 </div>
+{% endif %}
 
 <section class="section-block prose demo-day">
   <h2>Für eure Wache oder euren Kreis?</h2>

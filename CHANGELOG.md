@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Die Demo zeigt jetzt die echte Anwendung statt einer nachgebauten Vorschau.
+  Mit `DEMO_MODE=true` und `manage.py seed_demo` entsteht eine Demowache mit
+  erfundenen Daten; Besucher starten unter `/demo/` eine Sitzung als Demokonto
+  und klicken sich durch die vollstaendige Oberflaeche. Ein Banner weist
+  durchgehend darauf hin, der Wartungscontainer setzt den Bestand regelmaessig
+  zurueck. Standardmaessig ist der Demobetrieb aus; ist er an, meldet das der
+  Deploy-Check `wachbuch.W002`. Damit kann die Demo auch nicht mehr von der
+  echten Oberflaeche abweichen.
+- Zurueckhaltende Bewegung beim Seitenaufbau und bei Bedienelementen, komplett
+  in CSS und abgeschaltet, sobald das System reduzierte Bewegung wuenscht.
 - Zwei-Faktor-Anmeldung per Authenticator-App (Google Authenticator, Aegis und
   andere TOTP-Apps). Einrichtung unter `Mehr -> Zwei-Faktor-Anmeldung` mit
   QR-Code und manuell eintragbarem Schluessel. Ein benutzter Code laesst sich

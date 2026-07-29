@@ -73,6 +73,7 @@ TEMPLATES = [
                 "core.context.current_membership",
                 "core.context.application_metadata",
                 "core.context.operator_metadata",
+                "core.context.demo_session",
             ],
         },
     }
@@ -193,6 +194,12 @@ FEED_MAX_BYTES = 2_000_000
 # Nominatim-Server ist vorzuziehen; oeffentliche Instanzen erhalten die
 # eingegebene Wachenadresse als Suchtext.
 GEOCODING_HOST = os.getenv("GEOCODING_HOST", "").strip().lower()
+
+# Demobetrieb: erlaubt jedem Besucher eine Sitzung als Demokonto. Nur fuer
+# oeffentliche Schaufenster-Instanzen gedacht, niemals fuer echte Wachendaten.
+DEMO_MODE = env_bool("DEMO_MODE")
+DEMO_STATION_SLUG = os.getenv("DEMO_STATION_SLUG", "demo-wache").strip()
+DEMO_USERNAME = os.getenv("DEMO_USERNAME", "demo@wachbuch.invalid").strip()
 
 # Angaben der verantwortlichen Stelle (Traeger/Kreis) fuer Impressum,
 # Datenschutz- und Barrierefreiheitserklaerung. Vor einem echten Betrieb durch

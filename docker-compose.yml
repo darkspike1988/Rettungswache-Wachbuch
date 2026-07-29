@@ -77,6 +77,9 @@ services:
       FEED_ALLOWED_HOSTS: ${FEED_ALLOWED_HOSTS:-}
       TAILSCALE_ADMIN_LOGIN: ${TAILSCALE_ADMIN_LOGIN:-}
       TRUST_TAILSCALE_HEADERS: ${TRUST_TAILSCALE_HEADERS:-false}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_STATION_SLUG: ${DEMO_STATION_SLUG:-demo-wache}
+      DEMO_USERNAME: ${DEMO_USERNAME:-demo@wachbuch.invalid}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -113,6 +116,9 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       ALLOWED_HOSTS: localhost
       MAINTENANCE_INTERVAL_SECONDS: ${MAINTENANCE_INTERVAL_SECONDS:-86400}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_STATION_SLUG: ${DEMO_STATION_SLUG:-demo-wache}
+      DEMO_USERNAME: ${DEMO_USERNAME:-demo@wachbuch.invalid}
     depends_on:
       migrate:
         condition: service_completed_successfully

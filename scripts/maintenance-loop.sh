@@ -12,5 +12,11 @@ while true; do
     if ! python manage.py purge_expired; then
         echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] purge_expired fehlgeschlagen" >&2
     fi
+    if [ "${DEMO_MODE:-false}" = "true" ]; then
+        echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Demodaten werden zurueckgesetzt"
+        if ! python manage.py seed_demo --reset; then
+            echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] seed_demo fehlgeschlagen" >&2
+        fi
+    fi
     sleep "$INTERVAL"
 done

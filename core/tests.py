@@ -1066,6 +1066,75 @@ class TwoFactorTests(TestCase):
         self.assertTrue(AuditEvent.objects.filter(action="twofactor.disabled").exists())
 
 
+@override_settings(DEMO_MODE=True, DEMO_STATION_SLUG="demo-wache",
+                   DEMO_USERNAME="demo@wachbuch.invalid")
+class DemoModeTests(TestCase):
+    def seed(self):
+        call_command("seed_demo")
+
+    def test_seed_creates_a_usable_demo_station(self):
+        self.seed()
+        station = Station.objects.get(slug="demo-wache")
+        self.assertTrue(station.onboarded)
+        self.assertTrue(HandoverEntry.objects.filter(station=station).exists())
+        self.assertTrue(DailyTeamNote.objects.filter(station=station).exists())
+
+    def test_demo_account_has_no_usable_password(self):
+        self.seed()
+        visitor = User.objects.get(username="demo@wachbuch.invalid")
+        self.assertFalse(visitor.has_usable_password())
+        self.assertFalse(visitor.is_staff)
+        self.assertFalse(visitor.is_superuser)
+
+    def test_visitor_can_start_a_session_and_sees_the_real_interface(self):
+        self.seed()
+        response = self.client.post(reverse("demo_start"))
+        self.assertRedirects(response, reverse("dashboard"))
+        dashboard = self.client.get(reverse("dashboard"))
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, "Rettungswache Demo")
+        self.assertContains(dashboard, "Demozugang")
+
+    def test_start_is_a_post_only_action(self):
+        self.seed()
+        self.assertEqual(self.client.get(reverse("demo_start")).status_code, 405)
+
+    def test_start_needs_seeded_data(self):
+        self.assertEqual(self.client.post(reverse("demo_start")).status_code, 404)
+
+    @override_settings(DEMO_MODE=False)
+    def test_disabled_demo_mode_blocks_the_session(self):
+        call_command("seed_demo")
+        self.assertEqual(self.client.post(reverse("demo_start")).status_code, 404)
+
+    @override_settings(DEMO_MODE=False)
+    def test_landing_page_hides_the_button_when_disabled(self):
+        response = self.client.get(reverse("demo"))
+        self.assertNotContains(response, "Demo starten")
+
+    def test_reset_replaces_the_data(self):
+        self.seed()
+        station = Station.objects.get(slug="demo-wache")
+        HandoverEntry.objects.create(
+            station=station, category=HandoverEntry.Category.TASK,
+            title="Von einem Besucher angelegt", details="x",
+            author=User.objects.get(username="demo@wachbuch.invalid"),
+        )
+        call_command("seed_demo", "--reset")
+        self.assertFalse(
+            HandoverEntry.objects.filter(title="Von einem Besucher angelegt").exists()
+        )
+        self.assertTrue(HandoverEntry.objects.filter(station=station).exists())
+
+    def test_demo_banner_stays_away_from_normal_sessions(self):
+        station = Station.objects.create(name="Echte Wache", slug="echt", onboarded=True)
+        user = User.objects.create_user("echt@example.org", first_name="Echt")
+        Membership.objects.create(user=user, station=station, role=Membership.Role.MEMBER)
+        self.client.force_login(user)
+        response = self.client.get(reverse("dashboard"))
+        self.assertNotContains(response, "Demozugang")
+
+
 class LegalPagesTests(TestCase):
     def test_pages_are_reachable_without_login(self):
         for url_name in ("imprint", "privacy", "accessibility", "demo"):
