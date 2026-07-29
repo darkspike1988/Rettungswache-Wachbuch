@@ -83,6 +83,35 @@ Verbindlich dabei:
 Fuellstaende und andere berechnete Groessen kommen als CSS-Klasse, nicht als
 `style`-Attribut: die Content-Security-Policy erlaubt keine Inline-Styles.
 
+## Touchbedienung
+
+Tablets und Smartphones sind der Hauptfall, nicht die Ausnahme. Maßgeblich ist
+`pointer: coarse` und nicht die Fensterbreite - ein Tablet im Querformat ist
+breit und trotzdem Touch.
+
+1. Hovereffekte gelten nur unter `(hover: hover) and (pointer: fine)`. Sonst
+   bleibt auf Touch ein Hoverzustand nach dem Antippen haengen und sieht wie
+   eine Auswahl aus.
+2. Unter `pointer: coarse` wachsen Bedienziele auf mindestens 48 Pixel,
+   Eingabefelder ebenfalls, und die Abstaende werden groesser.
+3. Interaktive Elemente tragen `touch-action: manipulation` - das nimmt die
+   Verzoegerung durch die Doppeltipp-Zoom-Erkennung.
+4. Statt Hover gibt es auf Touch eine `:active`-Rueckmeldung.
+5. Eingabefelder bleiben bei mindestens 16 Pixel Schriftgroesse, damit iOS beim
+   Fokus nicht hineinzoomt.
+
+## Keine Mehrfachbenennung
+
+Ein Name erscheint einmal pro Seite. Der Wachenname steht mittig im
+Kopfbereich - nicht zusaetzlich neben der Rolle und nicht in der Kontextzeile.
+In Listenzeilen steht der Personenname einmal; Aktionslinks heissen
+`Bearbeiten` und tragen den Namen nur unsichtbar fuer Screenreader nach.
+
+Ausdruecklich keine Doppelung sind: der Navigationspunkt der aktuellen Seite
+neben deren `h1` (Navigation und Seitentitel sind verschiedene Dinge, beide
+sind fuer Orientierung und Struktur notwendig) und gleiche Werte in
+verschiedenen Datenzeilen.
+
 ## Barrierefreiheit
 
 Ziel ist WCAG 2.2 AA mit einer strengeren internen Touchziel-Vorgabe von 44

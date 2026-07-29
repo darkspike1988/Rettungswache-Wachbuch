@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Touchbedienung geschaerft: Hovereffekte gelten nur noch fuer echte
+  Zeigegeraete, damit auf Tablet und Smartphone kein Hoverzustand nach dem
+  Antippen haengenbleibt. Unter `pointer: coarse` wachsen Bedienziele und
+  Eingabefelder auf 48 Pixel - das greift auch beim Tablet im Querformat, nicht
+  erst bei schmalen Fenstern. `touch-action: manipulation` nimmt die
+  Verzoegerung durch die Doppeltipp-Zoom-Erkennung.
+- Mehrfachbenennungen entfernt: Der Wachenname stand auf jeder Seite bis zu
+  dreimal (mittig im Kopf, neben der Rolle, in der Kontextzeile) - jetzt genau
+  einmal. In der Teamliste heisst der Aktionslink `Bearbeiten` statt den Namen
+  der Person zu wiederholen.
+- Fortschrittsbalken der Feature-Tour folgt direkt der Scrollposition, Karten
+  und Tagesbloecke tauchen beim Hereinscrollen auf (scroll-gesteuerte
+  CSS-Animationen, nur wo der Browser sie unterstuetzt).
 - Sanfte Seitenwechsel ueber Cross-Document View Transitions: Kopfbereich,
   Navigation und Fusszeile bleiben stehen, nur der Inhalt wechselt. Reines CSS,
   Browser ohne Unterstuetzung blenden schlicht um.

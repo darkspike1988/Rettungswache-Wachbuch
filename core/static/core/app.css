@@ -76,7 +76,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .app-nav { background: var(--surface); border-bottom: 1px solid var(--line); }
 .nav-inner { width: min(var(--content), calc(100% - 2rem)); display: flex; gap: .25rem; margin: 0 auto; }
 .app-nav a { min-height: 3.25rem; display: inline-flex; align-items: center; padding: 0 1rem; color: var(--text); font-weight: 650; text-decoration: none; border-bottom: 3px solid transparent; }
-.app-nav a:hover { background: var(--hover-surface); }
+
 .app-nav a[aria-current="page"] { color: var(--accent-dark); border-color: var(--accent); }
 
 .page-shell { width: min(var(--content), calc(100% - 2rem)); min-height: calc(100vh - 11rem); margin: 0 auto; padding: 2.5rem 0 4rem; }
@@ -99,9 +99,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: .65rem 1rem; border: 2px solid transparent; border-radius: var(--radius); font-weight: 700; text-decoration: none; cursor: pointer; }
 .button.primary { color: white; background: var(--accent-dark); }
-.button.primary:hover { background: var(--brand); }
+
 .button.secondary { color: var(--text); background: var(--surface); border-color: var(--line-strong); }
-.button.secondary:hover { background: var(--hover-surface); }
+
 .back-link { min-height: 44px; display: inline-flex; align-items: center; margin: -1rem 0 1rem; }
 
 .overview-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(18rem, .8fr); gap: 1.5rem; align-items: start; }
@@ -113,7 +113,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .item-list { display: grid; }
 .list-row { min-height: 4.75rem; display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: .8rem 1rem; color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
 .list-row:last-child { border-bottom: 0; }
-.list-row:hover { background: var(--hover-surface); }
+
 .row-content { min-width: 0; }
 .row-content strong, .row-content small { display: block; }
 .row-content strong { overflow-wrap: anywhere; }
@@ -233,7 +233,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .more-list { max-width: 48rem; display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .more-list a { min-height: 4.5rem; display: flex; flex-direction: column; justify-content: center; padding: .75rem 1rem; color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
 .more-list a:last-child { border-bottom: 0; }
-.more-list a:hover { background: var(--hover-surface); }
+
 .more-list strong, .more-list span { display: block; }
 .more-list span { color: var(--muted); font-size: .9rem; }
 
@@ -330,7 +330,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
     transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease;
   }
   .button:active { transform: translateY(1px); }
-  .list-row:hover, .more-list a:hover { transform: translateX(2px); }
   .status-label { transition: background-color .15s ease; }
 }
 
@@ -406,14 +405,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
   color: var(--muted); text-decoration: none; font-size: .85rem; font-weight: 700;
   border: 1px solid var(--line); border-radius: var(--radius);
 }
-.tour-dots a:hover, .tour-dots a:focus-visible { color: var(--accent-dark); background: var(--hover-surface); border-color: var(--line-strong); }
+.tour-dots a:focus-visible { color: var(--accent-dark); background: var(--hover-surface); border-color: var(--line-strong); }
 .tour-hint { margin: .5rem 0 0; color: var(--muted); font-size: .85rem; }
 
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
   .tour-track { scroll-behavior: smooth; }
   .tour-slide { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
-  .tour-slide:hover { transform: translateY(-3px); box-shadow: 0 .75rem 1.5rem -.75rem rgba(0,0,0,.25); }
 }
 
 /* ---------------------------------------------------------------------------
@@ -433,8 +431,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
   @keyframes wb-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
   .section-block { transition: box-shadow .2s ease, border-color .2s ease; }
-  .overview-layout .section-block:hover,
-  .day-card:hover { box-shadow: 0 .6rem 1.4rem -.9rem rgba(0,0,0,.28); }
 
   .status-label { animation: wb-pop .22s cubic-bezier(.2, .8, .3, 1.2) both; }
   .ack-meter-fill { transform-origin: left; animation: wb-grow .55s cubic-bezier(.2, .7, .3, 1) both; }
@@ -480,3 +476,84 @@ button, a { -webkit-tap-highlight-color: transparent; }
 /* Lange URLs als Linktext duerfen die Seite nicht breiter machen als das
    Fenster (Designregel: kein horizontales Scrollen ab 320 Pixel). */
 .prose a, .summary-list dd a, .field-hint a { overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------------------
+   Zeigegeraete gegen Touch. Auf Tablet und Smartphone bleibt ein :hover nach
+   dem Antippen haengen ("sticky hover") und sieht dann aus wie eine Auswahl.
+   Deshalb gelten Hover-Effekte nur, wo es wirklich einen Zeiger gibt.
+   --------------------------------------------------------------------------- */
+@media (hover: hover) and (pointer: fine) {
+  .app-nav a:hover { background: var(--hover-surface); }
+  .button.primary:hover { background: var(--brand); }
+  .button.secondary:hover { background: var(--hover-surface); }
+  .list-row:hover { background: var(--hover-surface); }
+  .more-list a:hover { background: var(--hover-surface); }
+  .tour-dots a:hover { color: var(--accent-dark); background: var(--hover-surface); border-color: var(--line-strong); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .list-row:hover, .more-list a:hover { transform: translateX(2px); }
+    .tour-slide:hover { transform: translateY(-3px); box-shadow: 0 .75rem 1.5rem -.75rem rgba(0,0,0,.25); }
+    .overview-layout .section-block:hover,
+    .day-card:hover { box-shadow: 0 .6rem 1.4rem -.9rem rgba(0,0,0,.28); }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Touchbedienung. Gilt ueber (pointer: coarse) und damit auch fuer grosse
+   Tablets im Querformat - nicht nur fuer schmale Fenster.
+   --------------------------------------------------------------------------- */
+.button, .app-nav a, .more-list a, .list-row, .tour-dots a,
+.filter-nav a, .logout-form button, summary, .footer-links a {
+  /* Nimmt die 300-Millisekunden-Verzoegerung durch Doppeltipp-Zoom. */
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+  .button { min-height: 48px; padding: .75rem 1.15rem; }
+  .app-nav a { min-height: 3.5rem; }
+  .filter-nav a { min-height: 48px; padding: .6rem 1rem; }
+  .more-list a { min-height: 4rem; }
+  .list-row { min-height: 5rem; padding-block: 1rem; }
+  .tour-dots a { min-width: 48px; min-height: 48px; }
+  .logout-form button { min-height: 48px; padding-inline: .5rem; }
+  .details-block summary, .details-help summary { min-height: 48px; }
+  input, select, textarea { min-height: 48px; }
+  textarea { min-height: 8rem; }
+  /* Grosszuegigere Abstaende, damit benachbarte Ziele nicht verwechselt werden. */
+  .form-actions { gap: .85rem; }
+  .status-row { gap: .65rem; }
+  /* Aktive Rueckmeldung statt Hover: kurzes Eindruecken beim Antippen. */
+  .button:active, .list-row:active, .more-list a:active { background: var(--hover-surface); }
+}
+
+/* ---------------------------------------------------------------------------
+   Scroll-gesteuerte Bewegung. Der Fortschrittsbalken der Tour haengt direkt an
+   der Scrollposition der Slides, Abschnitte tauchen beim Hereinscrollen auf.
+   Beides braucht kein JavaScript und wird nur angewendet, wenn der Browser es
+   unterstuetzt - sonst bleibt alles sichtbar und bedienbar.
+   --------------------------------------------------------------------------- */
+.tour-progress { height: .3rem; margin: 0 .25rem .6rem; overflow: hidden; background: var(--line); border-radius: 999px; }
+.tour-progress-bar { height: 100%; background: var(--accent); border-radius: 999px; transform-origin: left; transform: scaleX(.2); }
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .tour { timeline-scope: --tour-scroll; }
+    .tour-track { scroll-timeline-name: --tour-scroll; scroll-timeline-axis: inline; }
+    .tour-progress-bar {
+      animation: wb-grow linear both;
+      animation-timeline: --tour-scroll;
+    }
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* Reihenfolge beachten: die animation-Kurzschreibweise setzt
+       animation-timeline zurueck, deshalb erst danach die Zeitachse. */
+    .day-card, .tour-slide {
+      animation: wb-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+}

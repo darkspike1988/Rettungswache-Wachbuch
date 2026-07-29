@@ -24,7 +24,8 @@
         <div class="account">
           <div class="identity">
             <strong>{{ request.user.first_name|default:request.user.username }}</strong>
-            {% if current_membership %}<span>{{ current_membership.station.name }} &middot; {{ current_membership.get_role_display }}</span>{% endif %}
+            {# Die Wache steht schon mittig im Kopfbereich - hier nur die Rolle. #}
+            {% if current_membership %}<span>{{ current_membership.get_role_display }}</span>{% endif %}
           </div>
           <form class="logout-form" method="post" action="{% url 'logout' %}">
             {% csrf_token %}

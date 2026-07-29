@@ -3,7 +3,7 @@
 {% block content %}
 <header class="page-heading heading-with-action">
   <div>
-    <p class="context-line">{{ current_membership.station.name }} &middot; {% now "l, d. F" %}</p>
+    <p class="context-line">{% now "l, d. F" %}</p>
     <h1>Übersicht</h1>
     <p class="status-summary"><strong>{{ urgent_count }} dringend</strong><span>{{ open_count }} aktive Übergaben</span></p>
   </div>

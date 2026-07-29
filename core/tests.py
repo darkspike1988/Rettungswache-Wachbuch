@@ -521,6 +521,29 @@ class WeeklyProtocolTests(PilotTestCase):
         self.assertContains(dashboard, "Steinhagen")
 
 
+class NoDuplicateNamingTests(PilotTestCase):
+    """Der Wachenname stand fruehher dreifach auf einer Seite: mittig im Kopf,
+    rechts neben der Rolle und in der Kontextzeile. Einmal genuegt."""
+
+    def test_station_name_appears_once_on_the_dashboard(self):
+        response = self.client.get(reverse("dashboard"))
+        body = response.content.decode()
+        self.assertEqual(body.count("Testwache"), 1)
+
+    def test_identity_shows_the_role_without_repeating_the_station(self):
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, "Mitglied")
+
+    def test_team_rows_name_a_person_once(self):
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        response = self.client.get(reverse("team"))
+        body = response.content.decode()
+        # Vorname in der Zeile, aber nicht zusaetzlich im Bearbeiten-Link.
+        self.assertNotIn("Mara bearbeiten", body)
+        self.assertIn(">Bearbeiten<", body)
+
+
 class MinimalInterfaceTests(PilotTestCase):
     def create_handover(self, title, priority, status=HandoverEntry.Status.OPEN):
         return HandoverEntry.objects.create(
