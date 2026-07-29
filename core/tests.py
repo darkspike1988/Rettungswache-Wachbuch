@@ -108,6 +108,115 @@ class SetupWizardTests(TestCase):
         self.assertTrue(AuditEvent.objects.filter(action="station.onboarding_skipped").exists())
 
 
+class MultiStationTests(PilotTestCase):
+    def setUp(self):
+        super().setUp()
+        self.second = Station.objects.create(
+            name="Zweitwache", slug="zweitwache", onboarded=True,
+        )
+        self.second_membership = Membership.objects.create(
+            user=self.user, station=self.second, role=Membership.Role.SHIFT_LEAD,
+        )
+
+    def test_a_person_may_belong_to_several_stations(self):
+        self.assertEqual(self.user.station_memberships.filter(is_active=True).count(), 2)
+
+    def test_switching_changes_the_visible_station(self):
+        HandoverEntry.objects.create(
+            station=self.station, category=HandoverEntry.Category.TASK,
+            title="Nur Testwache", details="x", author=self.user,
+        )
+        HandoverEntry.objects.create(
+            station=self.second, category=HandoverEntry.Category.TASK,
+            title="Nur Zweitwache", details="x", author=self.user,
+        )
+        response = self.client.get(reverse("handover_list"))
+        self.assertContains(response, "Nur Testwache")
+        self.assertNotContains(response, "Nur Zweitwache")
+
+        switch = self.client.post(reverse("switch_station"), {"station": self.second.pk})
+        self.assertRedirects(switch, reverse("dashboard"))
+
+        response = self.client.get(reverse("handover_list"))
+        self.assertContains(response, "Nur Zweitwache")
+        self.assertNotContains(response, "Nur Testwache")
+
+    def test_role_follows_the_selected_station(self):
+        # Mitglied auf der Testwache, Schichtleitung auf der Zweitwache.
+        handover = HandoverEntry.objects.create(
+            station=self.second, category=HandoverEntry.Category.TASK,
+            title="Status aendern", details="x", author=self.user,
+        )
+        self.client.post(reverse("switch_station"), {"station": self.second.pk})
+        response = self.client.post(reverse("handover_status", args=[handover.pk]), {
+            "status": HandoverEntry.Status.DONE,
+        })
+        self.assertEqual(response.status_code, 302)
+        handover.refresh_from_db()
+        self.assertEqual(handover.status, HandoverEntry.Status.DONE)
+
+    def test_cannot_switch_to_a_station_without_membership(self):
+        foreign = Station.objects.create(name="Fremd", slug="fremd-switch")
+        response = self.client.post(reverse("switch_station"), {"station": foreign.pk})
+        self.assertEqual(response.status_code, 403)
+
+    def test_revoked_access_falls_back_instead_of_breaking(self):
+        self.client.post(reverse("switch_station"), {"station": self.second.pk})
+        self.second_membership.is_active = False
+        self.second_membership.save(update_fields=["is_active"])
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Testwache")
+
+
+class TeamPrivacyTests(PilotTestCase):
+    def setUp(self):
+        super().setUp()
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        self.other_station = Station.objects.create(name="Andere", slug="andere-team")
+        self.foreign_user = User.objects.create_user(
+            "fremd@example.org", email="fremd@example.org", first_name="Fremd",
+        )
+        Membership.objects.create(
+            user=self.foreign_user, station=self.other_station, role=Membership.Role.MEMBER,
+        )
+
+    def test_form_does_not_list_accounts_of_other_stations(self):
+        response = self.client.get(reverse("team_create"))
+        self.assertNotContains(response, "fremd@example.org")
+
+    def test_pending_count_ignores_members_of_other_stations(self):
+        response = self.client.get(reverse("team"))
+        self.assertEqual(response.context["pending_count"], 0)
+
+        User.objects.create_user("wartend@example.org", email="wartend@example.org")
+        response = self.client.get(reverse("team"))
+        self.assertEqual(response.context["pending_count"], 1)
+
+    def test_known_address_can_be_added_as_a_second_station(self):
+        response = self.client.post(reverse("team_create"), {
+            "email": "fremd@example.org", "role": Membership.Role.MEMBER,
+        })
+        self.assertRedirects(response, reverse("team"))
+        self.assertTrue(
+            Membership.objects.filter(user=self.foreign_user, station=self.station).exists()
+        )
+
+    def test_unknown_address_is_rejected_without_creating_anything(self):
+        response = self.client.post(reverse("team_create"), {
+            "email": "gibtsnicht@example.org", "role": Membership.Role.MEMBER,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "kein aktives Konto")
+
+    def test_duplicate_assignment_is_rejected(self):
+        response = self.client.post(reverse("team_create"), {
+            "email": self.user.username, "role": Membership.Role.MEMBER,
+        })
+        self.assertContains(response, "bereits zugeordnet")
+
+
 class SecurityAndAccessTests(PilotTestCase):
     def test_anonymous_header_shows_login_link(self):
         self.client.logout()
@@ -1010,9 +1119,11 @@ class TeamAndAuditTests(PilotTestCase):
         self.membership.save(update_fields=["role"])
 
     def test_station_admin_assigns_pending_tailscale_user(self):
-        pending = User.objects.create_user("pending@example.org", first_name="Pia")
+        pending = User.objects.create_user(
+            "pending@example.org", email="pending@example.org", first_name="Pia",
+        )
         response = self.client.post(reverse("team_create"), {
-            "user": pending.pk,
+            "email": "pending@example.org",
             "role": Membership.Role.SHIFT_LEAD,
         })
         self.assertRedirects(response, reverse("team"))

@@ -100,13 +100,11 @@ class Membership(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        # Eine Mitgliedschaft je Person und Wache. Mehrere Wachen sind
+        # ausdruecklich erlaubt: im Rettungsdienst arbeiten Springer und
+        # Aushilfen regelmaessig auf mehr als einer Wache.
         constraints = [
             models.UniqueConstraint(fields=["user", "station"], name="unique_station_membership"),
-            models.UniqueConstraint(
-                fields=["user"],
-                condition=Q(is_active=True),
-                name="unique_active_membership",
-            ),
         ]
         ordering = ["station", "user_id"]
 

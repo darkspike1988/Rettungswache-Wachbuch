@@ -21,6 +21,8 @@ Dienstplanungs- oder Patientendokumentationssystem.
 - optionale Ort-/Kreis-Ermittlung aus der Wachenadresse (offener Geocoding-Dienst)
 - Kaffeekasse mit optionalen, gebuehrenfrei nutzbaren Einzahlwegen (PayPal.me, Wero, Echtzeitueberweisung)
 - stationsbezogene Rollen und nachvollziehbare Audit-Ereignisse
+- Mehrfachzugehoerigkeit: Springer koennen auf mehreren Wachen freigegeben sein
+  und dort mit unterschiedlichen Rollen arbeiten
 - lokaler Login mit Passwort-Reset per E-Mail oder Anmeldung ueber Tailscale
 - konfigurierbare Loeschfristen je Wache
 - responsive, JavaScript-freie Oberflaeche mit hellem und dunklem Farbschema
@@ -38,7 +40,10 @@ automatisch nach der naechsten Synchronisierung. Unter `/kaffeekasse/` legen
 Admins fest, ueber welche gebuehrenfreien Wege eingezahlt werden kann
 (PayPal.me-Link, Wero-Link/-Kontakt und/oder IBAN mit Kontoinhaber fuer
 Echtzeitueberweisungen); alle Mitglieder sehen die hinterlegten Wege direkt auf
-der Kassenseite. Unter `/team/` verwalten Admins Freigaben und Rollen.
+der Kassenseite. Unter `/team/` verwalten Admins Freigaben und Rollen. Zugang wird ueber die
+genaue E-Mail-Adresse des bestehenden Kontos freigegeben - Konten anderer
+Wachen werden bewusst nicht aufgelistet. Wer auf mehreren Wachen freigegeben
+ist, wechselt die aktive Wache unter `Mehr`.
 Technische Administratoren konfigurieren unter `/django-admin/` Systemkonten
 und externe Quellen. Fachliche Datensaetze sind dort bewusst nur lesbar, damit
 Versionierung und Audit nicht umgangen werden.

@@ -32,6 +32,7 @@ urlpatterns = [
     path("lage/", views.feeds, name="feeds"),
     path("lage/muellabfuhr/", views.waste_source_update, name="waste_source_update"),
     path("mehr/", views.more, name="more"),
+    path("wache-wechseln/", views.switch_station, name="switch_station"),
     path("team/", views.team, name="team"),
     path("team/freigeben/", views.team_create, name="team_create"),
     path("team/<int:pk>/", views.membership_update, name="membership_update"),

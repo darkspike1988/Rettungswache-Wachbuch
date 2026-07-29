@@ -14,7 +14,14 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .access import CONTENT_ROLES, membership_required, station_module_required
+from .access import (
+    CONTENT_ROLES,
+    SESSION_STATION_KEY,
+    available_memberships,
+    get_membership,
+    membership_required,
+    station_module_required,
+)
 
 from .forms import (
     BirthdayForm,
@@ -96,9 +103,7 @@ def demo(request):
 def access(request):
     membership = None
     if request.user.is_authenticated:
-        membership = request.user.station_memberships.filter(
-            is_active=True, station__is_active=True
-        ).select_related("station").first()
+        membership = get_membership(request.user, request.session)
         if membership:
             if membership.role == Membership.Role.AUDITOR:
                 return redirect("audit_log")
@@ -739,13 +744,31 @@ def more(request):
     return render(request, "core/more.html")
 
 
+@membership_required()
+@require_POST
+def switch_station(request):
+    """Wechsel zwischen den Wachen, auf denen jemand freigegeben ist."""
+    try:
+        target = int(request.POST.get("station", ""))
+    except (TypeError, ValueError):
+        raise Http404
+    membership = available_memberships(request.user).filter(station_id=target).first()
+    if membership is None:
+        raise PermissionDenied
+    request.session[SESSION_STATION_KEY] = membership.station_id
+    messages.success(request, f"Aktive Wache: {membership.station.name}.")
+    if membership.role == Membership.Role.AUDITOR:
+        return redirect("audit_log")
+    return redirect("dashboard")
+
+
 @membership_required({Membership.Role.ADMIN})
 def team(request):
     station = request.membership.station
     members = Membership.objects.filter(station=station).select_related("user")
-    pending_count = User.objects.filter(is_active=True).exclude(
-        station_memberships__is_active=True
-    ).count()
+    # Nur Konten ganz ohne Wache gelten als wartend. Konten anderer Wachen
+    # bleiben bewusst unsichtbar.
+    pending_count = User.objects.filter(is_active=True, station_memberships__isnull=True).count()
     return render(request, "core/team.html", {
         "page_obj": page_for(request, members, 25),
         "pending_count": pending_count,
@@ -755,11 +778,13 @@ def team(request):
 @membership_required({Membership.Role.ADMIN})
 @require_http_methods(["GET", "POST"])
 def team_create(request):
-    form = MembershipAssignmentForm(request.POST or None)
+    form = MembershipAssignmentForm(
+        request.POST or None, station=request.membership.station,
+    )
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             membership = Membership.objects.create(
-                user=form.cleaned_data["user"],
+                user=form.user,
                 station=request.membership.station,
                 role=form.cleaned_data["role"],
             )

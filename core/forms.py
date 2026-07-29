@@ -169,14 +169,30 @@ class CoffeeCorrectionForm(forms.Form):
 
 
 class MembershipAssignmentForm(forms.Form):
-    user = forms.ModelChoiceField(queryset=User.objects.none(), label="Benutzerkonto")
+    """Zugang wird ueber die genaue Adresse freigegeben statt ueber eine Liste
+    aller Konten - sonst saehe jede Wache die Konten aller anderen."""
+
+    email = forms.EmailField(label="E-Mail-Adresse des Kontos")
     role = forms.ChoiceField(choices=Membership.Role.choices, label="Rolle")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, station, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["user"].queryset = User.objects.filter(is_active=True).exclude(
-            station_memberships__is_active=True
-        ).order_by("first_name", "username")
+        self.station = station
+
+    def clean_email(self):
+        address = self.cleaned_data["email"].strip()
+        user = User.objects.filter(
+            Q(email__iexact=address) | Q(username__iexact=address), is_active=True,
+        ).first()
+        if user is None:
+            raise forms.ValidationError(
+                "Zu dieser Adresse gibt es kein aktives Konto. Es muss zuerst "
+                "in der technischen Verwaltung angelegt werden."
+            )
+        if Membership.objects.filter(user=user, station=self.station).exists():
+            raise forms.ValidationError("Diese Person ist dieser Wache bereits zugeordnet.")
+        self.user = user
+        return address
 
 
 class MembershipEditForm(forms.Form):

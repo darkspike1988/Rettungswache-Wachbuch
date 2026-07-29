@@ -14,15 +14,34 @@ CONTENT_ROLES = {
     Membership.Role.ADMIN,
 }
 
+SESSION_STATION_KEY = "active_station_id"
 
-def get_membership(user):
+
+def available_memberships(user):
+    """Alle aktiven Mitgliedschaften einer Person - im Rettungsdienst
+    arbeiten Springer regelmaessig auf mehreren Wachen."""
     if not getattr(user, "is_authenticated", False):
-        return None
+        return Membership.objects.none()
     return (
         Membership.objects.select_related("station", "user")
         .filter(user=user, is_active=True, station__is_active=True)
-        .first()
+        .order_by("station__name")
     )
+
+
+def get_membership(user, session=None):
+    """Die gerade gewaehlte Mitgliedschaft. Ohne Auswahl gilt die erste;
+    die Wahl haelt sich in der Session."""
+    memberships = available_memberships(user)
+    if session is not None:
+        chosen = session.get(SESSION_STATION_KEY)
+        if chosen:
+            for membership in memberships:
+                if membership.station_id == chosen:
+                    return membership
+            # Zugang zur gemerkten Wache entzogen: Auswahl verwerfen.
+            session.pop(SESSION_STATION_KEY, None)
+    return memberships.first()
 
 
 def membership_required(allowed_roles=None):
@@ -31,7 +50,7 @@ def membership_required(allowed_roles=None):
         def wrapped(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect("access")
-            membership = get_membership(request.user)
+            membership = get_membership(request.user, request.session)
             if not membership:
                 return redirect("access")
             if allowed_roles is not None and membership.role not in allowed_roles:

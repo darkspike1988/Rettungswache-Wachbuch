@@ -36,7 +36,9 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
 ## Datenmodell
 
 - `Station`, `Membership`: Wachen (Name, Standort, Adresse, Ort, Kreis),
-  Modulschalter, Rollen und Freigaben
+  Modulschalter, Rollen und Freigaben. Eine Person kann mehreren Wachen
+  angehoeren; welche gerade aktiv ist, steht in der Session und laesst sich
+  unter `Mehr` wechseln. Alle Abfragen filtern auf die aktive Wache.
 - `HandoverEntry`, `HandoverRevision`: Arbeitsstand, optionaler Tagesbezug (`for_date`)
   und unveraenderte Revisionen
 - `DailyTeamNote`: Team je Tag fuer das Wochenprotokoll, eine Zeile je Wache und Datum

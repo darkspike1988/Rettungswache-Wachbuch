@@ -1,11 +1,17 @@
 from django.conf import settings
 
-from .access import get_membership
+from .access import available_memberships, get_membership
 
 
 def current_membership(request):
-    membership = get_membership(request.user) if request.user.is_authenticated else None
-    return {"current_membership": membership}
+    if not request.user.is_authenticated:
+        return {"current_membership": None, "other_memberships": []}
+    membership = get_membership(request.user, request.session)
+    others = [
+        item for item in available_memberships(request.user)
+        if membership is None or item.pk != membership.pk
+    ]
+    return {"current_membership": membership, "other_memberships": others}
 
 
 def application_metadata(request):

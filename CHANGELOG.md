@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Eine Person kann jetzt auf mehreren Wachen freigegeben sein. Bisher verhinderte
+  das eine Datenbankbedingung - im Rettungsdienst arbeiten Springer und
+  Aushilfen aber regelmaessig auf mehr als einer Wache. Unter `Mehr` laesst sich
+  die aktive Wache wechseln; Rolle und Daten richten sich immer nach der
+  gewaehlten Wache. Wird ein Zugang entzogen, faellt die Auswahl automatisch
+  zurueck.
+- Datenschutzluecke geschlossen: Unter `Zugang freigeben` wurden bisher alle
+  Konten der gesamten Installation aufgelistet, also auch die anderer Wachen.
+  Die Freigabe erfolgt jetzt ueber die genaue E-Mail-Adresse; als wartend
+  zaehlen nur noch Konten ohne jede Wachenzuordnung.
 - Passwort-Reset wird jetzt gedrosselt (Standard: 3 Anfragen je Adresse und 12
   je IP pro Stunde). Gedrosselte Versuche bekommen dieselbe Antwort wie
   erfolgreiche, damit sich daraus nichts ueber vorhandene Konten ablesen laesst.
