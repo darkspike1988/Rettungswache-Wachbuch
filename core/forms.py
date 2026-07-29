@@ -12,6 +12,7 @@ from .models import (
     HandoverEntry,
     Membership,
     Station,
+    validate_iban,
 )
 
 
@@ -195,12 +196,20 @@ class WasteSourceForm(forms.ModelForm):
 
 
 class CoffeePaymentForm(forms.ModelForm):
+    # Etwas laenger als das Modellfeld, damit gruppierte Eingaben wie
+    # "DE89 3704 ..." erst nach dem Entfernen der Leerzeichen gemessen werden.
+    coffee_iban = forms.CharField(max_length=42, required=False, label="IBAN")
+
     class Meta:
         model = Station
         fields = ["coffee_paypal_link", "coffee_wero_link", "coffee_iban", "coffee_account_holder"]
         labels = {
             "coffee_paypal_link": "PayPal.me-Link",
             "coffee_wero_link": "Wero-Zahlungslink oder -Kontakt",
-            "coffee_iban": "IBAN",
             "coffee_account_holder": "Kontoinhaber/in",
         }
+
+    def clean_coffee_iban(self):
+        value = self.cleaned_data["coffee_iban"].replace(" ", "").upper()
+        validate_iban(value)
+        return value

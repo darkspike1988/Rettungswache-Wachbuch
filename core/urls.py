@@ -15,6 +15,7 @@ urlpatterns = [
     path("uebergaben/", views.handover_list, name="handover_list"),
     path("uebergaben/neu/", views.handover_create, name="handover_create"),
     path("uebergaben/<int:pk>/", views.handover_detail, name="handover_detail"),
+    path("uebergaben/<int:pk>/bearbeiten/", views.handover_edit, name="handover_edit"),
     path("uebergaben/<int:pk>/status/", views.handover_status, name="handover_status"),
     path("wochenprotokoll/", views.handover_week, name="handover_week"),
     path("wochenprotokoll/<str:tag>/team/", views.daily_team_update, name="daily_team_update"),

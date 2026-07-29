@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db import connection, transaction
+from django.core.exceptions import PermissionDenied
 from django.db.models import Case, IntegerField, Q, Sum, Value, When
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -41,7 +42,13 @@ from .models import (
     HandoverEntry,
     Membership,
 )
-from .services import audit, change_handover_status, create_handover, set_daily_team
+from .services import (
+    audit,
+    change_handover_status,
+    create_handover,
+    set_daily_team,
+    update_handover,
+)
 
 
 def healthz(request):
@@ -245,6 +252,15 @@ def handover_create(request):
     return render(request, "core/handover_form.html", {"form": form})
 
 
+def may_edit_handover(membership, handover):
+    """Verfasserin/Verfasser korrigiert eigene Eintraege, Schichtleitung und
+    Admin auch fremde. Jede Aenderung erzeugt eine Revision."""
+    return (
+        handover.author_id == membership.user_id
+        or membership.role in {Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN}
+    )
+
+
 @membership_required(CONTENT_ROLES)
 def handover_detail(request, pk):
     handover = get_object_or_404(
@@ -260,6 +276,26 @@ def handover_detail(request, pk):
         "handover": handover,
         "status_form": HandoverStatusForm(instance=handover),
         "can_change_status": can_change_status,
+        "can_edit": may_edit_handover(request.membership, handover),
+    })
+
+
+@membership_required(CONTENT_ROLES)
+@require_http_methods(["GET", "POST"])
+def handover_edit(request, pk):
+    handover = get_object_or_404(
+        HandoverEntry, pk=pk, station=request.membership.station,
+    )
+    if not may_edit_handover(request.membership, handover):
+        raise PermissionDenied
+    form = HandoverForm(request.POST or None, instance=handover)
+    if request.method == "POST" and form.is_valid():
+        update_handover(handover, form, request.membership)
+        messages.success(request, "Uebergabe wurde aktualisiert.")
+        return redirect("handover_detail", pk=handover.pk)
+    return render(request, "core/handover_form.html", {
+        "form": form,
+        "handover": handover,
     })
 
 
@@ -333,7 +369,6 @@ def handover_week(request):
         "next_year": next_year,
         "next_week": next_week,
         "can_edit_team": request.membership.role in {Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN},
-        "team_form": DailyTeamForm(),
     })
 
 

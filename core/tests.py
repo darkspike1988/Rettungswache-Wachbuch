@@ -237,6 +237,66 @@ class HandoverTests(PilotTestCase):
         self.assertIsNotNone(handover.completed_at)
         self.assertEqual(handover.revisions.count(), 2)
 
+    def test_author_edits_own_handover_and_gets_a_revision(self):
+        handover = self.make_handover()
+        response = self.client.post(reverse("handover_edit", args=[handover.pk]), {
+            "category": HandoverEntry.Category.SAFETY,
+            "priority": HandoverEntry.Priority.URGENT,
+            "title": "Tor pruefen (korrigiert)",
+            "details": "Der Endschalter reagiert gar nicht mehr.",
+            "for_date": "",
+        })
+        self.assertRedirects(response, reverse("handover_detail", args=[handover.pk]))
+        handover.refresh_from_db()
+        self.assertEqual(handover.title, "Tor pruefen (korrigiert)")
+        self.assertEqual(handover.priority, HandoverEntry.Priority.URGENT)
+        self.assertEqual(handover.version, 2)
+        self.assertEqual(handover.revisions.count(), 2)
+        self.assertEqual(
+            handover.revisions.order_by("-version").first().snapshot["title"],
+            "Tor pruefen (korrigiert)",
+        )
+        self.assertTrue(AuditEvent.objects.filter(action="handover.updated").exists())
+
+    def test_member_cannot_edit_someone_elses_handover(self):
+        other = User.objects.create_user("other-author@example.org")
+        handover = HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.TASK,
+            title="Fremder Eintrag",
+            details="Nicht meiner",
+            author=other,
+        )
+        response = self.client.get(reverse("handover_edit", args=[handover.pk]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_shift_lead_may_edit_someone_elses_handover(self):
+        other = User.objects.create_user("other-author2@example.org")
+        handover = HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.TASK,
+            title="Fremder Eintrag",
+            details="Nicht meiner",
+            author=other,
+        )
+        self.membership.role = Membership.Role.SHIFT_LEAD
+        self.membership.save(update_fields=["role"])
+        self.assertEqual(
+            self.client.get(reverse("handover_edit", args=[handover.pk])).status_code, 200
+        )
+
+    def test_edit_of_foreign_station_handover_is_not_found(self):
+        other_station = Station.objects.create(name="Fremd", slug="fremd")
+        handover = HandoverEntry.objects.create(
+            station=other_station,
+            category=HandoverEntry.Category.TASK,
+            title="Stationsfremd",
+            details="x",
+            author=self.user,
+        )
+        response = self.client.get(reverse("handover_edit", args=[handover.pk]))
+        self.assertEqual(response.status_code, 404)
+
     def test_cross_station_object_is_hidden(self):
         other = Station.objects.create(name="Andere", slug="andere")
         handover = HandoverEntry.objects.create(
@@ -740,6 +800,26 @@ class TeamAndAuditTests(PilotTestCase):
         page = self.client.get(reverse("coffee"))
         self.assertContains(page, "paypal.me/testwache")
         self.assertContains(page, "Foerderverein Testwache")
+
+    def test_settings_page_survives_unvalidated_iban_in_database(self):
+        Station.objects.filter(pk=self.station.pk).update(coffee_iban="GARBAGE!!")
+        response = self.client.post(reverse("station_settings"), {
+            "name": "Wache Nord", "location": "", "street": "",
+            "postal_code": "", "city": "", "district": "",
+        })
+        self.assertRedirects(response, reverse("station_settings"))
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.name, "Wache Nord")
+
+    def test_long_grouped_iban_is_accepted(self):
+        response = self.client.post(reverse("coffee_payment_update"), {
+            "coffee_paypal_link": "", "coffee_wero_link": "",
+            "coffee_iban": "MT84 MALT 0110 0001 2345 MTLC AST0 01S",
+            "coffee_account_holder": "Testwache",
+        })
+        self.assertRedirects(response, reverse("coffee"))
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.coffee_iban, "MT84MALT011000012345MTLCAST001S")
 
     def test_invalid_iban_is_rejected(self):
         response = self.client.post(reverse("coffee_payment_update"), {

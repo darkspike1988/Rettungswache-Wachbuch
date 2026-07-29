@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Uebergaben sind jetzt bearbeitbar (`/uebergaben/<id>/bearbeiten/`): Verfasserin
+  oder Verfasser korrigiert eigene Eintraege, Schichtleitung und Admin auch
+  fremde; jede Aenderung erhoeht die Version, schreibt eine unveraenderliche
+  Revision und ein Audit-Ereignis. Die Aenderungshistorie zeigt den jeweiligen
+  Titel der Fassung.
+- Fehler behoben: Die Einstellungsseite und der Einrichtungsassistent liefen in
+  einen HTTP 500, sobald in der Datenbank eine ungueltige IBAN stand. Die
+  IBAN-Pruefung haengt jetzt am Feld statt an `Station.clean()` und wirkt nur
+  noch in Formularen, die das Feld auch anzeigen.
+- Fehler behoben: Gruppierte IBANs mit vielen Leerzeichen (lange auslaendische
+  Formate) wurden wegen der Laengenpruefung vor dem Normalisieren abgewiesen.
 - oeffentliche, nicht-interaktive Demo-Ansicht unter `/demo/` (Beispieldaten,
   kein Login, kein Schreibzugriff) zum Vorstellen des Projekts fuer andere
   Wachen/Kreise; verlinkt von der Fusszeile und der Anmeldeseite

@@ -44,6 +44,29 @@ def create_handover(form, membership):
     return handover
 
 
+EDITABLE_HANDOVER_FIELDS = ["category", "priority", "title", "details", "for_date"]
+
+
+@transaction.atomic
+def update_handover(handover, form, membership):
+    locked = HandoverEntry.objects.select_for_update().get(pk=handover.pk)
+    for field in EDITABLE_HANDOVER_FIELDS:
+        setattr(locked, field, form.cleaned_data[field])
+    locked.version += 1
+    locked.save(update_fields=EDITABLE_HANDOVER_FIELDS + ["version", "updated_at"])
+    HandoverRevision.objects.create(
+        handover=locked,
+        version=locked.version,
+        snapshot=handover_snapshot(locked),
+        changed_by=membership.user,
+    )
+    audit(membership.user, membership.station, "handover.updated", locked, {
+        "fields": [field for field in form.changed_data if field in EDITABLE_HANDOVER_FIELDS],
+        "version": locked.version,
+    })
+    return locked
+
+
 @transaction.atomic
 def change_handover_status(handover, status, membership):
     locked = HandoverEntry.objects.select_for_update().get(pk=handover.pk)

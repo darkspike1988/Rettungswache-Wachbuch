@@ -8,6 +8,15 @@ from django.db import models
 from django.db.models import Q
 
 
+def validate_iban(value):
+    """Akzeptiert IBANs mit und ohne Gruppierungsleerzeichen."""
+    if not value:
+        return
+    compact = value.replace(" ", "").upper()
+    if not re.fullmatch(r"[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}", compact):
+        raise ValidationError("Das sieht nicht nach einer gueltigen IBAN aus.")
+
+
 class Station(models.Model):
     name = models.CharField(max_length=120)
     location = models.CharField(max_length=160, blank=True, verbose_name="Standort")
@@ -27,7 +36,9 @@ class Station(models.Model):
     coffee_wero_link = models.CharField(
         max_length=200, blank=True, verbose_name="Wero-Zahlungslink oder -Kontakt",
     )
-    coffee_iban = models.CharField(max_length=34, blank=True, verbose_name="IBAN")
+    coffee_iban = models.CharField(
+        max_length=34, blank=True, verbose_name="IBAN", validators=[validate_iban],
+    )
     coffee_account_holder = models.CharField(
         max_length=120, blank=True, verbose_name="Kontoinhaber/in",
     )
@@ -38,13 +49,6 @@ class Station(models.Model):
 
     def __str__(self):
         return self.name
-
-    def clean(self):
-        if self.coffee_iban:
-            iban = self.coffee_iban.replace(" ", "").upper()
-            if not re.fullmatch(r"[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}", iban):
-                raise ValidationError({"coffee_iban": "Das sieht nicht nach einer gueltigen IBAN aus."})
-            self.coffee_iban = iban
 
     @property
     def localities(self):
