@@ -39,4 +39,6 @@
 - Sicherheitsabnahme gegen OWASP ASVS 5.0 Level 2 als Ziel
 
 Ein privates Netz ersetzt weder das Rollenmodell noch eine organisatorische
-Freigabe.
+Freigabe. Fuer eine konkrete Zuordnung zu NRW-Rechtsgrundlagen (DSG NRW, LPVG
+NRW, Impressumspflicht, Barrierefreiheit) siehe
+[`docs/COMPLIANCE-NRW.md`](COMPLIANCE-NRW.md).

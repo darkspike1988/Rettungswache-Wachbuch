@@ -5,6 +5,9 @@ from . import views
 
 urlpatterns = [
     path("zugang/", views.access, name="access"),
+    path("impressum/", views.imprint, name="imprint"),
+    path("datenschutz/", views.privacy, name="privacy"),
+    path("barrierefreiheit/", views.accessibility, name="accessibility"),
     path("", views.dashboard, name="dashboard"),
     path("uebergaben/", views.handover_list, name="handover_list"),
     path("uebergaben/neu/", views.handover_create, name="handover_create"),
@@ -19,6 +22,7 @@ urlpatterns = [
     path("kaffeekasse/", views.coffee, name="coffee"),
     path("kaffeekasse/neu/", views.coffee_create, name="coffee_create"),
     path("kaffeekasse/<int:pk>/korrigieren/", views.coffee_correct, name="coffee_correct"),
+    path("kaffeekasse/zahlungsangaben/", views.coffee_payment_update, name="coffee_payment_update"),
     path("lage/", views.feeds, name="feeds"),
     path("lage/muellabfuhr/", views.waste_source_update, name="waste_source_update"),
     path("mehr/", views.more, name="more"),

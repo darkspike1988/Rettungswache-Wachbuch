@@ -14,4 +14,33 @@
   </table>
 </div>
 {% include "core/pagination.html" %}
+
+{% if station.has_coffee_payment_info %}
+<section class="section-block" aria-label="Einzahlungsmoeglichkeiten">
+  <h2>So zahlst du ein</h2>
+  <dl class="summary-list">
+    {% if station.coffee_paypal_link %}<div><dt>PayPal</dt><dd>{% if station.coffee_paypal_link|slice:":4" == "http" %}<a href="{{ station.coffee_paypal_link }}" target="_blank" rel="noopener noreferrer">{{ station.coffee_paypal_link }}</a>{% else %}{{ station.coffee_paypal_link }}{% endif %}</dd></div>{% endif %}
+    {% if station.coffee_wero_link %}<div><dt>Wero</dt><dd>{% if station.coffee_wero_link|slice:":4" == "http" %}<a href="{{ station.coffee_wero_link }}" target="_blank" rel="noopener noreferrer">{{ station.coffee_wero_link }}</a>{% else %}{{ station.coffee_wero_link }}{% endif %}</dd></div>{% endif %}
+    {% if station.coffee_iban and station.coffee_account_holder %}<div><dt>Echtzeitüberweisung</dt><dd>{{ station.coffee_account_holder }}<br>{{ station.coffee_iban }}<br><small>Verwendungszweck: Kaffeekasse. Ob die Überweisung gebührenfrei ist, hängt von der Bank der einzahlenden Person ab.</small></dd></div>{% endif %}
+  </dl>
+</section>
+{% endif %}
+
+{% if payment_form %}
+<section class="section-block" aria-label="Zahlungsangaben verwalten">
+  <h2>Zahlungsangaben verwalten</h2>
+  <p class="field-hint">
+    Nur fest hinterlegte, gebührenfreie Wege anbieten. IBAN nur eintragen,
+    wenn die Kontoinhaber-Person damit einverstanden ist, dass ihre Daten dem
+    Team angezeigt werden - besser ist ein eigenes Kassenkonto statt eines
+    privaten Kontos.
+  </p>
+  <form method="post" action="{% url 'coffee_payment_update' %}" class="form-card">
+    {% csrf_token %}
+    {% include "core/form_errors.html" with form=payment_form %}
+    {{ payment_form.as_p }}
+    <div class="form-actions"><button class="button secondary" type="submit">Speichern</button></div>
+  </form>
+</section>
+{% endif %}
 {% endblock %}

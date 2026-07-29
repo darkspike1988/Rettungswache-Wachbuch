@@ -1,3 +1,4 @@
+import re
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -20,6 +21,16 @@ class Station(models.Model):
     birthdays_enabled = models.BooleanField(default=True, verbose_name="Geburtstage aktiviert")
     coffee_enabled = models.BooleanField(default=True, verbose_name="Kaffeekasse aktiviert")
     feeds_enabled = models.BooleanField(default=False, verbose_name="Externe Meldungen aktiviert")
+    coffee_paypal_link = models.CharField(
+        max_length=200, blank=True, verbose_name="PayPal.me-Link",
+    )
+    coffee_wero_link = models.CharField(
+        max_length=200, blank=True, verbose_name="Wero-Zahlungslink oder -Kontakt",
+    )
+    coffee_iban = models.CharField(max_length=34, blank=True, verbose_name="IBAN")
+    coffee_account_holder = models.CharField(
+        max_length=120, blank=True, verbose_name="Kontoinhaber/in",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -27,9 +38,23 @@ class Station(models.Model):
     def __str__(self):
         return self.name
 
+    def clean(self):
+        if self.coffee_iban:
+            iban = self.coffee_iban.replace(" ", "").upper()
+            if not re.fullmatch(r"[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}", iban):
+                raise ValidationError({"coffee_iban": "Das sieht nicht nach einer gueltigen IBAN aus."})
+            self.coffee_iban = iban
+
     @property
     def localities(self):
         return {value for value in (self.city, self.district) if value}
+
+    @property
+    def has_coffee_payment_info(self):
+        return bool(
+            self.coffee_paypal_link or self.coffee_wero_link
+            or (self.coffee_iban and self.coffee_account_holder)
+        )
 
     @classmethod
     def get_default(cls):

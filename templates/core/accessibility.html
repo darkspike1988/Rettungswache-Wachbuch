@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Erklärung zur Barrierefreiheit | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading narrow">
+  <p class="context-line">Rechtliches</p>
+  <h1>Erklärung zur Barrierefreiheit</h1>
+  <p class="lead">Nach der EU-Richtlinie (EU) 2016/2102 und dem Behindertengleichstellungsrecht NRW.</p>
+</header>
+<div class="content-flow narrow">
+  <section class="section-block prose">
+    <h2>Geltungsbereich</h2>
+    <p>
+      Diese Anwendung ist ein anmeldepflichtiges internes Arbeitsmittel für
+      Wachenpersonal (Extranet) und fällt damit möglicherweise unter die
+      Ausnahme des Art. 1 Abs. 4 der Richtlinie (EU) 2016/2102 für Intranet-
+      und Extranetseiten. Der Betreiber veröffentlicht diese Erklärung
+      dennoch, um die Barrierefreiheit für alle Mitarbeitenden nachvollziehbar
+      zu machen.
+    </p>
+  </section>
+  <section class="section-block prose">
+    <h2>Umgesetzte Maßnahmen</h2>
+    <p>
+      Sprungmarke zum Inhalt, semantische Überschriftenstruktur, sichtbare
+      Tastaturfokusmarkierung, Mindestgröße 44&times;44 Pixel für
+      Bedienelemente, responsive Darstellung ohne horizontales Scrollen,
+      keine ausschließlich farbbasierte Statuskennzeichnung (zusätzlicher
+      Text), Unterstützung des systemweiten hellen und dunklen Farbschemas.
+    </p>
+  </section>
+  <section class="section-block prose">
+    <h2>Bekannte Einschränkungen</h2>
+    <p>
+      Ein vollständiger Test nach EN 301 549/WCAG 2.1 AA steht noch aus.
+      [Ergebnisse eines Barrierefreiheits-Audits hier ergänzen, sobald
+      durchgeführt.]
+    </p>
+  </section>
+  <section class="section-block prose">
+    <h2>Feedback und Kontakt</h2>
+    <p>{{ accessibility_contact|default:"[Kontakt für Barrierefreiheits-Feedback eintragen]" }}</p>
+  </section>
+  <section class="section-block prose">
+    <h2>Durchsetzungsverfahren</h2>
+    <p>
+      Führt eine Rückmeldung an den Betreiber nicht zu einem
+      zufriedenstellenden Ergebnis, kann die zuständige Überwachungsstelle für
+      Barrierefreiheit von Informationstechnik des Landes
+      Nordrhein-Westfalen kontaktiert werden. [Aktuelle Kontaktdaten der
+      Überwachungsstelle durch den Betreiber ergänzen.]
+    </p>
+  </section>
+</div>
+{% endblock %}

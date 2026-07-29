@@ -18,6 +18,7 @@ from .forms import (
     CalendarEventForm,
     CoffeeCorrectionForm,
     CoffeeEntryForm,
+    CoffeePaymentForm,
     DailyTeamForm,
     HandoverForm,
     HandoverStatusForm,
@@ -46,6 +47,18 @@ def healthz(request):
         cursor.execute("SELECT 1")
         cursor.fetchone()
     return JsonResponse({"status": "ok"})
+
+
+def imprint(request):
+    return render(request, "core/imprint.html")
+
+
+def privacy(request):
+    return render(request, "core/privacy.html")
+
+
+def accessibility(request):
+    return render(request, "core/accessibility.html")
 
 
 def access(request):
@@ -341,12 +354,35 @@ def coffee(request):
     visible_entries = all_entries if can_book else all_entries.filter(member=request.user)
     total_cents = all_entries.aggregate(total=Sum("amount_cents"))["total"] or 0
     own_cents = all_entries.filter(member=request.user).aggregate(total=Sum("amount_cents"))["total"] or 0
+    is_admin = request.membership.role == Membership.Role.ADMIN
     return render(request, "core/coffee.html", {
         "page_obj": page_for(request, visible_entries, 25),
         "total_euros": total_cents / 100,
         "own_euros": own_cents / 100,
         "can_book": can_book,
+        "station": station,
+        "payment_form": CoffeePaymentForm(instance=station) if is_admin else None,
     })
+
+
+@membership_required({Membership.Role.ADMIN})
+@station_module_required("coffee_enabled")
+@require_POST
+def coffee_payment_update(request):
+    station = request.membership.station
+    form = CoffeePaymentForm(request.POST, instance=station)
+    if form.is_valid():
+        with transaction.atomic():
+            changed_fields = [field for field in form.changed_data if field in form.fields]
+            saved = form.save()
+            audit(request.user, station, "coffee.payment_settings_updated", saved, {
+                "fields": changed_fields,
+            })
+        messages.success(request, "Zahlungsangaben wurden gespeichert.")
+    else:
+        errors = " ".join(f"{field}: {', '.join(msgs)}" for field, msgs in form.errors.items())
+        messages.error(request, f"Zahlungsangaben konnten nicht gespeichert werden. {errors}")
+    return redirect("coffee")
 
 
 @membership_required({Membership.Role.CASHIER, Membership.Role.ADMIN})

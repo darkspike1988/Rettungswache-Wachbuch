@@ -176,3 +176,15 @@ class WasteSourceForm(forms.ModelForm):
         model = FeedSource
         fields = ["url"]
         labels = {"url": "ICS-Abo-Link des Abfallkalenders"}
+
+
+class CoffeePaymentForm(forms.ModelForm):
+    class Meta:
+        model = Station
+        fields = ["coffee_paypal_link", "coffee_wero_link", "coffee_iban", "coffee_account_holder"]
+        labels = {
+            "coffee_paypal_link": "PayPal.me-Link",
+            "coffee_wero_link": "Wero-Zahlungslink oder -Kontakt",
+            "coffee_iban": "IBAN",
+            "coffee_account_holder": "Kontoinhaber/in",
+        }

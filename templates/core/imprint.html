@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Impressum | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading narrow">
+  <p class="context-line">Rechtliches</p>
+  <h1>Impressum</h1>
+  <p class="lead">Angaben gemäß § 5 TMG / § 18 Medienstaatsvertrag.</p>
+</header>
+<div class="content-flow narrow">
+  <section class="section-block prose">
+    <h2>Verantwortliche Stelle</h2>
+    <p>
+      {{ operator_name|default:"[Betreiber: Name der Trägerorganisation eintragen, z.B. Kreis Gütersloh]" }}<br>
+      {{ operator_address|default:"[Anschrift eintragen]" }}
+    </p>
+    {% if operator_representative %}<p>Vertreten durch: {{ operator_representative }}</p>{% endif %}
+  </section>
+  <section class="section-block prose">
+    <h2>Kontakt</h2>
+    <p>{{ operator_contact|default:"[Kontakt eintragen: Telefon/E-Mail]" }}</p>
+  </section>
+  <section class="section-block prose">
+    <h2>Technischer Betrieb</h2>
+    <p>
+      Diese Anwendung ist Open-Source-Software (AGPL-3.0). Quellcode:
+      <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer">{{ source_url }}</a>.
+      Der technische Betrieb erfolgt durch die oben genannte verantwortliche
+      Stelle oder einen von ihr beauftragten Dienstleister.
+    </p>
+  </section>
+  {% if not operator_name %}
+  <section class="section-block prose">
+    <h2>Hinweis für Betreiber</h2>
+    <p>
+      Diese Seite zeigt Platzhalter. Vor einem echten Betrieb bitte
+      <code>OPERATOR_NAME</code>, <code>OPERATOR_ADDRESS</code>,
+      <code>OPERATOR_REPRESENTATIVE</code> und <code>OPERATOR_CONTACT</code>
+      in der Umgebungskonfiguration setzen.
+    </p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

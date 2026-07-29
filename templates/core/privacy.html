@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Datenschutzerklärung | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading narrow">
+  <p class="context-line">Rechtliches</p>
+  <h1>Datenschutzerklärung</h1>
+  <p class="lead">Informationen nach Art. 13/14 DSGVO für Mitglieder dieser Wache.</p>
+</header>
+<div class="content-flow narrow">
+  <section class="section-block prose">
+    <h2>Verantwortlicher</h2>
+    <p>
+      {{ operator_name|default:"[Betreiber eintragen]" }}<br>
+      {{ operator_address|default:"[Anschrift eintragen]" }}<br>
+      {{ operator_contact|default:"[Kontakt eintragen]" }}
+    </p>
+  </section>
+  <section class="section-block prose">
+    <h2>Datenschutzbeauftragte/r</h2>
+    <p>{{ dpo_contact|default:"[Kontakt der/des Datenschutzbeauftragten eintragen]" }}</p>
+  </section>
+  <section class="section-block prose">
+    <h2>Zweck und Rechtsgrundlage</h2>
+    <p>
+      Diese Anwendung dient ausschließlich der internen Organisation der Wache
+      (Übergaben, Kalender, Kaffeekasse, freiwillige Geburtstagsanzeige). Sie
+      ist kein Einsatzleit-, Alarmierungs- oder Patientendokumentationssystem
+      und speichert keine entsprechenden Daten. Rechtsgrundlage ist in der
+      Regel Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem Datenschutzgesetz
+      Nordrhein-Westfalen (DSG NRW) für die Erfüllung einer öffentlichen
+      Aufgabe des Trägers; für freiwillige Angaben (z.B. Geburtstage) ist die
+      Rechtsgrundlage die Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO.
+    </p>
+  </section>
+  <section class="section-block prose">
+    <h2>Verarbeitete Daten</h2>
+    <p>
+      Anmeldedaten, Name (soweit hinterlegt), Rolle und Wachenzugehörigkeit,
+      Inhalte der Übergaben, Kalendertermine, Kaffeekassenbuchungen sowie
+      technische Protokolldaten (Audit-Ereignisse: Aktion, Zeitpunkt,
+      handelnde Person, betroffener Datensatztyp - keine Freitextkopien).
+      Freiwillige Geburtstagsangaben (Tag und Monat, ohne Jahr) werden nur mit
+      ausdrücklicher Einwilligung angezeigt und können jederzeit widerrufen
+      werden.
+    </p>
+  </section>
+  <section class="section-block prose">
+    <h2>Empfänger und externe Dienste</h2>
+    <p>
+      Es erfolgt keine Weitergabe an Dritte außer an technische Dienstleister
+      im Rahmen der Auftragsverarbeitung (Hosting, Wartung). Sofern von der
+      Wache aktiviert, ruft die Anwendung folgende externe, vom Betreiber
+      vorab freigegebene Quellen ab: amtliche RSS- und Verkehrsmeldungen, ein
+      Abfallkalender (ICS) sowie optional ein Geocoding-Dienst zur Ermittlung
+      von Ort/Kreis aus der Wachenadresse. Dabei werden ausschließlich die
+      Wachenadresse beziehungsweise die von der Wache hinterlegte Abo-URL
+      übertragen, keine personenbezogenen Nutzerdaten.
+    </p>
+  </section>
+  <section class="section-block prose">
+    <h2>Speicherdauer</h2>
+    <p>
+      Lösch- und Aufbewahrungsfristen richten sich nach dem Löschkonzept der
+      verantwortlichen Stelle. [Konkrete Fristen nach organisatorischer
+      Freigabe eintragen.]
+    </p>
+  </section>
+  <section class="section-block prose">
+    <h2>Ihre Rechte</h2>
+    <p>
+      Sie haben nach Art. 15-21 DSGVO das Recht auf Auskunft, Berichtigung,
+      Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und
+      Widerspruch. Wenden Sie sich hierzu an die oben genannte verantwortliche
+      Stelle oder die/den Datenschutzbeauftragte/n. Sie können sich außerdem
+      bei der zuständigen Aufsichtsbehörde beschweren:
+    </p>
+    <p>
+      Landesbeauftragte für Datenschutz und Informationsfreiheit
+      Nordrhein-Westfalen (LDI NRW), Kavalleriestraße 2-4, 40213 Düsseldorf.
+    </p>
+  </section>
+</div>
+{% endblock %}

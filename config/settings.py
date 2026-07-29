@@ -72,6 +72,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "core.context.current_membership",
                 "core.context.application_metadata",
+                "core.context.operator_metadata",
             ],
         },
     }
@@ -162,3 +163,14 @@ FEED_MAX_BYTES = 2_000_000
 # Nominatim-Server ist vorzuziehen; oeffentliche Instanzen erhalten die
 # eingegebene Wachenadresse als Suchtext.
 GEOCODING_HOST = os.getenv("GEOCODING_HOST", "").strip().lower()
+
+# Angaben der verantwortlichen Stelle (Traeger/Kreis) fuer Impressum,
+# Datenschutz- und Barrierefreiheitserklaerung. Vor einem echten Betrieb durch
+# eine oeffentliche Stelle muessen diese Werte gesetzt werden; ohne Angabe
+# zeigen die Seiten deutliche Platzhalter statt erfundener Angaben.
+OPERATOR_NAME = os.getenv("OPERATOR_NAME", "").strip()
+OPERATOR_ADDRESS = os.getenv("OPERATOR_ADDRESS", "").strip()
+OPERATOR_REPRESENTATIVE = os.getenv("OPERATOR_REPRESENTATIVE", "").strip()
+OPERATOR_CONTACT = os.getenv("OPERATOR_CONTACT", "").strip()
+DPO_CONTACT = os.getenv("DPO_CONTACT", "").strip()
+ACCESSIBILITY_CONTACT = os.getenv("ACCESSIBILITY_CONTACT", "").strip()

@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#17343d">
   <title>{% block title %}{{ app_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'core/app.css' %}">
@@ -61,7 +61,12 @@
   </main>
 
   <footer class="site-footer">
-    <a href="{{ source_url }}" rel="noopener noreferrer">Quellcode (AGPL-3.0)</a>
+    <nav class="footer-links" aria-label="Rechtliches">
+      <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer">Quellcode (AGPL-3.0)</a>
+      <a href="{% url 'imprint' %}">Impressum</a>
+      <a href="{% url 'privacy' %}">Datenschutz</a>
+      <a href="{% url 'accessibility' %}">Barrierefreiheit</a>
+    </nav>
     <span>Keine Patienten- oder Einsatzdaten.</span>
   </footer>
 </body>

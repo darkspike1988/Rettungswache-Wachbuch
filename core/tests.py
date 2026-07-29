@@ -429,6 +429,33 @@ class BirthdayAndCoffeeTests(PilotTestCase):
         )
         self.assertEqual(correction.amount_cents, -500)
 
+    def test_member_cannot_configure_coffee_payment_options(self):
+        response = self.client.post(reverse("coffee_payment_update"), {
+            "coffee_paypal_link": "https://paypal.me/hack",
+        })
+        self.assertEqual(response.status_code, 403)
+
+
+class LegalPagesTests(TestCase):
+    def test_pages_are_reachable_without_login(self):
+        for url_name in ("imprint", "privacy", "accessibility"):
+            response = self.client.get(reverse(url_name))
+            self.assertEqual(response.status_code, 200)
+
+    def test_imprint_shows_placeholder_without_operator_settings(self):
+        response = self.client.get(reverse("imprint"))
+        self.assertContains(response, "[Betreiber")
+
+    @override_settings(
+        OPERATOR_NAME="Kreis Guetersloh",
+        OPERATOR_ADDRESS="Postfach 1663, 33316 Guetersloh",
+        OPERATOR_CONTACT="wachbuch@kreis-guetersloh.de",
+    )
+    def test_imprint_shows_configured_operator(self):
+        response = self.client.get(reverse("imprint"))
+        self.assertContains(response, "Kreis Guetersloh")
+        self.assertNotContains(response, "[Betreiber")
+
 
 class FeedTests(TestCase):
     def setUp(self):
@@ -621,6 +648,33 @@ class TeamAndAuditTests(PilotTestCase):
         self.assertFalse(pending.is_staff)
         self.assertFalse(pending.is_superuser)
         self.assertEqual(pending.station_memberships.get().role, Membership.Role.ADMIN)
+
+    def test_admin_sets_coffee_payment_options(self):
+        response = self.client.post(reverse("coffee_payment_update"), {
+            "coffee_paypal_link": "https://paypal.me/testwache",
+            "coffee_wero_link": "https://wero.example/testwache",
+            "coffee_iban": "DE89 3704 0044 0532 0130 00",
+            "coffee_account_holder": "Foerderverein Testwache",
+        })
+        self.assertRedirects(response, reverse("coffee"))
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.coffee_paypal_link, "https://paypal.me/testwache")
+        self.assertEqual(self.station.coffee_iban, "DE89370400440532013000")
+        self.assertTrue(AuditEvent.objects.filter(action="coffee.payment_settings_updated").exists())
+        page = self.client.get(reverse("coffee"))
+        self.assertContains(page, "paypal.me/testwache")
+        self.assertContains(page, "Foerderverein Testwache")
+
+    def test_invalid_iban_is_rejected(self):
+        response = self.client.post(reverse("coffee_payment_update"), {
+            "coffee_paypal_link": "",
+            "coffee_wero_link": "",
+            "coffee_iban": "not-an-iban",
+            "coffee_account_holder": "Testwache",
+        })
+        self.assertRedirects(response, reverse("coffee"))
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.coffee_iban, "")
 
     def test_admin_sets_waste_calendar_url(self):
         with override_settings(FEED_ALLOWED_HOSTS={"waste.example.org"}):

@@ -17,9 +17,11 @@ Dienstplanungs- oder Patientendokumentationssystem.
 - optionale offizielle RSS- und Verkehrsquellen, gefiltert nach Ort/Kreis der Wache
 - optionaler Abfallkalender je Wache (ICS-Abo-Link)
 - optionale Ort-/Kreis-Ermittlung aus der Wachenadresse (offener Geocoding-Dienst)
+- Kaffeekasse mit optionalen, gebuehrenfrei nutzbaren Einzahlwegen (PayPal.me, Wero, Echtzeitueberweisung)
 - stationsbezogene Rollen und nachvollziehbare Audit-Ereignisse
 - lokaler Login oder Anmeldung ueber Tailscale-Identitaetsheader
-- responsive, JavaScript-freie Oberflaeche
+- responsive, JavaScript-freie Oberflaeche mit hellem und dunklem Farbschema
+- Impressum, Datenschutz- und Barrierefreiheitserklaerung als ausfuellbares Seiten-Geruest
 
 ## Administration
 
@@ -29,10 +31,14 @@ sichtbaren Module selbst festlegen. Ein Button ermittelt Ort und Kreis/Landkreis
 aus der gespeicherten Adresse ueber einen offenen Geocoding-Dienst (siehe unten).
 Unter `/lage/` (Reiter "Muellabfuhr") koennen Admins ausserdem den ICS-Abo-Link
 des oertlichen Abfallkalenders hinterlegen; kommende Abholtermine erscheinen dort
-automatisch nach der naechsten Synchronisierung. Unter `/team/` verwalten
-Admins Freigaben und Rollen. Technische Administratoren konfigurieren unter
-`/django-admin/` Systemkonten und externe Quellen. Fachliche Datensaetze sind
-dort bewusst nur lesbar, damit Versionierung und Audit nicht umgangen werden.
+automatisch nach der naechsten Synchronisierung. Unter `/kaffeekasse/` legen
+Admins fest, ueber welche gebuehrenfreien Wege eingezahlt werden kann
+(PayPal.me-Link, Wero-Link/-Kontakt und/oder IBAN mit Kontoinhaber fuer
+Echtzeitueberweisungen); alle Mitglieder sehen die hinterlegten Wege direkt auf
+der Kassenseite. Unter `/team/` verwalten Admins Freigaben und Rollen.
+Technische Administratoren konfigurieren unter `/django-admin/` Systemkonten
+und externe Quellen. Fachliche Datensaetze sind dort bewusst nur lesbar, damit
+Versionierung und Audit nicht umgangen werden.
 
 ## Schnellstart mit Docker
 
@@ -119,6 +125,20 @@ selbst gehostete Instanz; alternativ die oeffentliche
 (niedrige Anfragerate, klarer User-Agent). Admins loesen die Ermittlung manuell
 unter `/einstellungen/` aus, es laeuft kein automatischer Hintergrundabgleich.
 
+## Rechtliches (Impressum, Datenschutz, Barrierefreiheit)
+
+Für öffentliche Betreiber (z.B. einen Kreis) sind unter `/impressum/`,
+`/datenschutz/` und `/barrierefreiheit/` bereits ausformulierte Seiten
+verlinkt (Fußzeile), die aber deutliche Platzhalter zeigen, bis folgende
+Variablen in `.env` gesetzt sind: `OPERATOR_NAME`, `OPERATOR_ADDRESS`,
+`OPERATOR_REPRESENTATIVE`, `OPERATOR_CONTACT`, `DPO_CONTACT` und
+`ACCESSIBILITY_CONTACT`. Die Inhalte orientieren sich an § 5 TMG/§ 18 MStV,
+Art. 13 DSGVO i.V.m. dem Datenschutzgesetz NRW (DSG NRW) sowie der
+EU-Richtlinie (EU) 2016/2102 zur Barrierefreiheit. Sie ersetzen keine
+rechtliche Prüfung durch die Datenschutzbeauftragte/den Datenschutzbeauftragten
+und den Personalrat der verantwortlichen Stelle - Details und offene Punkte
+stehen in [`docs/COMPLIANCE-NRW.md`](docs/COMPLIANCE-NRW.md).
+
 ## Datenschutz
 
 Nicht in das Wachbuch gehoeren:
@@ -136,6 +156,7 @@ Loeschfristen oder organisatorische Freigabe. Details stehen in
 - [Architektur](docs/ARCHITECTURE.md)
 - [Betrieb, Backup und Updates](docs/OPERATIONS.md)
 - [Datenschutz und Sicherheit](docs/SECURITY-PRIVACY.md)
+- [Rechtliche Einordnung NRW/Kreis](docs/COMPLIANCE-NRW.md)
 - [Test- und Go-live-Checkliste](docs/GO-LIVE-CHECKLIST.md)
 - [Recherche und Quellen](docs/RESEARCH.md)
 - [Roadmap](docs/ROADMAP.md)

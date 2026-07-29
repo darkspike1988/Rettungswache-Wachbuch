@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Kaffeekasse: konfigurierbare, gebuehrenfrei nutzbare Einzahlwege
+  (PayPal.me-Link, Wero-Link/-Kontakt, IBAN mit Kontoinhaber für
+  Echtzeitüberweisung), sichtbar für alle, editierbar nur für Admins
+- helles und dunkles Farbschema per `prefers-color-scheme` (nachtdiensttauglich)
+- Impressum, Datenschutz- und Barrierefreiheitserklärung unter `/impressum/`,
+  `/datenschutz/`, `/barrierefreiheit/`, verlinkt aus der Fußzeile; Inhalte
+  über `OPERATOR_*`/`DPO_CONTACT`/`ACCESSIBILITY_CONTACT` konfigurierbar
+- neuer Compliance-Leitfaden `docs/COMPLIANCE-NRW.md`, Roadmap auf aktuellen
+  Stand gebracht
 - Kopfzeile zeigt Wachenname und Standort zentriert statt statischem Markennamen
 - Standort der Wache unter `/einstellungen/` pflegbar (Feld `Station.location`)
 - Wochenprotokoll (`/wochenprotokoll/`) gruppiert Uebergaben nach Tag analog zum
