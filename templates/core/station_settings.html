@@ -13,4 +13,18 @@
   {{ form.as_p }}
   <div class="form-actions"><button class="button primary" type="submit">Speichern</button></div>
 </form>
+
+<section class="section-block narrow" aria-label="Ort und Kreis anhand der Adresse">
+  <h2>Ort/Kreis automatisch ermitteln</h2>
+  <p class="field-hint">
+    Adresse oben speichern, dann Ort und Kreis/Landkreis ueber einen offenen
+    Geocoding-Dienst (z.B. Nominatim/OpenStreetMap) ermitteln lassen. Ohne
+    konfigurierten Dienst (<code>GEOCODING_HOST</code>) bleibt der Button
+    wirkungslos und Ort/Kreis koennen weiterhin von Hand eingetragen werden.
+  </p>
+  <form method="post" action="{% url 'station_geocode' %}">
+    {% csrf_token %}
+    <button class="button secondary" type="submit">Ort/Kreis aus Adresse ermitteln</button>
+  </form>
+</section>
 {% endblock %}

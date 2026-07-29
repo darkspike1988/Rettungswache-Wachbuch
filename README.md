@@ -14,7 +14,9 @@ Dienstplanungs- oder Patientendokumentationssystem.
 - einfacher Wachenkalender
 - freiwillige Geburtstagsanzeige ohne Geburtsjahr
 - unveraenderliches Kaffeekassen-Ledger mit Korrekturbuchungen
-- optionale offizielle RSS- und Verkehrsquellen
+- optionale offizielle RSS- und Verkehrsquellen, gefiltert nach Ort/Kreis der Wache
+- optionaler Abfallkalender je Wache (ICS-Abo-Link)
+- optionale Ort-/Kreis-Ermittlung aus der Wachenadresse (offener Geocoding-Dienst)
 - stationsbezogene Rollen und nachvollziehbare Audit-Ereignisse
 - lokaler Login oder Anmeldung ueber Tailscale-Identitaetsheader
 - responsive, JavaScript-freie Oberflaeche
@@ -22,11 +24,15 @@ Dienstplanungs- oder Patientendokumentationssystem.
 ## Administration
 
 Stationsadministratoren koennen unter `/einstellungen/` den Namen, den Standort
-(z.B. Ort oder Adresse, angezeigt zentriert im Kopfbereich unter dem Namen) und
-die sichtbaren Module selbst festlegen. Unter `/team/` verwalten sie Freigaben
-und Rollen. Technische Administratoren konfigurieren unter `/django-admin/`
-Systemkonten und externe Quellen. Fachliche Datensaetze sind dort bewusst nur
-lesbar, damit Versionierung und Audit nicht umgangen werden.
+(angezeigt zentriert im Kopfbereich unter dem Namen), die Adresse und die
+sichtbaren Module selbst festlegen. Ein Button ermittelt Ort und Kreis/Landkreis
+aus der gespeicherten Adresse ueber einen offenen Geocoding-Dienst (siehe unten).
+Unter `/lage/` (Reiter "Muellabfuhr") koennen Admins ausserdem den ICS-Abo-Link
+des oertlichen Abfallkalenders hinterlegen; kommende Abholtermine erscheinen dort
+automatisch nach der naechsten Synchronisierung. Unter `/team/` verwalten
+Admins Freigaben und Rollen. Technische Administratoren konfigurieren unter
+`/django-admin/` Systemkonten und externe Quellen. Fachliche Datensaetze sind
+dort bewusst nur lesbar, damit Versionierung und Audit nicht umgangen werden.
 
 ## Schnellstart mit Docker
 
@@ -91,7 +97,27 @@ Zulaessige Quellhosts werden zuerst kommasepariert mit `FEED_ALLOWED_HOSTS` in
 das dokumentierte Bielefelder Verkehrsmeldungsformat. Private Zieladressen,
 Weiterleitungen, andere Ports und Antworten ueber 2 MB werden abgewiesen.
 Bei einem Upgrade von Version 0.2 muessen die Hosts bereits vorhandener Quellen
-vor dem Neustart explizit in diese Liste uebernommen werden.
+vor dem Neustart explizit in diese Liste uebernommen werden. Das `locality`-Feld
+einer Quelle muss dem Ort oder Kreis-Namen der jeweiligen Wache entsprechen
+(z.B. `Steinhagen` oder `Kreis Guetersloh`), damit Meldungen und Verkehr nur den
+passenden Wachen angezeigt werden. Ohne hinterlegten Ort/Kreis an der Wache
+bleibt es beim bisherigen Verhalten: alle Quellen dieses Typs werden angezeigt.
+
+Der Abfallkalender je Wache nutzt dieselbe Allowlist: der Host des ICS-Links
+muss zuerst in `FEED_ALLOWED_HOSTS` freigegeben werden, danach koennen
+Stationsadmins ihren Abo-Link selbst unter `/lage/?typ=muell` eintragen. Es gibt
+keine einheitliche bundesweite API fuer Muellabfuhrtermine; genutzt wird der
+offene iCal-Standard, den nahezu jede Kommune/jeder Kreis als
+"Kalender abonnieren"-Link fuer die eigene Adresse anbietet.
+
+## Ort/Kreis aus der Adresse
+
+Mit `GEOCODING_HOST` in `.env` kann ein Nominatim-kompatibler, offener
+Geocoding-Dienst angebunden werden (leer = deaktiviert). Empfohlen ist eine
+selbst gehostete Instanz; alternativ die oeffentliche
+`nominatim.openstreetmap.org` unter Beachtung von deren Nutzungsbedingungen
+(niedrige Anfragerate, klarer User-Agent). Admins loesen die Ermittlung manuell
+unter `/einstellungen/` aus, es laeuft kein automatischer Hintergrundabgleich.
 
 ## Datenschutz
 

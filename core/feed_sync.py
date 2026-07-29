@@ -1,85 +1,31 @@
 import calendar
 import csv
 import hashlib
-import ipaddress
 import io
-import socket
 from datetime import datetime, timezone as datetime_timezone
 from urllib.parse import urlparse
 
-import certifi
 import feedparser
-import urllib3
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from django.utils.html import strip_tags
+from icalendar import Calendar
 
 from .models import FeedItem, FeedSource
+from .net import UnsafeUrlError, fetch_https
 
 
 def fetch_source(source):
-    parsed_url = urlparse(source.url)
-    if (
-        parsed_url.scheme != "https"
-        or parsed_url.hostname not in settings.FEED_ALLOWED_HOSTS
-        or parsed_url.username
-        or parsed_url.password
-    ):
-        raise ValueError("Quelle ist nicht in der erlaubten HTTPS-Hostliste.")
-    if parsed_url.port not in {None, 443}:
-        raise ValueError("Feed-Quellen duerfen nur HTTPS-Port 443 verwenden.")
-    resolved = socket.getaddrinfo(parsed_url.hostname, 443, type=socket.SOCK_STREAM)
-    addresses = list(dict.fromkeys(item[4][0] for item in resolved))
-    if not addresses or any(not ipaddress.ip_address(value).is_global for value in addresses):
-        raise ValueError("Feed-Quelle zeigt nicht ausschliesslich auf globale IP-Adressen.")
-    target = parsed_url.path or "/"
-    if parsed_url.query:
-        target = f"{target}?{parsed_url.query}"
-    timeout = urllib3.Timeout(connect=5, read=20)
-    connection_error = None
-    for address in addresses:
-        pool = urllib3.HTTPSConnectionPool(
-            address,
-            port=443,
-            assert_hostname=parsed_url.hostname,
-            server_hostname=parsed_url.hostname,
-            cert_reqs="CERT_REQUIRED",
-            ca_certs=certifi.where(),
-            timeout=timeout,
-            maxsize=1,
+    try:
+        return fetch_https(
+            source.url,
+            allowed_hosts=settings.FEED_ALLOWED_HOSTS,
+            max_bytes=settings.FEED_MAX_BYTES,
+            user_agent="Rettungswache-Wachbuch/1.0",
         )
-        try:
-            response = pool.request(
-                "GET",
-                target,
-                headers={
-                    "Host": parsed_url.hostname,
-                    "User-Agent": "Rettungswache-Wachbuch/1.0",
-                },
-                preload_content=False,
-                redirect=False,
-                retries=False,
-            )
-        except urllib3.exceptions.HTTPError as exc:
-            connection_error = exc
-            pool.close()
-            continue
-        try:
-            if 300 <= response.status < 400:
-                raise ValueError("Weiterleitungen sind fuer Feed-Quellen deaktiviert.")
-            if response.status >= 400:
-                raise ValueError(f"Quelle antwortet mit HTTP {response.status}.")
-            content = bytearray()
-            for chunk in response.stream(64 * 1024):
-                content.extend(chunk)
-                if len(content) > settings.FEED_MAX_BYTES:
-                    raise ValueError("Quelle ueberschreitet das Groessenlimit.")
-            return bytes(content)
-        finally:
-            response.release_conn()
-            pool.close()
-    raise ValueError(f"Feed-Quelle ist nicht erreichbar: {connection_error}")
+    except UnsafeUrlError as exc:
+        raise ValueError(str(exc)) from exc
 
 
 def sync_source(source):
@@ -89,6 +35,8 @@ def sync_source(source):
             count = sync_rss(source, payload)
         elif source.kind == FeedSource.Kind.CLOSURE_CSV:
             count = sync_closure_csv(source, payload)
+        elif source.kind == FeedSource.Kind.WASTE_ICS:
+            count = sync_waste_ics(source, payload)
         else:
             raise ValueError("Unbekannter Quelltyp.")
         source.last_success_at = timezone.now()
@@ -186,3 +134,41 @@ def parse_csv_date(value):
     if not value:
         return None
     return datetime.strptime(value, "%Y/%m/%d").date()
+
+
+def as_date(value):
+    return value.date() if hasattr(value, "date") else value
+
+
+@transaction.atomic
+def sync_waste_ics(source, payload):
+    try:
+        calendar_data = Calendar.from_ical(payload)
+    except ValueError as exc:
+        raise ValueError(f"ICS-Kalender konnte nicht gelesen werden: {exc}") from exc
+    today = timezone.localdate()
+    seen = []
+    count = 0
+    for component in calendar_data.walk("VEVENT"):
+        start = component.get("dtstart")
+        if not start:
+            continue
+        pickup_date = as_date(start.dt)
+        if pickup_date < today:
+            continue
+        uid = str(component.get("uid") or f"{pickup_date.isoformat()}-{component.get('summary')}")
+        external_id = uid[:300]
+        seen.append(external_id)
+        FeedItem.objects.update_or_create(
+            source=source,
+            external_id=external_id,
+            defaults={
+                "title": str(component.get("summary", "Abholung"))[:300],
+                "summary": str(component.get("description", ""))[:1500],
+                "starts_on": pickup_date,
+            },
+        )
+        count += 1
+    source.items.filter(starts_on__lt=today).delete()
+    source.items.exclude(external_id__in=seen).filter(starts_on__gte=today).delete()
+    return count

@@ -157,3 +157,8 @@ FEED_ALLOWED_HOSTS = {
     if value.strip()
 }
 FEED_MAX_BYTES = 2_000_000
+
+# Opt-in, aus Datenschutzgruenden standardmaessig leer. Ein selbst gehosteter
+# Nominatim-Server ist vorzuziehen; oeffentliche Instanzen erhalten die
+# eingegebene Wachenadresse als Suchtext.
+GEOCODING_HOST = os.getenv("GEOCODING_HOST", "").strip().lower()

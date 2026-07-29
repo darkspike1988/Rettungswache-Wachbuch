@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
@@ -9,7 +10,8 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from .feed_sync import fetch_source, sync_closure_csv, sync_rss
+from .feed_sync import fetch_source, sync_closure_csv, sync_rss, sync_waste_ics
+from .geocoding import GeocodingError, lookup_district
 from .models import (
     AuditEvent,
     BirthdayPreference,
@@ -292,7 +294,7 @@ class MinimalInterfaceTests(PilotTestCase):
         response = self.client.get(reverse("more"))
         self.assertContains(response, "Geburtstage")
         self.assertContains(response, "Kaffeekasse")
-        self.assertContains(response, "Meldungen &amp; Verkehr", html=True)
+        self.assertContains(response, "Meldungen, Verkehr &amp; Müllabfuhr", html=True)
 
     def test_coffee_ledger_is_a_semantic_table(self):
         response = self.client.get(reverse("coffee"))
@@ -500,8 +502,8 @@ class FeedTests(TestCase):
             locality="Test",
             attribution="Test",
         )
-        with patch("core.feed_sync.socket.getaddrinfo") as lookup, patch(
-            "core.feed_sync.urllib3.HTTPSConnectionPool"
+        with patch("core.net.socket.getaddrinfo") as lookup, patch(
+            "core.net.urllib3.HTTPSConnectionPool"
         ) as pool_class:
             lookup.return_value = [(2, 1, 6, "", ("93.184.216.34", 443))]
             response = pool_class.return_value.request.return_value
@@ -524,6 +526,74 @@ class FeedTests(TestCase):
         sync_closure_csv(self.closures, payload)
         self.assertFalse(FeedItem.objects.filter(external_id="old").exists())
         self.assertTrue(FeedItem.objects.filter(external_id="new").exists())
+
+    def test_waste_ics_keeps_future_pickups_and_drops_past_ones(self):
+        waste_source = FeedSource.objects.create(
+            name="Muellabfuhr Test",
+            url="https://waste.example.org/cal.ics",
+            kind=FeedSource.Kind.WASTE_ICS,
+        )
+        payload = (
+            "BEGIN:VCALENDAR\nVERSION:2.0\n"
+            "BEGIN:VEVENT\nUID:future-1\nDTSTART;VALUE=DATE:20991231\n"
+            "SUMMARY:Restmuelltonne\nEND:VEVENT\n"
+            "BEGIN:VEVENT\nUID:past-1\nDTSTART;VALUE=DATE:20200101\n"
+            "SUMMARY:Alte Abholung\nEND:VEVENT\n"
+            "END:VCALENDAR\n"
+        ).encode()
+        count = sync_waste_ics(waste_source, payload)
+        self.assertEqual(count, 1)
+        self.assertTrue(
+            FeedItem.objects.filter(external_id="future-1", title="Restmuelltonne").exists()
+        )
+        self.assertFalse(FeedItem.objects.filter(external_id="past-1").exists())
+
+
+class GeocodingTests(TestCase):
+    @override_settings(GEOCODING_HOST="")
+    def test_disabled_without_configured_host(self):
+        with self.assertRaises(GeocodingError):
+            lookup_district("Hauptstr. 1", "33397", "Steinhagen")
+
+    @override_settings(GEOCODING_HOST="geo.example.org")
+    def test_resolves_district_and_city_from_response(self):
+        payload = json.dumps(
+            [{"address": {"county": "Kreis Guetersloh", "town": "Steinhagen"}}]
+        ).encode()
+        with patch("core.geocoding.fetch_https", return_value=payload) as fetch:
+            result = lookup_district("Hauptstr. 1", "33397", "Steinhagen")
+        self.assertEqual(result, {"district": "Kreis Guetersloh", "city": "Steinhagen"})
+        fetch.assert_called_once()
+
+    @override_settings(GEOCODING_HOST="geo.example.org")
+    def test_raises_when_address_not_found(self):
+        with patch("core.geocoding.fetch_https", return_value=b"[]"):
+            with self.assertRaises(GeocodingError):
+                lookup_district("Nirgendwo", "", "")
+
+
+class FeedFilteringTests(PilotTestCase):
+    def test_feeds_filtered_by_station_locality_once_address_is_known(self):
+        regional = FeedSource.objects.create(
+            name="Regional", url="https://news.example.org/feed.xml",
+            kind=FeedSource.Kind.NEWS_RSS, locality="Steinhagen", attribution="Test",
+        )
+        elsewhere = FeedSource.objects.create(
+            name="Andernorts", url="https://news.example.org/other.xml",
+            kind=FeedSource.Kind.NEWS_RSS, locality="Andernorts", attribution="Test",
+        )
+        FeedItem.objects.create(source=regional, external_id="1", title="Regional-Meldung")
+        FeedItem.objects.create(source=elsewhere, external_id="2", title="Fremde Meldung")
+
+        response = self.client.get(reverse("feeds"))
+        self.assertContains(response, "Regional-Meldung")
+        self.assertContains(response, "Fremde Meldung")
+
+        self.station.city = "Steinhagen"
+        self.station.save(update_fields=["city"])
+        response = self.client.get(reverse("feeds"))
+        self.assertContains(response, "Regional-Meldung")
+        self.assertNotContains(response, "Fremde Meldung")
 
 
 class TeamAndAuditTests(PilotTestCase):
@@ -551,6 +621,55 @@ class TeamAndAuditTests(PilotTestCase):
         self.assertFalse(pending.is_staff)
         self.assertFalse(pending.is_superuser)
         self.assertEqual(pending.station_memberships.get().role, Membership.Role.ADMIN)
+
+    def test_admin_sets_waste_calendar_url(self):
+        with override_settings(FEED_ALLOWED_HOSTS={"waste.example.org"}):
+            response = self.client.post(reverse("waste_source_update"), {
+                "url": "https://waste.example.org/cal.ics",
+            })
+        self.assertRedirects(response, f"{reverse('feeds')}?typ=muell")
+        source = FeedSource.objects.get(station=self.station, kind=FeedSource.Kind.WASTE_ICS)
+        self.assertEqual(source.url, "https://waste.example.org/cal.ics")
+        self.assertTrue(AuditEvent.objects.filter(action="feeds.waste_source_updated").exists())
+
+    def test_waste_calendar_rejects_host_not_allowlisted(self):
+        response = self.client.post(reverse("waste_source_update"), {
+            "url": "https://attacker.invalid/cal.ics",
+        })
+        self.assertRedirects(response, f"{reverse('feeds')}?typ=muell")
+        self.assertFalse(
+            FeedSource.objects.filter(station=self.station, kind=FeedSource.Kind.WASTE_ICS).exists()
+        )
+
+    def test_member_cannot_configure_waste_calendar(self):
+        self.membership.role = Membership.Role.MEMBER
+        self.membership.save(update_fields=["role"])
+        response = self.client.post(reverse("waste_source_update"), {
+            "url": "https://waste.example.org/cal.ics",
+        })
+        self.assertEqual(response.status_code, 403)
+
+    def test_station_geocode_updates_city_and_district(self):
+        self.station.street = "Hauptstr. 1"
+        self.station.postal_code = "33397"
+        self.station.save(update_fields=["street", "postal_code"])
+        payload = json.dumps(
+            [{"address": {"county": "Kreis Guetersloh", "town": "Steinhagen"}}]
+        ).encode()
+        with override_settings(GEOCODING_HOST="geo.example.org"), patch(
+            "core.geocoding.fetch_https", return_value=payload
+        ):
+            response = self.client.post(reverse("station_geocode"))
+        self.assertRedirects(response, reverse("station_settings"))
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.district, "Kreis Guetersloh")
+        self.assertEqual(self.station.city, "Steinhagen")
+        self.assertTrue(AuditEvent.objects.filter(action="station.geocoded").exists())
+
+    @override_settings(GEOCODING_HOST="")
+    def test_station_geocode_without_configured_host_shows_error(self):
+        response = self.client.post(reverse("station_geocode"), follow=True)
+        self.assertContains(response, "Kein Geocoding-Dienst konfiguriert")
 
     def test_auditor_sees_audit_but_not_dashboard(self):
         self.membership.role = Membership.Role.AUDITOR

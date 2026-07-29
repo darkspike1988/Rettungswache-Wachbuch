@@ -35,14 +35,17 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
 
 ## Datenmodell
 
-- `Station`, `Membership`: Wachen (Name, Standort), Modulschalter, Rollen und Freigaben
+- `Station`, `Membership`: Wachen (Name, Standort, Adresse, Ort, Kreis),
+  Modulschalter, Rollen und Freigaben
 - `HandoverEntry`, `HandoverRevision`: Arbeitsstand, optionaler Tagesbezug (`for_date`)
   und unveraenderte Revisionen
 - `DailyTeamNote`: Team je Tag fuer das Wochenprotokoll, eine Zeile je Wache und Datum
+- `FeedSource`, `FeedItem`: optionale externe Quellen (RSS, Verkehr-CSV,
+  Abfallkalender-ICS); global oder ueber `station` einer einzelnen Wache
+  zugeordnet
 - `CalendarEvent`: Wachen-, kein Dienstplankalender
 - `BirthdayPreference`: freiwillig, nur Tag und Monat
 - `CoffeeEntry`: append-only Buchungen in Cent und Korrekturbezug
-- `FeedSource`, `FeedItem`: optionale externe Meldungen
 - `AuditEvent`: Akteur, Aktion, Objekt und Zeitpunkt ohne Freitextkopien
 
 ## Authentifizierung

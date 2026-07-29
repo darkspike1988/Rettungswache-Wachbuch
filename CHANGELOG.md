@@ -7,6 +7,15 @@
 - Wochenprotokoll (`/wochenprotokoll/`) gruppiert Uebergaben nach Tag analog zum
   Papier-Uebergabeprotokoll, inklusive Team-je-Tag und Allgemeines-Abschnitt
 - Uebergaben koennen optional einem Tag zugeordnet werden (`for_date`)
+- Wachenadresse (Strasse, PLZ, Ort, Kreis) unter `/einstellungen/` pflegbar
+- optionale Ort-/Kreis-Ermittlung aus der Adresse ueber einen offenen,
+  Nominatim-kompatiblen Geocoding-Dienst (`GEOCODING_HOST`, standardmaessig aus)
+- Meldungen und Verkehr werden nach Ort/Kreis der Wache gefiltert, sobald
+  dieser hinterlegt ist; ohne Angabe unveraendertes Verhalten
+- Abfallkalender je Wache: Stationsadmins hinterlegen einen ICS-Abo-Link unter
+  `/lage/?typ=muell`, kommende Abholtermine werden automatisch synchronisiert
+- gemeinsame SSRF-gehaertete HTTP-Abrufschicht (`core/net.py`) fuer Feeds und
+  Geocoding
 
 ## Unreleased - Open-Source-Basis
 

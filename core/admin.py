@@ -91,8 +91,8 @@ class CoffeeEntryAdmin(ReadOnlyAdmin):
 
 @admin.register(FeedSource)
 class FeedSourceAdmin(admin.ModelAdmin):
-    list_display = ("name", "kind", "locality", "is_enabled", "last_success_at")
-    list_filter = ("kind", "is_enabled")
+    list_display = ("name", "kind", "station", "locality", "is_enabled", "last_success_at")
+    list_filter = ("kind", "is_enabled", "station")
     readonly_fields = ("last_success_at", "last_error_at", "last_error")
 
 

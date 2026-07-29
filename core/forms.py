@@ -4,7 +4,15 @@ from django import forms
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from .models import BirthdayPreference, CalendarEvent, DailyTeamNote, HandoverEntry, Membership, Station
+from .models import (
+    BirthdayPreference,
+    CalendarEvent,
+    DailyTeamNote,
+    FeedSource,
+    HandoverEntry,
+    Membership,
+    Station,
+)
 
 
 class DateTimeLocalInput(forms.DateTimeInput):
@@ -144,9 +152,27 @@ class StationSettingsForm(forms.ModelForm):
         fields = [
             "name",
             "location",
+            "street",
+            "postal_code",
+            "city",
+            "district",
             "calendar_enabled",
             "birthdays_enabled",
             "coffee_enabled",
             "feeds_enabled",
         ]
-        labels = {"name": "Name der Rettungswache", "location": "Standort"}
+        labels = {
+            "name": "Name der Rettungswache",
+            "location": "Standort (Anzeige im Kopfbereich)",
+            "street": "Strasse und Hausnummer",
+            "postal_code": "PLZ",
+            "city": "Ort",
+            "district": "Kreis/Landkreis",
+        }
+
+
+class WasteSourceForm(forms.ModelForm):
+    class Meta:
+        model = FeedSource
+        fields = ["url"]
+        labels = {"url": "ICS-Abo-Link des Abfallkalenders"}

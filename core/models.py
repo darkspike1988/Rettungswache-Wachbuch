@@ -10,6 +10,10 @@ from django.db.models import Q
 class Station(models.Model):
     name = models.CharField(max_length=120)
     location = models.CharField(max_length=160, blank=True, verbose_name="Standort")
+    street = models.CharField(max_length=160, blank=True, verbose_name="Strasse und Hausnummer")
+    postal_code = models.CharField(max_length=10, blank=True, verbose_name="PLZ")
+    city = models.CharField(max_length=120, blank=True, verbose_name="Ort")
+    district = models.CharField(max_length=120, blank=True, verbose_name="Kreis/Landkreis")
     slug = models.SlugField(unique=True)
     is_active = models.BooleanField(default=True)
     calendar_enabled = models.BooleanField(default=True, verbose_name="Kalender aktiviert")
@@ -22,6 +26,10 @@ class Station(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def localities(self):
+        return {value for value in (self.city, self.district) if value}
 
     @classmethod
     def get_default(cls):
@@ -244,12 +252,17 @@ class FeedSource(models.Model):
     class Kind(models.TextChoices):
         NEWS_RSS = "news_rss", "Nachrichten (RSS)"
         CLOSURE_CSV = "closure_csv", "Verkehrsmeldungen (CSV)"
+        WASTE_ICS = "waste_ics", "Muellabfuhr (ICS)"
 
     name = models.CharField(max_length=120, unique=True)
     url = models.URLField(max_length=600)
     kind = models.CharField(max_length=20, choices=Kind.choices)
-    locality = models.CharField(max_length=80)
-    attribution = models.CharField(max_length=200)
+    locality = models.CharField(max_length=80, blank=True)
+    attribution = models.CharField(max_length=200, blank=True)
+    station = models.ForeignKey(
+        Station, on_delete=models.CASCADE, null=True, blank=True, related_name="feed_sources",
+        help_text="Nur fuer stationsbezogene Quellen wie den Muellkalender gesetzt.",
+    )
     is_enabled = models.BooleanField(default=True)
     last_success_at = models.DateTimeField(null=True, blank=True)
     last_error_at = models.DateTimeField(null=True, blank=True)
@@ -257,6 +270,13 @@ class FeedSource(models.Model):
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["station"],
+                condition=Q(kind="waste_ics"),
+                name="unique_station_waste_source",
+            )
+        ]
 
     def __str__(self):
         return self.name

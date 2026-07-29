@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db import connection, transaction
-from django.db.models import Case, IntegerField, Sum, Value, When
+from django.db.models import Case, IntegerField, Q, Sum, Value, When
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -24,7 +24,9 @@ from .forms import (
     MembershipAssignmentForm,
     MembershipEditForm,
     StationSettingsForm,
+    WasteSourceForm,
 )
+from .geocoding import GeocodingError, lookup_district
 from .models import (
     AuditEvent,
     BirthdayPreference,
@@ -409,14 +411,100 @@ def coffee_correct(request, pk):
 @membership_required(CONTENT_ROLES)
 @station_module_required("feeds_enabled")
 def feeds(request):
-    feed_type = "verkehr" if request.GET.get("typ") == "verkehr" else "meldungen"
+    station = request.membership.station
+    feed_type = request.GET.get("typ", "meldungen")
+    if feed_type not in {"meldungen", "verkehr", "muell"}:
+        feed_type = "meldungen"
+
+    if feed_type == "muell":
+        waste_source = FeedSource.objects.filter(
+            station=station, kind=FeedSource.Kind.WASTE_ICS
+        ).first()
+        items = (
+            FeedItem.objects.filter(source=waste_source, starts_on__gte=timezone.localdate())
+            .order_by("starts_on")
+            if waste_source else FeedItem.objects.none()
+        )
+        return render(request, "core/feeds.html", {
+            "page_obj": page_for(request, items, 25),
+            "feed_type": feed_type,
+            "sources": [waste_source] if waste_source else [],
+            "waste_form": WasteSourceForm(instance=waste_source),
+            "can_configure_waste": request.membership.role == Membership.Role.ADMIN,
+        })
+
     kind = FeedSource.Kind.CLOSURE_CSV if feed_type == "verkehr" else FeedSource.Kind.NEWS_RSS
-    items = FeedItem.objects.filter(source__kind=kind).select_related("source")
+    sources = FeedSource.objects.filter(is_enabled=True, kind=kind, station__isnull=True)
+    localities = station.localities
+    if localities:
+        locality_match = Q()
+        for value in localities:
+            locality_match |= Q(locality__iexact=value)
+        sources = sources.filter(locality_match)
+    items = FeedItem.objects.filter(source__in=sources).select_related("source")
     return render(request, "core/feeds.html", {
         "page_obj": page_for(request, items, 25),
         "feed_type": feed_type,
-        "sources": FeedSource.objects.filter(is_enabled=True),
+        "sources": sources,
     })
+
+
+@membership_required({Membership.Role.ADMIN})
+@station_module_required("feeds_enabled")
+@require_POST
+def waste_source_update(request):
+    station = request.membership.station
+    source = FeedSource.objects.filter(station=station, kind=FeedSource.Kind.WASTE_ICS).first()
+    form = WasteSourceForm(request.POST, instance=source)
+    if form.is_valid():
+        with transaction.atomic():
+            saved = form.save(commit=False)
+            saved.station = station
+            saved.kind = FeedSource.Kind.WASTE_ICS
+            saved.is_enabled = True
+            if not saved.pk:
+                saved.name = f"Muellabfuhr {station.slug}"
+                saved.locality = station.city or station.name
+                saved.attribution = "Oertliche Abfallwirtschaft"
+            saved.full_clean()
+            saved.save()
+            audit(request.user, station, "feeds.waste_source_updated", saved, {"fields": ["url"]})
+        messages.success(
+            request,
+            "Abfallkalender wurde gespeichert. Die naechste Synchronisierung zeigt die Termine an.",
+        )
+    else:
+        messages.error(request, "Abfallkalender-Link konnte nicht gespeichert werden.")
+    return redirect(f"{reverse('feeds')}?typ=muell")
+
+
+@membership_required({Membership.Role.ADMIN})
+@require_POST
+def station_geocode(request):
+    station = request.membership.station
+    try:
+        result = lookup_district(station.street, station.postal_code, station.city)
+    except GeocodingError as exc:
+        messages.error(request, str(exc))
+        return redirect("station_settings")
+    changed_fields = []
+    if result["district"] and result["district"] != station.district:
+        station.district = result["district"]
+        changed_fields.append("district")
+    if result["city"] and result["city"] != station.city:
+        station.city = result["city"]
+        changed_fields.append("city")
+    if not station.location and (result["city"] or result["district"]):
+        station.location = result["city"] or result["district"]
+        changed_fields.append("location")
+    if changed_fields:
+        with transaction.atomic():
+            station.save(update_fields=changed_fields)
+            audit(request.user, station, "station.geocoded", station, {"fields": changed_fields})
+        messages.success(request, "Ort/Kreis wurden anhand der Adresse aktualisiert.")
+    else:
+        messages.info(request, "Keine Aenderung: Ort/Kreis stimmen bereits mit der Adresse ueberein.")
+    return redirect("station_settings")
 
 
 @membership_required(CONTENT_ROLES)

@@ -20,10 +20,12 @@ urlpatterns = [
     path("kaffeekasse/neu/", views.coffee_create, name="coffee_create"),
     path("kaffeekasse/<int:pk>/korrigieren/", views.coffee_correct, name="coffee_correct"),
     path("lage/", views.feeds, name="feeds"),
+    path("lage/muellabfuhr/", views.waste_source_update, name="waste_source_update"),
     path("mehr/", views.more, name="more"),
     path("team/", views.team, name="team"),
     path("team/freigeben/", views.team_create, name="team_create"),
     path("team/<int:pk>/", views.membership_update, name="membership_update"),
     path("einstellungen/", views.station_settings, name="station_settings"),
+    path("einstellungen/adresse/", views.station_geocode, name="station_geocode"),
     path("audit/", views.audit_log, name="audit_log"),
 ]

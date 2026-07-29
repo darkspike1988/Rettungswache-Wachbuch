@@ -8,6 +8,12 @@
 - Kaffeekasse als nachvollziehbares Ledger statt stiller Aenderungen.
 - Audit speichert Feldnamen und Ereignisse, nicht die fachlichen Freitexte.
 - Keine Rankings, Lesestatistiken oder personenbezogene Leistungskennzahlen.
+- Wachenadresse, Geocoding und Abfallkalender betreffen die Organisation, nicht
+  einzelne Personen. Beide Funktionen sind Opt-in (leerer `GEOCODING_HOST` bzw.
+  keine gesetzte Abfallkalender-URL deaktiviert sie) und senden ausschliesslich
+  die eingetragene Wachenadresse beziehungsweise rufen die von der Wache
+  hinterlegte ICS-URL ab. Ein selbst gehosteter Geocoding-Dienst vermeidet die
+  Weitergabe an Dritte vollstaendig.
 
 ## Vor einem betrieblichen Pilotbetrieb klaeren
 
