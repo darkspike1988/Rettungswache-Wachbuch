@@ -13,7 +13,7 @@
   <a class="skip-link" href="#inhalt">Zum Inhalt</a>
   <header class="app-header">
     <div class="header-inner">
-      <a class="brand" href="{% if current_membership.role == 'auditor' %}{% url 'audit_log' %}{% else %}{% url 'dashboard' %}{% endif %}">
+      <a class="brand" href="{% if current_membership.role == 'auditor' %}{% url 'audit_log' %}{% else %}{% url 'home' %}{% endif %}">
         {% if current_membership %}
           <span><strong>{{ current_membership.station.name }}</strong>{% if current_membership.station.location %}<small>{{ current_membership.station.location }}</small>{% endif %}</span>
         {% else %}
@@ -22,11 +22,11 @@
       </a>
       {% if request.user.is_authenticated %}
         <div class="account">
-          <div class="identity">
+          <a class="identity" href="{% url 'account' %}">
             <strong>{{ request.user.first_name|default:request.user.username }}</strong>
             {# Die Wache steht schon mittig im Kopfbereich - hier nur die Rolle. #}
             {% if current_membership %}<span>{{ current_membership.get_role_display }}</span>{% endif %}
-          </div>
+          </a>
           <form class="logout-form" method="post" action="{% url 'logout' %}">
             {% csrf_token %}
             <button type="submit">Abmelden</button>
@@ -46,11 +46,9 @@
         {% if current_membership.role == 'auditor' %}
           <a href="{% url 'audit_log' %}" aria-current="page">Audit</a>
         {% else %}
-          <a href="{% url 'dashboard' %}"{% if request.resolver_match.url_name == 'dashboard' %} aria-current="page"{% endif %}>Übersicht</a>
-          <a href="{% url 'handover_list' %}"{% if 'handover' in request.resolver_match.url_name and request.resolver_match.url_name != 'handover_week' %} aria-current="page"{% endif %}>Übergaben</a>
-          <a href="{% url 'handover_week' %}"{% if request.resolver_match.url_name == 'handover_week' or request.resolver_match.url_name == 'daily_team_update' %} aria-current="page"{% endif %}>Wochenprotokoll</a>
-          {% if current_membership.station.calendar_enabled %}<a href="{% url 'calendar' %}"{% if 'calendar' in request.resolver_match.url_name %} aria-current="page"{% endif %}>Kalender</a>{% endif %}
-          <a href="{% url 'more' %}"{% if request.resolver_match.url_name == 'more' or request.resolver_match.url_name == 'birthdays' or request.resolver_match.url_name == 'birthday_settings' or request.resolver_match.url_name == 'coffee' or request.resolver_match.url_name == 'coffee_create' or request.resolver_match.url_name == 'coffee_correct' or request.resolver_match.url_name == 'feeds' or request.resolver_match.url_name == 'team' or request.resolver_match.url_name == 'team_create' or request.resolver_match.url_name == 'membership_update' or request.resolver_match.url_name == 'station_settings' or request.resolver_match.url_name == 'audit_log' %} aria-current="page"{% endif %}>Mehr</a>
+          <a href="{% url 'home' %}"{% if request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'daily_team_update' %} aria-current="page"{% endif %}>Woche</a>
+          <a href="{% url 'handover_search' %}"{% if request.resolver_match.url_name == 'handover_search' or 'handover' in request.resolver_match.url_name and request.resolver_match.url_name != 'home' %} aria-current="page"{% endif %}>Suchen</a>
+          <a href="{% url 'station_area' %}"{% if request.resolver_match.url_name in station_area_pages %} aria-current="page"{% endif %}>Wache</a>
         {% endif %}
       </div>
     </nav>

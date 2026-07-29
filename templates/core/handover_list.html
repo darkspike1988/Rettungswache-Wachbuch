@@ -7,7 +7,7 @@
 </header>
 
 <nav class="filter-nav" aria-label="Übergaben filtern">
-  <a href="{% url 'handover_list' %}{% if query %}?q={{ query|urlencode }}{% endif %}"{% if scope == 'aktiv' %} aria-current="page"{% endif %}>Aktiv</a>
+  <a href="{% url 'handover_search' %}{% if query %}?q={{ query|urlencode }}{% endif %}"{% if scope == 'aktiv' %} aria-current="page"{% endif %}>Aktiv</a>
   <a href="?ansicht=dringend{% if query %}&amp;q={{ query|urlencode }}{% endif %}"{% if scope == 'dringend' %} aria-current="page"{% endif %}>Dringend</a>
   <a href="?ansicht=archiv{% if query %}&amp;q={{ query|urlencode }}{% endif %}"{% if scope == 'archiv' %} aria-current="page"{% endif %}>Archiv</a>
 </nav>
@@ -17,7 +17,7 @@
   <label class="visually-hidden" for="suche">Übergaben durchsuchen</label>
   <input type="search" id="suche" name="q" value="{{ query }}" placeholder="In Titel und Text suchen">
   <button class="button secondary" type="submit">Suchen</button>
-  {% if query %}<a class="button secondary" href="{% if scope == 'aktiv' %}{% url 'handover_list' %}{% else %}?ansicht={{ scope }}{% endif %}">Zurücksetzen</a>{% endif %}
+  {% if query %}<a class="button secondary" href="{% if scope == 'aktiv' %}{% url 'handover_search' %}{% else %}?ansicht={{ scope }}{% endif %}">Zurücksetzen</a>{% endif %}
 </form>
 
 {% if query %}<p class="context-line">{{ result_count }} Treffer für &bdquo;{{ query }}&ldquo; in dieser Ansicht.</p>{% endif %}

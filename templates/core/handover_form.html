@@ -3,7 +3,7 @@
 {% block content %}
 {% if handover %}<a class="back-link" href="{% url 'handover_detail' handover.pk %}">Zurück zur Übergabe</a>
 <header class="page-heading narrow"><p class="context-line">Wachbuch &middot; Version {{ handover.version }}</p><h1>Übergabe bearbeiten</h1><p class="lead">Die bisherige Fassung bleibt als Revision erhalten.</p></header>
-{% else %}<a class="back-link" href="{% url 'handover_list' %}">Zurück zu Übergaben</a>
+{% else %}<a class="back-link" href="{% url 'handover_search' %}">Zurück zur Suche</a>
 <header class="page-heading narrow"><p class="context-line">Wachbuch</p><h1>Übergabe anlegen</h1><p class="lead">Kurz, sachlich und für die nächste Schicht relevant.</p></header>
 {% endif %}
 <form method="post" class="form-card narrow">
@@ -25,6 +25,6 @@
     {{ form.details }}
   </div>
   <details class="details-help"><summary>Warum dürfen hier keine Einsatzdaten stehen?</summary><p>Das Wachbuch ist nur für Wachenorganisation, Material, Fahrzeuge und offene Aufgaben vorgesehen. Patienten- und Einsatzdokumentation bleibt im freigegebenen Fachverfahren.</p></details>
-  <div class="form-actions"><button class="button primary" type="submit">{% if handover %}Änderung speichern{% else %}Übergabe anlegen{% endif %}</button><a class="button secondary" href="{% if handover %}{% url 'handover_detail' handover.pk %}{% else %}{% url 'handover_list' %}{% endif %}">Abbrechen</a></div>
+  <div class="form-actions"><button class="button primary" type="submit">{% if handover %}Änderung speichern{% else %}Übergabe anlegen{% endif %}</button><a class="button secondary" href="{% if handover %}{% url 'handover_detail' handover.pk %}{% else %}{% url 'handover_search' %}{% endif %}">Abbrechen</a></div>
 </form>
 {% endblock %}

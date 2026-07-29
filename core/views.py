@@ -56,6 +56,7 @@ from .models import (
     Station,
 )
 from .throttle import password_reset_is_throttled
+from .twofactor import is_enabled as twofactor_is_enabled
 from .services import (
     acknowledge_handover,
     audit,
@@ -131,7 +132,7 @@ def demo_start(request):
     login(request, visitor, backend="django.contrib.auth.backends.ModelBackend")
     request.session[DEMO_SESSION_KEY] = True
     # Kein Hinweis als Meldung: der dauerhafte Banner sagt bereits dasselbe.
-    return redirect("dashboard")
+    return redirect("home")
 
 
 def access(request):
@@ -141,35 +142,8 @@ def access(request):
         if membership:
             if membership.role == Membership.Role.AUDITOR:
                 return redirect("audit_log")
-            return redirect("dashboard")
+            return redirect("home")
     return render(request, "core/access.html", {"membership": membership})
-
-
-@membership_required(CONTENT_ROLES)
-def dashboard(request):
-    station = request.membership.station
-    if request.membership.role == Membership.Role.ADMIN and not station.onboarded:
-        return redirect("setup_wizard")
-    now = timezone.now()
-    active = prioritized_handovers(station)
-    events = CalendarEvent.objects.none()
-    if station.calendar_enabled:
-        events = CalendarEvent.objects.filter(
-            station=station, ends_at__gte=now
-        ).order_by("starts_at")[:3]
-    unread_urgent = active.filter(priority=HandoverEntry.Priority.URGENT).exclude(
-        acknowledgements__user=request.user
-    )
-    context = {
-        "open_handovers": active[:5],
-        "open_count": active.count(),
-        "urgent_count": active.filter(priority=HandoverEntry.Priority.URGENT).count(),
-        "unread_urgent": unread_urgent[:5],
-        "unread_urgent_count": unread_urgent.count(),
-        "events": events,
-        "calendar_enabled": station.calendar_enabled,
-    }
-    return render(request, "core/dashboard.html", context)
 
 
 def prioritized_handovers(station):
@@ -236,7 +210,7 @@ def setup_wizard(request, step="basics"):
             request,
             "Einrichtung übersprungen - alles lässt sich jederzeit unter Einstellungen anpassen.",
         )
-        return redirect("dashboard")
+        return redirect("home")
 
     if step == "done":
         if request.method == "POST":
@@ -244,7 +218,7 @@ def setup_wizard(request, step="basics"):
             station.save(update_fields=["onboarded"])
             audit(request.user, station, "station.onboarding_completed", station, {})
             messages.success(request, "Einrichtung abgeschlossen.")
-            return redirect("dashboard")
+            return redirect("home")
         return render(request, "core/setup_wizard.html", context)
 
     form_class = SETUP_FORMS[step]
@@ -468,6 +442,8 @@ def handover_week_pdf(request):
 @membership_required(CONTENT_ROLES)
 def handover_week(request):
     station = request.membership.station
+    if request.membership.role == Membership.Role.ADMIN and not station.onboarded:
+        return redirect("setup_wizard")
     today = timezone.localdate()
     default_year, default_week, _ = today.isocalendar()
     monday = _week_start(
@@ -482,9 +458,19 @@ def handover_week(request):
     prev_year, prev_week, _ = previous_monday.isocalendar()
     next_year, next_week, _ = next_monday.isocalendar()
 
+    unread_urgent = (
+        prioritized_handovers(station)
+        .filter(priority=HandoverEntry.Priority.URGENT)
+        .exclude(acknowledgements__user=request.user)
+    )
+
     return render(request, "core/handover_week.html", {
         "days": days,
         "general_entries": general_entries,
+        "today": today,
+        "unread_urgent": unread_urgent[:5],
+        "unread_urgent_count": unread_urgent.count(),
+        "open_count": prioritized_handovers(station).count(),
         "year": year,
         "week": week,
         "monday": monday,
@@ -511,7 +497,7 @@ def daily_team_update(request, tag):
     else:
         messages.error(request, "Team konnte nicht gespeichert werden.")
     year, week, _ = day.isocalendar()
-    return redirect(f"{reverse('handover_week')}?jahr={year}&kw={week}")
+    return redirect(f"{reverse('home')}?jahr={year}&kw={week}")
 
 
 @membership_required(CONTENT_ROLES)
@@ -780,8 +766,18 @@ def station_geocode(request):
 
 
 @membership_required(CONTENT_ROLES)
-def more(request):
-    return render(request, "core/more.html")
+def station_area(request):
+    """Organisatorisches der Wache an einem Ort - Module, Team, Nachweise."""
+    return render(request, "core/station_area.html")
+
+
+@membership_required(CONTENT_ROLES)
+def account(request):
+    """Persoenliche Einstellungen. Liegt beim eigenen Namen, nicht in einer
+    Sammelschublade."""
+    return render(request, "core/account.html", {
+        "twofactor_enabled": twofactor_is_enabled(request.user),
+    })
 
 
 @membership_required()
@@ -799,7 +795,7 @@ def switch_station(request):
     messages.success(request, f"Aktive Wache: {membership.station.name}.")
     if membership.role == Membership.Role.AUDITOR:
         return redirect("audit_log")
-    return redirect("dashboard")
+    return redirect("home")
 
 
 @membership_required({Membership.Role.ADMIN})

@@ -66,12 +66,12 @@ class SetupWizardTests(TestCase):
 
     def test_new_admin_is_redirected_to_wizard(self):
         self.client.force_login(self.admin)
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertRedirects(response, reverse("setup_wizard"))
 
     def test_member_is_not_redirected_to_wizard(self):
         self.client.force_login(self.member)
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertEqual(response.status_code, 200)
 
     def test_member_cannot_access_wizard(self):
@@ -90,7 +90,7 @@ class SetupWizardTests(TestCase):
         })
         self.assertRedirects(response, reverse("setup_wizard", args=["done"]))
         response = self.client.post(reverse("setup_wizard", args=["done"]))
-        self.assertRedirects(response, reverse("dashboard"))
+        self.assertRedirects(response, reverse("home"))
 
         self.station.refresh_from_db()
         self.assertEqual(self.station.name, "Rettungswache Demo")
@@ -100,13 +100,13 @@ class SetupWizardTests(TestCase):
         self.assertTrue(AuditEvent.objects.filter(action="station.onboarding_completed").exists())
         self.assertTrue(AuditEvent.objects.filter(action="station.onboarding_step_saved").exists())
 
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertEqual(response.status_code, 200)
 
     def test_skip_marks_onboarded_without_changes(self):
         self.client.force_login(self.admin)
         response = self.client.post(reverse("setup_wizard"), {"skip_all": "1"})
-        self.assertRedirects(response, reverse("dashboard"))
+        self.assertRedirects(response, reverse("home"))
         self.station.refresh_from_db()
         self.assertTrue(self.station.onboarded)
         self.assertEqual(self.station.name, "Neue Wache")
@@ -135,14 +135,14 @@ class MultiStationTests(PilotTestCase):
             station=self.second, category=HandoverEntry.Category.TASK,
             title="Nur Zweitwache", details="x", author=self.user,
         )
-        response = self.client.get(reverse("handover_list"))
+        response = self.client.get(reverse("handover_search"))
         self.assertContains(response, "Nur Testwache")
         self.assertNotContains(response, "Nur Zweitwache")
 
         switch = self.client.post(reverse("switch_station"), {"station": self.second.pk})
-        self.assertRedirects(switch, reverse("dashboard"))
+        self.assertRedirects(switch, reverse("home"))
 
-        response = self.client.get(reverse("handover_list"))
+        response = self.client.get(reverse("handover_search"))
         self.assertContains(response, "Nur Zweitwache")
         self.assertNotContains(response, "Nur Testwache")
 
@@ -169,7 +169,7 @@ class MultiStationTests(PilotTestCase):
         self.client.post(reverse("switch_station"), {"station": self.second.pk})
         self.second_membership.is_active = False
         self.second_membership.save(update_fields=["is_active"])
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Testwache")
 
@@ -238,13 +238,13 @@ class SecurityAndAccessTests(PilotTestCase):
     def test_user_without_membership_waits_for_approval(self):
         outsider = User.objects.create_user("outside@example.org")
         self.client.force_login(outsider)
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertRedirects(response, reverse("access"))
 
     def test_auditor_cannot_read_station_content(self):
         self.membership.role = Membership.Role.AUDITOR
         self.membership.save(update_fields=["role"])
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertEqual(response.status_code, 403)
 
     @override_settings(
@@ -254,7 +254,7 @@ class SecurityAndAccessTests(PilotTestCase):
     def test_tailscale_header_bootstraps_only_configured_admin(self):
         self.client.logout()
         response = self.client.get(
-            reverse("dashboard"),
+            reverse("home"),
             HTTP_TAILSCALE_USER_LOGIN="pilot-admin@example.org",
             HTTP_TAILSCALE_USER_NAME="Pilot Admin",
         )
@@ -268,7 +268,7 @@ class SecurityAndAccessTests(PilotTestCase):
 
     @override_settings(TRUST_TAILSCALE_HEADERS=True)
     def test_missing_tailscale_header_ends_existing_session(self):
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertRedirects(response, reverse("access"))
         self.assertNotIn("_auth_user_id", self.client.session)
 
@@ -277,14 +277,14 @@ class SecurityAndAccessTests(PilotTestCase):
         self.client.logout()
         inactive = User.objects.create_user("inactive@example.org", is_active=False)
         response = self.client.get(
-            reverse("dashboard"),
+            reverse("home"),
             HTTP_TAILSCALE_USER_LOGIN=inactive.username,
         )
         self.assertRedirects(response, reverse("access"))
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_authenticated_user_can_log_out_from_interface(self):
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertContains(response, reverse("logout"))
         response = self.client.post(reverse("logout"))
         self.assertRedirects(response, reverse("access"))
@@ -446,7 +446,7 @@ class WeeklyProtocolTests(PilotTestCase):
             details="Ohne Tagesbezug.",
             author=self.user,
         )
-        response = self.client.get(reverse("handover_week"))
+        response = self.client.get(reverse("home"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Fahrzeugcheck")
         self.assertContains(response, "Allgemeiner Hinweis")
@@ -492,7 +492,7 @@ class WeeklyProtocolTests(PilotTestCase):
             {"note": "Dotzki/Huber"},
         )
         year, week, _ = today.isocalendar()
-        self.assertRedirects(response, f"{reverse('handover_week')}?jahr={year}&kw={week}")
+        self.assertRedirects(response, f"{reverse('home')}?jahr={year}&kw={week}")
         note = DailyTeamNote.objects.get(station=self.station, date=today)
         self.assertEqual(note.note, "Dotzki/Huber")
         self.assertTrue(AuditEvent.objects.filter(action="handover.team_set").exists())
@@ -516,7 +516,7 @@ class WeeklyProtocolTests(PilotTestCase):
         self.assertRedirects(response, reverse("station_settings"))
         self.station.refresh_from_db()
         self.assertEqual(self.station.location, "Steinhagen")
-        dashboard = self.client.get(reverse("dashboard"))
+        dashboard = self.client.get(reverse("home"))
         self.assertContains(dashboard, "Rettungswache Steinhagen")
         self.assertContains(dashboard, "Steinhagen")
 
@@ -526,12 +526,12 @@ class NoDuplicateNamingTests(PilotTestCase):
     rechts neben der Rolle und in der Kontextzeile. Einmal genuegt."""
 
     def test_station_name_appears_once_on_the_dashboard(self):
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         body = response.content.decode()
         self.assertEqual(body.count("Testwache"), 1)
 
     def test_identity_shows_the_role_without_repeating_the_station(self):
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertContains(response, "Mitglied")
 
     def test_team_rows_name_a_person_once(self):
@@ -556,14 +556,28 @@ class MinimalInterfaceTests(PilotTestCase):
             author=self.user,
         )
 
-    def test_dashboard_only_contains_core_shift_information(self):
-        response = self.client.get(reverse("dashboard"))
+    def test_home_is_the_week_and_nothing_else(self):
+        """Die Woche ist die Startseite. Kein Dashboard davor, keine zweite
+        Ansicht derselben Daten."""
+        today = timezone.localdate()
+        HandoverEntry.objects.create(
+            station=self.station, category=HandoverEntry.Category.TASK,
+            title="Heute faellig", details="x", author=self.user, for_date=today,
+        )
+        response = self.client.get(reverse("home"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Für die nächste Schicht")
-        self.assertContains(response, "Nächste Termine")
-        self.assertNotContains(response, "Aktuelle Meldungen")
-        self.assertNotContains(response, "Datenraum")
-        self.assertNotContains(response, "Geburtstage")
+        self.assertContains(response, "Heute faellig")
+        self.assertContains(response, "Allgemeines")
+        # Die alten Dashboard-Bausteine sind ersatzlos entfallen.
+        self.assertNotContains(response, "Für die nächste Schicht")
+        self.assertNotContains(response, "Nächste Termine")
+
+    def test_navigation_has_three_entries(self):
+        response = self.client.get(reverse("home"))
+        for label in ("Woche", "Suchen", "Wache"):
+            self.assertContains(response, f">{label}</a>")
+        # Die Sammelschublade ist weg.
+        self.assertNotContains(response, ">Mehr</a>")
 
     def test_active_handovers_are_prioritized_and_archive_is_separate(self):
         normal = self.create_handover("Normal", HandoverEntry.Priority.NORMAL)
@@ -573,12 +587,12 @@ class MinimalInterfaceTests(PilotTestCase):
             HandoverEntry.Priority.URGENT,
             HandoverEntry.Status.DONE,
         )
-        response = self.client.get(reverse("handover_list"))
+        response = self.client.get(reverse("handover_search"))
         items = list(response.context["page_obj"].object_list)
         self.assertEqual([item.pk for item in items], [urgent.pk, normal.pk])
         self.assertNotIn(done.pk, [item.pk for item in items])
 
-        archive = self.client.get(reverse("handover_list"), {"ansicht": "archiv"})
+        archive = self.client.get(reverse("handover_search"), {"ansicht": "archiv"})
         self.assertEqual([item.pk for item in archive.context["page_obj"].object_list], [done.pk])
 
     def test_write_forms_use_dedicated_pages(self):
@@ -591,7 +605,7 @@ class MinimalInterfaceTests(PilotTestCase):
         self.assertContains(create, "<form", html=False)
 
     def test_more_page_holds_secondary_modules(self):
-        response = self.client.get(reverse("more"))
+        response = self.client.get(reverse("station_area"))
         self.assertContains(response, "Geburtstage")
         self.assertContains(response, "Kaffeekasse")
         self.assertContains(response, "Meldungen, Verkehr &amp; Müllabfuhr", html=True)
@@ -614,8 +628,8 @@ class MinimalInterfaceTests(PilotTestCase):
         )
         User.objects.create_user("waiting@example.org")
         urls = [
-            reverse("dashboard"),
-            reverse("handover_list"),
+            reverse("home"),
+            reverse("handover_search"),
             reverse("handover_create"),
             reverse("handover_detail", args=[handover.pk]),
             reverse("calendar"),
@@ -626,7 +640,7 @@ class MinimalInterfaceTests(PilotTestCase):
             reverse("coffee_create"),
             reverse("coffee_correct", args=[coffee.pk]),
             reverse("feeds"),
-            reverse("more"),
+            reverse("station_area"),
             reverse("team"),
             reverse("team_create"),
             reverse("membership_update", args=[self.membership.pk]),
@@ -849,13 +863,13 @@ class AcknowledgementTests(PilotTestCase):
 
     def test_dashboard_lists_unconfirmed_urgent_entries_then_clears(self):
         handover = self.make_urgent()
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertContains(response, "Defekte Absturzsicherung")
-        self.assertContains(response, "noch nicht von dir best")
+        self.assertContains(response, "von dir noch nicht best")
 
         self.client.post(reverse("handover_acknowledge", args=[handover.pk]))
-        response = self.client.get(reverse("dashboard"))
-        self.assertNotContains(response, "noch nicht von dir best")
+        response = self.client.get(reverse("home"))
+        self.assertNotContains(response, "von dir noch nicht best")
 
     def test_detail_shows_who_confirmed(self):
         handover = self.make_urgent()
@@ -1131,8 +1145,8 @@ class DemoModeTests(TestCase):
     def test_visitor_can_start_a_session_and_sees_the_real_interface(self):
         self.seed()
         response = self.client.post(reverse("demo_start"))
-        self.assertRedirects(response, reverse("dashboard"))
-        dashboard = self.client.get(reverse("dashboard"))
+        self.assertRedirects(response, reverse("home"))
+        dashboard = self.client.get(reverse("home"))
         self.assertEqual(dashboard.status_code, 200)
         self.assertContains(dashboard, "Rettungswache Demo")
         self.assertContains(dashboard, "Demozugang")
@@ -1173,7 +1187,7 @@ class DemoModeTests(TestCase):
         user = User.objects.create_user("echt@example.org", first_name="Echt")
         Membership.objects.create(user=user, station=station, role=Membership.Role.MEMBER)
         self.client.force_login(user)
-        response = self.client.get(reverse("dashboard"))
+        response = self.client.get(reverse("home"))
         self.assertNotContains(response, "Demozugang")
 
 
@@ -1507,7 +1521,7 @@ class TeamAndAuditTests(PilotTestCase):
             object_type="Test",
         )
         self.assertEqual(self.client.get(reverse("audit_log")).status_code, 200)
-        self.assertEqual(self.client.get(reverse("dashboard")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("home")).status_code, 403)
 
     def test_admin_configures_station_modules_with_audit_event(self):
         response = self.client.post(reverse("station_settings"), {
@@ -1528,7 +1542,7 @@ class TeamAndAuditTests(PilotTestCase):
     def test_disabled_module_is_hidden_and_returns_not_found(self):
         self.station.coffee_enabled = False
         self.station.save(update_fields=["coffee_enabled"])
-        response = self.client.get(reverse("more"))
+        response = self.client.get(reverse("station_area"))
         self.assertNotContains(response, "Kaffeekasse")
         self.assertEqual(self.client.get(reverse("coffee")).status_code, 404)
 

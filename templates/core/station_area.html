@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Wache | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading">
+  <h1>Wache</h1>
+  <p class="lead">Module, Team und Nachweise dieser Wache.</p>
+</header>
+
+{% if other_memberships %}
+<section class="stack" aria-labelledby="active-station">
+  <h2 id="active-station">Aktive Wache</h2>
+  <p class="muted-note">{{ current_membership.station.name }}{% if current_membership.station.location %} · {{ current_membership.station.location }}{% endif %} · {{ current_membership.get_role_display }}</p>
+  <form method="post" action="{% url 'switch_station' %}" class="form-actions">
+    {% csrf_token %}
+    {% for membership in other_memberships %}
+      <button class="button secondary" type="submit" name="station" value="{{ membership.station_id }}">Wechseln zu {{ membership.station.name }}</button>
+    {% endfor %}
+  </form>
+</section>
+{% endif %}
+
+<section class="stack" aria-labelledby="area-modules">
+  <h2 id="area-modules">Im Dienst</h2>
+  <nav class="link-list" aria-labelledby="area-modules">
+    {% if current_membership.station.calendar_enabled %}
+      <a href="{% url 'calendar' %}"><strong>Kalender</strong><span>Termine der Wache</span></a>
+    {% endif %}
+    {% if current_membership.station.coffee_enabled %}
+      <a href="{% url 'coffee' %}"><strong>Kaffeekasse</strong><span>Saldo und Buchungen</span></a>
+    {% endif %}
+    {% if current_membership.station.birthdays_enabled %}
+      <a href="{% url 'birthdays' %}"><strong>Geburtstage</strong><span>Freiwillige Angabe</span></a>
+    {% endif %}
+    {% if current_membership.station.feeds_enabled %}
+      <a href="{% url 'feeds' %}"><strong>Meldungen, Verkehr &amp; Müllabfuhr</strong><span>Optionale externe Quellen</span></a>
+    {% endif %}
+  </nav>
+</section>
+
+{% if current_membership.role == 'admin' or current_membership.role == 'auditor' %}
+<section class="stack" aria-labelledby="area-admin">
+  <h2 id="area-admin">Verwaltung</h2>
+  <nav class="link-list" aria-labelledby="area-admin">
+    {% if current_membership.role == 'admin' %}
+      <a href="{% url 'team' %}"><strong>Team &amp; Rollen</strong><span>Zugänge freigeben</span></a>
+      <a href="{% url 'station_settings' %}"><strong>Einstellungen</strong><span>Name, Adresse, Module, Löschfristen</span></a>
+    {% endif %}
+    <a href="{% url 'audit_log' %}"><strong>Audit</strong><span>Änderungen nachvollziehen</span></a>
+    {% if request.user.is_staff %}
+      <a href="{% url 'admin:index' %}"><strong>Technische Verwaltung</strong><span>Systemkonten und Quellen</span></a>
+    {% endif %}
+  </nav>
+</section>
+{% endif %}
+{% endblock %}

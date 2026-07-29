@@ -69,6 +69,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .brand small { color: #c8d5d8; font-size: .75rem; }
 .account { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 1rem; }
 .identity { min-width: 0; text-align: right; }
+/* Die Kennung ist ein Link zum eigenen Konto. Sie muss die Kopfzeilenfarbe
+   behalten - die Linkfarbe hat auf dunklem Grund zu wenig Kontrast. */
+a.identity { color: white; text-decoration: none; }
+a.identity strong { text-decoration: underline; text-underline-offset: .2em; }
 .identity strong, .identity span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .identity span { color: #c8d5d8; font-size: .8rem; }
 .logout-form button { min-height: 44px; padding: .35rem .25rem; color: white; background: transparent; border: 0; text-decoration: underline; text-underline-offset: .2em; cursor: pointer; }
@@ -79,7 +83,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .app-nav a[aria-current="page"] { color: var(--accent-dark); border-color: var(--accent); }
 
-.page-shell { width: min(var(--content), calc(100% - 2rem)); min-height: calc(100vh - 11rem); margin: 0 auto; padding: 2.5rem 0 4rem; }
+.page-shell { width: min(var(--content), calc(100% - 2rem)); min-height: calc(100vh - 11rem); margin: 0 auto; padding: 1.5rem 0 4rem; }
 .site-footer { width: min(var(--content), calc(100% - 2rem)); display: flex; justify-content: space-between; gap: 1rem; margin: 0 auto; padding: 1.25rem 0; color: var(--muted); border-top: 1px solid var(--line); font-size: .85rem; }
 .footer-links { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
 .messages { max-width: 48rem; margin-bottom: 1.5rem; }
@@ -87,13 +91,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .message + .message { margin-top: .5rem; }
 .message.error { background: var(--danger-soft); border-color: var(--danger); }
 
-.page-heading { max-width: 48rem; margin-bottom: 2rem; }
+.page-heading { max-width: 48rem; margin-bottom: 1.5rem; }
 .page-heading.narrow, .narrow { max-width: 42rem; }
 .heading-with-action { max-width: none; display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; }
-.page-heading h1 { margin: .15rem 0 .5rem; font-size: clamp(2rem, 4vw, 3rem); line-height: 1.08; letter-spacing: -.025em; }
+.page-heading h1 { margin: 0 0 .25rem; font-size: 1.6rem; line-height: 1.2; letter-spacing: -.01em; }
 .page-heading .lead { margin-top: .35rem; }
 .context-line { margin: 0; color: var(--muted); font-size: .9rem; font-weight: 650; }
-.lead { max-width: 65ch; margin: 0; color: var(--muted); font-size: 1.05rem; }
+.lead { max-width: 65ch; margin: 0; color: var(--muted); font-size: .95rem; }
 .status-summary { display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin: .8rem 0 0; }
 .status-summary strong { color: var(--danger); }
 
@@ -108,7 +112,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .section-block { min-width: 0; padding: 1.25rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .section-block.flush { padding: 0; overflow: hidden; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
-.section-heading h2, .section-block h2 { margin: 0; font-size: 1.25rem; }
+.section-heading h2, .section-block h2 { margin: 0; font-size: 1.05rem; }
 
 .item-list { display: grid; }
 .list-row { min-height: 4.75rem; display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: .8rem 1rem; color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
@@ -244,7 +248,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .member-list-clean article div span { color: var(--muted); font-size: .85rem; }
 .member-list-clean article > a { min-height: 44px; display: inline-flex; align-items: center; }
 .access-panel { max-width: 42rem; margin: 7vh auto 0; padding: 1.5rem; background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); }
-.access-panel h1 { margin: .25rem 0 .75rem; font-size: clamp(1.8rem, 5vw, 2.5rem); }
+.access-panel h1 { margin: .25rem 0 .75rem; font-size: 1.5rem; }
 .empty-state { margin: 0; padding: 1rem; color: var(--muted); }
 
 @media (max-width: 64rem) {
@@ -269,7 +273,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .heading-with-action { align-items: stretch; flex-direction: column; gap: 1rem; }
   .heading-with-action .button { align-self: flex-start; }
   .page-heading { margin-bottom: 1.5rem; }
-  .page-heading h1 { font-size: 2rem; }
+  .page-heading h1 { font-size: 1.4rem; }
   .list-row { grid-template-columns: 1fr auto; gap: .35rem .75rem; padding: .85rem; }
   .list-row .status-label { grid-column: 1; grid-row: 1; }
   .list-row .row-content { grid-column: 1 / -1; grid-row: 2; }
@@ -319,18 +323,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 /* Zurueckhaltende Bewegung: nur beim Erscheinen, nie laenger als eine
    Drittelsekunde, und vollstaendig abschaltbar ueber die Systemeinstellung. */
 @media (prefers-reduced-motion: no-preference) {
-  @keyframes wb-rise { from { opacity: 0; transform: translateY(.6rem); } to { opacity: 1; transform: none; } }
-  @keyframes wb-fade { from { opacity: 0; } to { opacity: 1; } }
-  .page-shell > * { animation: wb-rise .3s cubic-bezier(.2, .7, .3, 1) both; }
-  .page-shell > *:nth-child(2) { animation-delay: .05s; }
-  .page-shell > *:nth-child(3) { animation-delay: .1s; }
-  .page-shell > *:nth-child(n+4) { animation-delay: .15s; }
-  .app-header, .app-nav { animation: wb-fade .35s ease-out both; }
-  .button, .list-row, .more-list a, .app-nav a, .filter-nav a {
-    transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease;
+  /* Im Werkzeug bewegt sich nichts beim Laden - die Seite steht sofort.
+     Bewegung gibt es nur als Rueckmeldung auf eine eigene Handlung. */
+  .button, .app-nav a, .filter-nav a, .link-list a {
+    transition: background-color .12s ease, color .12s ease, border-color .12s ease;
   }
   .button:active { transform: translateY(1px); }
-  .status-label { transition: background-color .15s ease; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -339,26 +337,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
    Kopfbereich, Navigation und Fusszeile bekommen eigene Namen und bleiben
    dadurch stehen, waehrend nur der Inhalt wechselt.
    --------------------------------------------------------------------------- */
-@view-transition { navigation: auto; }
 
-.app-header { view-transition-name: wb-header; }
-.app-nav { view-transition-name: wb-nav; }
-.site-footer { view-transition-name: wb-footer; }
-.page-shell { view-transition-name: wb-content; }
 
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes wb-slide-out { to { opacity: 0; transform: translateY(-.75rem); } }
-  @keyframes wb-slide-in { from { opacity: 0; transform: translateY(1rem); } }
-  ::view-transition-old(wb-content) { animation: wb-slide-out .18s ease-in both; }
-  ::view-transition-new(wb-content) { animation: wb-slide-in .26s cubic-bezier(.2, .7, .3, 1) both; }
-}
-
-/* Wer reduzierte Bewegung wuenscht, bekommt keine - auch nicht hier. */
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) { animation: none !important; }
-}
 
 /* ---------------------------------------------------------------------------
    Feature-Tour: horizontale Slides ueber Scroll-Snap. Bedienbar per Wischen,
@@ -427,13 +407,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .ack-meter-label { margin: .4rem 0 0; color: var(--muted); font-size: .85rem; }
 
 @media (prefers-reduced-motion: no-preference) {
-  @keyframes wb-pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
-  @keyframes wb-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-  .section-block { transition: box-shadow .2s ease, border-color .2s ease; }
-
-  .status-label { animation: wb-pop .22s cubic-bezier(.2, .8, .3, 1.2) both; }
-  .ack-meter-fill { transform-origin: left; animation: wb-grow .55s cubic-bezier(.2, .7, .3, 1) both; }
 
   /* Aufklappbloecke: moderne Browser animieren die Hoehe, aeltere klappen
      schlicht um. Beides ist bedienbar. */
@@ -490,12 +464,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .more-list a:hover { background: var(--hover-surface); }
   .tour-dots a:hover { color: var(--accent-dark); background: var(--hover-surface); border-color: var(--line-strong); }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .list-row:hover, .more-list a:hover { transform: translateX(2px); }
-    .tour-slide:hover { transform: translateY(-3px); box-shadow: 0 .75rem 1.5rem -.75rem rgba(0,0,0,.25); }
-    .overview-layout .section-block:hover,
-    .day-card:hover { box-shadow: 0 .6rem 1.4rem -.9rem rgba(0,0,0,.28); }
-  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -526,6 +494,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .button:active, .list-row:active, .more-list a:active { background: var(--hover-surface); }
 }
 
+@keyframes wb-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
 /* ---------------------------------------------------------------------------
    Scroll-gesteuerte Bewegung. Der Fortschrittsbalken der Tour haengt direkt an
    der Scrollposition der Slides, Abschnitte tauchen beim Hereinscrollen auf.
@@ -546,14 +516,61 @@ button, a { -webkit-tap-highlight-color: transparent; }
   }
 }
 
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    /* Reihenfolge beachten: die animation-Kurzschreibweise setzt
-       animation-timeline zurueck, deshalb erst danach die Zeitachse. */
-    .day-card, .tour-slide {
-      animation: wb-rise linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 55%;
-    }
-  }
+
+/* ---------------------------------------------------------------------------
+   Wochenansicht und Listen. Gegliedert wird mit Weissraum und Trennlinien,
+   nicht mit Karten - das liest sich dichter und ruhiger, und die Seite wirkt
+   nicht wie ein Dashboard-Baukasten. Rahmen nur, wo wirklich etwas abgegrenzt
+   werden muss.
+   --------------------------------------------------------------------------- */
+.stack { margin-bottom: 2rem; }
+.stack > h2 { margin: 0 0 .5rem; font-size: 1.05rem; }
+.muted-note { margin: 0 0 .75rem; color: var(--muted); font-size: .9rem; }
+
+.link-list { display: grid; border-top: 1px solid var(--line); }
+.link-list a {
+  min-height: 3.5rem; display: grid; align-content: center; gap: .1rem;
+  padding: .8rem .25rem; color: var(--text); text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+.link-list strong { font-weight: 650; }
+.link-list span { color: var(--muted); font-size: .85rem; }
+
+/* Dringendes steht offen sichtbar, nie hinter Farbe allein. */
+.urgent-strip { padding: .85rem 1rem; margin-bottom: 1.5rem; background: var(--danger-soft); border-left: 4px solid var(--danger); border-radius: var(--radius); }
+.urgent-strip h2 { margin: 0; color: var(--danger); font-size: .95rem; }
+.urgent-list { margin: .5rem 0 0; padding-left: 1.1rem; }
+.urgent-list li + li { margin-top: .2rem; }
+
+.week-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem 1rem; padding-bottom: .75rem; margin-bottom: .5rem; border-bottom: 1px solid var(--line-strong); font-size: .9rem; }
+.week-nav a { min-height: 44px; display: inline-flex; align-items: center; }
+.week-pdf { margin-left: auto; }
+
+.day { padding: .9rem 0; border-bottom: 1px solid var(--line); }
+.day-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .75rem; }
+.day-head h2 { margin: 0; font-size: 1rem; }
+.day-date { color: var(--muted); font-weight: 400; }
+.day-marker { padding: .05rem .4rem; color: var(--surface); background: var(--accent-dark); border-radius: 999px; font-size: .7rem; font-weight: 700; }
+.day-team { margin: 0; color: var(--muted); font-size: .9rem; }
+.day-today { background: linear-gradient(to right, var(--info-soft), transparent 60%); }
+.day-empty { margin: .35rem 0 0; color: var(--muted); }
+
+.team-form { display: flex; flex-wrap: wrap; gap: .5rem; margin: .6rem 0 .2rem; }
+.team-form input { flex: 1; min-width: 10rem; min-height: 44px; padding: .4rem .6rem; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); }
+
+.entries { margin: .5rem 0 0; padding: 0; list-style: none; }
+.entries li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; padding: .35rem 0; }
+.entries li + li { border-top: 1px solid var(--line); }
+.entries a { flex: 1; min-width: 12rem; min-height: 44px; display: flex; flex-direction: column; justify-content: center; color: var(--text); text-decoration: none; }
+.entry-title { font-weight: 650; overflow-wrap: anywhere; }
+.entry-meta { color: var(--muted); font-size: .85rem; }
+
+@media (hover: hover) and (pointer: fine) {
+  .link-list a:hover, .entries a:hover { color: var(--accent-dark); }
+}
+@media (pointer: coarse) {
+  .link-list a { min-height: 4rem; }
+  .entries a { min-height: 48px; }
+  .week-nav a { min-height: 48px; }
+  .team-form input { min-height: 48px; }
 }

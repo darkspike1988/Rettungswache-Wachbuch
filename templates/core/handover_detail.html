@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ handover.title }} | {{ app_name }}{% endblock %}
 {% block content %}
-<a class="back-link" href="{% url 'handover_list' %}">Zurück zu Übergaben</a>
+<a class="back-link" href="{% url 'handover_search' %}">Zurück zur Suche</a>
 <header class="page-heading narrow">
   <p class="context-line">{{ handover.get_category_display }} &middot; Version {{ handover.version }}</p>
   <h1>{{ handover.title }}</h1>

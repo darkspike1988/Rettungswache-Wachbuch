@@ -28,7 +28,8 @@ offline-faehig und ohne JavaScript-Abhaengigkeit.
 
 1. Jede Seite hat genau eine Hauptaufgabe und genau eine `h1`.
 2. Pro Ansicht gibt es hoechstens eine hervorgehobene Primaeraktion.
-3. Das Dashboard zeigt nur aktive Uebergaben und die naechsten drei Termine.
+3. Es gibt kein Dashboard. Die laufende Woche ist die Startseite; dieselben
+   Daten werden nicht in einer zweiten Ansicht wiederholt.
 4. Kritische Informationen stehen offen sichtbar, nie in einem geschlossenen
    Accordion oder nur hinter Farbe.
 5. Status und Prioritaet werden immer ausgeschrieben. Farbe ist nur zusaetzlich.
@@ -41,16 +42,25 @@ offline-faehig und ohne JavaScript-Abhaengigkeit.
 
 ## Informationsarchitektur
 
-Die globale Navigation besitzt vier Punkte:
+Die globale Navigation besitzt drei Punkte. Mehr braucht es nicht, und eine
+Sammelschublade namens `Mehr` gibt es ausdruecklich nicht mehr:
 
-- `Uebersicht`: priorisierte aktive Uebergaben und naechste Termine
-- `Uebergaben`: Aktiv, Dringend und Archiv mit Pagination
-- `Kalender`: chronologische Agenda
-- `Mehr`: aktivierte Zusatzmodule und rollenabhaengige Verwaltung
+- `Woche` (`/`): die laufende Kalenderwoche mit Team je Tag, Allgemeines und
+  einem offenen Hinweisstreifen auf dringende, noch nicht bestaetigte Eintraege.
+  Das ist die Anwendung, nicht ein Reiter darin.
+- `Suchen` (`/suchen/`): Aktiv, Dringend und Archiv mit Volltextsuche. Eine
+  Liste mit Filtern dient dem Wiederfinden - also heisst sie so.
+- `Wache` (`/wache/`): Module im Dienst (Kalender, Kaffeekasse, Geburtstage,
+  optionale externe Quellen) und darunter, rollenabhaengig, die Verwaltung
+  (Team, Einstellungen, Audit).
 
-Kalendertermine, Kassenbuchungen, Geburtstagsfreigaben und Teamfreigaben werden
-jeweils auf einer eigenen Seite erfasst. Region zeigt nie Nachrichten und
-Verkehr gleichzeitig, sondern einen ausgewaehlten Inhaltstyp.
+Persoenliches liegt beim eigenen Namen oben rechts (`/konto/`): Passwort,
+Zwei-Faktor-Anmeldung, freiwillige Geburtstagsangabe. Es gehoert nicht in einen
+gemeinsamen Bereich mit Wachenverwaltung.
+
+Schreibvorgaenge liegen weiterhin auf eigenen URLs. Alte Adressen
+(`/uebergaben/`, `/wochenprotokoll/`, `/mehr/`) leiten dauerhaft weiter, damit
+Lesezeichen nicht ins Leere laufen.
 
 ## Responsive Verhalten
 
@@ -59,25 +69,28 @@ Verkehr gleichzeitig, sondern einen ausgewaehlten Inhaltstyp.
 - Ueber `48rem`: Navigation unter dem App-Header, Identitaet bleibt sichtbar.
 - Bis `64rem`: Inhaltsbereiche bleiben einspaltig, damit Tablets nicht in enge
   Zwei-Spalten-Layouts gezwungen werden.
-- Ueber `64rem`: nur die Uebersicht darf Uebergaben und Termine nebeneinander
-  darstellen.
+- Ueber `64rem`: der Inhalt bleibt einspaltig. Die Wochenansicht lebt von
+  vertikaler Lesbarkeit, nicht von Spalten.
 - Bei 320 CSS-Pixel darf die Gesamtseite nicht horizontal scrollen.
 
 ## Bewegung
 
-Bewegung ist Dekoration, niemals Traeger einer Information. Umgesetzt sind
-gestaffeltes Einblenden der Seitenabschnitte, sanfte Seitenwechsel ueber
-Cross-Document View Transitions, aufklappende Detailbloecke und leichte
-Rueckmeldung an Bedienelementen - alles in CSS, ohne JavaScript und ohne
-Layoutsprung.
+Im Arbeitswerkzeug bewegt sich beim Laden nichts. Die Seite steht sofort, weil
+jemand um drei Uhr nachts etwas nachsehen will und nicht auf eine Einblendung
+warten moechte. Bewegung gibt es nur als Rueckmeldung auf eine eigene Handlung -
+ein Aufklappen, ein Tastendruck.
 
-Verbindlich dabei:
+Die Demoseite darf mehr: dort erklaeren horizontale Slides und ein
+scrollgebundener Fortschrittsbalken das Produkt. Das ist Marketing und gehoert
+nicht in die Wochenansicht.
+
+Verbindlich:
 
 1. Jede Animation endet nach hoechstens 0,35 Sekunden.
-2. Unter `prefers-reduced-motion: reduce` bleibt jede Animation aus, auch die
-   Seitenwechsel.
+2. Unter `prefers-reduced-motion: reduce` bleibt jede Animation aus.
 3. Kein Inhalt ist erst nach einer Animation lesbar oder bedienbar.
-4. Slides und andere Scrollbereiche scrollen in sich, die Gesamtseite bleibt
+4. Kein Einblenden beim Seitenaufbau im Werkzeugteil.
+5. Slides und andere Scrollbereiche scrollen in sich, die Gesamtseite bleibt
    ab 320 Pixel frei von horizontalem Scrollen.
 
 Fuellstaende und andere berechnete Groessen kommen als CSS-Klasse, nicht als
@@ -99,6 +112,17 @@ breit und trotzdem Touch.
 4. Statt Hover gibt es auf Touch eine `:active`-Rueckmeldung.
 5. Eingabefelder bleiben bei mindestens 16 Pixel Schriftgroesse, damit iOS beim
    Fokus nicht hineinzoomt.
+
+## Dichte statt Karten
+
+Gegliedert wird mit Weissraum und Trennlinien. Rahmen und Flaechen nur, wo
+wirklich etwas abgegrenzt werden muss - flaechendeckende Karten lassen jede
+Anwendung wie einen Dashboard-Baukasten aussehen und kosten Platz, der dem
+Inhalt fehlt. Zwei bis drei abgegrenzte Flaechen pro Seite sind das Maximum.
+
+Die Typo-Skala ist die eines Werkzeugs, nicht einer Startseite: `h1` bei
+1,6rem, Abschnittstitel bei 1,05rem. Grosse Anzeigengroessen verschenken auf
+einem Diensthandy die halbe Sichtflaeche.
 
 ## Keine Mehrfachbenennung
 

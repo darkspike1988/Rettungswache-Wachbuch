@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Mein Konto | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading">
+  <h1>Mein Konto</h1>
+  <p class="lead">{{ request.user.first_name|default:request.user.username }}{% if current_membership %} · {{ current_membership.get_role_display }}{% endif %}</p>
+</header>
+
+<section class="stack">
+  <nav class="link-list" aria-label="Persönliche Einstellungen">
+    <a href="{% url 'password_change' %}"><strong>Passwort ändern</strong><span>Eigenes Anmeldepasswort</span></a>
+    <a href="{% url 'twofactor_status' %}">
+      <strong>Zwei-Faktor-Anmeldung</strong>
+      <span>{% if twofactor_enabled %}Aktiv – Code aus der App bei jeder Anmeldung{% else %}Nicht eingerichtet{% endif %}</span>
+    </a>
+    {% if current_membership.station.birthdays_enabled %}
+      <a href="{% url 'birthday_settings' %}"><strong>Geburtstag</strong><span>Freiwillige Anzeige im Team</span></a>
+    {% endif %}
+  </nav>
+</section>
+{% endblock %}

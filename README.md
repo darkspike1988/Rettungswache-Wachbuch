@@ -32,20 +32,23 @@ Dienstplanungs- oder Patientendokumentationssystem.
 
 ## Administration
 
-Stationsadministratoren koennen unter `/einstellungen/` den Namen, den Standort
+Die Anwendung hat drei Navigationspunkte: `Woche` (die Startseite),
+`Suchen` und `Wache`. Persoenliches liegt unter `/konto/` beim eigenen Namen.
+
+Stationsadministratoren koennen unter `/wache/einstellungen/` den Namen, den Standort
 (angezeigt zentriert im Kopfbereich unter dem Namen), die Adresse und die
 sichtbaren Module selbst festlegen. Ein Button ermittelt Ort und Kreis/Landkreis
 aus der gespeicherten Adresse ueber einen offenen Geocoding-Dienst (siehe unten).
-Unter `/lage/` (Reiter "Muellabfuhr") koennen Admins ausserdem den ICS-Abo-Link
+Unter `/lage/` (Reiter "Muellabfuhr", erreichbar ueber `Wache`) koennen Admins ausserdem den ICS-Abo-Link
 des oertlichen Abfallkalenders hinterlegen; kommende Abholtermine erscheinen dort
 automatisch nach der naechsten Synchronisierung. Unter `/kaffeekasse/` legen
 Admins fest, ueber welche gebuehrenfreien Wege eingezahlt werden kann
 (PayPal.me-Link, Wero-Link/-Kontakt und/oder IBAN mit Kontoinhaber fuer
 Echtzeitueberweisungen); alle Mitglieder sehen die hinterlegten Wege direkt auf
-der Kassenseite. Unter `/team/` verwalten Admins Freigaben und Rollen. Zugang wird ueber die
+der Kassenseite. Unter `/wache/team/` verwalten Admins Freigaben und Rollen. Zugang wird ueber die
 genaue E-Mail-Adresse des bestehenden Kontos freigegeben - Konten anderer
 Wachen werden bewusst nicht aufgelistet. Wer auf mehreren Wachen freigegeben
-ist, wechselt die aktive Wache unter `Mehr`.
+ist, wechselt die aktive Wache unter `Wache`.
 Technische Administratoren konfigurieren unter `/django-admin/` Systemkonten
 und externe Quellen. Fachliche Datensaetze sind dort bewusst nur lesbar, damit
 Versionierung und Audit nicht umgangen werden.
@@ -151,7 +154,7 @@ Mitglieder ohne Adresse sichtbar.
 Fuer den Versand werden in `.env` die `EMAIL_*`-Werte gesetzt. Ohne
 `EMAIL_HOST` schreibt Django die Nachrichten nur in das Containerlog - fuer
 einen Test brauchbar, fuer den Betrieb nicht. Angemeldete Personen aendern ihr
-Passwort selbst unter `Mehr -> Passwort aendern`.
+Passwort selbst unter `Konto -> Passwort aendern`.
 
 ## Demobetrieb
 
@@ -178,7 +181,7 @@ hin, solange der Demobetrieb aktiv ist.
 ## Zwei-Faktor-Anmeldung
 
 Jede Person richtet den zweiten Faktor selbst unter
-`Mehr -> Zwei-Faktor-Anmeldung` ein: QR-Code mit einer TOTP-App scannen
+`Konto -> Zwei-Faktor-Anmeldung` ein: QR-Code mit einer TOTP-App scannen
 (Google Authenticator, Aegis, FreeOTP), einmal bestaetigen, fertig. Danach
 fragt die Anmeldung nach dem Passwort zusaetzlich einen sechsstelligen Code ab.
 
@@ -197,7 +200,7 @@ selbst der zweite Faktor.
 
 ## Loeschfristen
 
-Unter `/einstellungen/` legt die Wache je Datenart fest, nach wie vielen Tagen
+Unter `/wache/einstellungen/` legt die Wache je Datenart fest, nach wie vielen Tagen
 geloescht wird (`0` = keine automatische Loeschung). Geloescht wird erst, wenn
 der Betrieb den Befehl ausfuehrt:
 

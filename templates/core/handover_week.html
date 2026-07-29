@@ -1,59 +1,87 @@
 {% extends "base.html" %}
-{% block title %}Wochenprotokoll | {{ app_name }}{% endblock %}
+{% block title %}KW {{ week }} | {{ app_name }}{% endblock %}
 {% block content %}
 <header class="page-heading heading-with-action">
   <div>
-    <p class="context-line">Wachenorganisation</p>
-    <h1>Wochenprotokoll</h1>
-    <p class="lead">KW {{ week }}/{{ year }} &middot; {{ monday|date:"d.m." }}–{{ sunday|date:"d.m.Y" }}</p>
+    <h1>KW {{ week }}</h1>
+    <p class="lead">{{ monday|date:"d.m." }}–{{ sunday|date:"d.m.Y" }} · {{ open_count }} offen</p>
   </div>
-  <div class="form-actions">
-    <a class="button primary" href="{% url 'handover_create' %}">Übergabe anlegen</a>
-    <a class="button secondary" href="{% url 'handover_week_pdf' %}?jahr={{ year }}&amp;kw={{ week }}">Als PDF</a>
-  </div>
+  <a class="button primary" href="{% url 'handover_create' %}">Eintrag hinzufügen</a>
 </header>
 
-<nav class="filter-nav" aria-label="Woche wechseln">
-  <a href="?jahr={{ prev_year }}&amp;kw={{ prev_week }}">&larr; Vorherige Woche</a>
-  <a href="{% url 'handover_week' %}">Aktuelle Woche</a>
-  <a href="?jahr={{ next_year }}&amp;kw={{ next_week }}">Nächste Woche &rarr;</a>
+{% if unread_urgent_count %}
+<section class="urgent-strip" aria-labelledby="unread-urgent">
+  <h2 id="unread-urgent">{% if unread_urgent_count == 1 %}Ein dringender Eintrag{% else %}{{ unread_urgent_count }} dringende Einträge{% endif %} – von dir noch nicht bestätigt</h2>
+  <ul class="urgent-list">
+    {% for item in unread_urgent %}
+      <li><a href="{% url 'handover_detail' item.pk %}">{{ item.title }}</a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<nav class="week-nav" aria-label="Woche wechseln">
+  <a href="?jahr={{ prev_year }}&amp;kw={{ prev_week }}" rel="prev">&larr; KW {{ prev_week }}</a>
+  <a href="{% url 'home' %}">Diese Woche</a>
+  <a href="?jahr={{ next_year }}&amp;kw={{ next_week }}" rel="next">KW {{ next_week }} &rarr;</a>
+  <a class="week-pdf" href="{% url 'handover_week_pdf' %}?jahr={{ year }}&amp;kw={{ week }}">PDF</a>
 </nav>
 
 {% for day in days %}
-  <section class="section-block day-card" aria-label="{{ day.date|date:'l, d.m.Y' }}">
-    <header class="day-card-header">
-      <h2>{{ day.date|date:"l, d.m.Y" }}</h2>
-      {% if day.team_note %}<span class="day-team">Team: {{ day.team_note.note }}</span>{% endif %}
+  <section class="day{% if day.date == today %} day-today{% endif %}" aria-labelledby="day-{{ day.date|date:'Ymd' }}">
+    <header class="day-head">
+      <h2 id="day-{{ day.date|date:'Ymd' }}">
+        {{ day.date|date:"D" }} <span class="day-date">{{ day.date|date:"d.m." }}</span>
+        {% if day.date == today %}<span class="day-marker">heute</span>{% endif %}
+      </h2>
+      {% if day.team_note %}<p class="day-team">{{ day.team_note.note }}</p>{% endif %}
     </header>
+
     {% if can_edit_team %}
-      <form method="post" action="{% url 'daily_team_update' day.date|date:'Y-m-d' %}" class="day-team-form">
+      <form method="post" action="{% url 'daily_team_update' day.date|date:'Y-m-d' %}" class="team-form">
         {% csrf_token %}
-        <label class="visually-hidden" for="team-{{ day.date|date:'Ymd' }}">Team für {{ day.date|date:"d.m.Y" }}</label>
+        <label class="visually-hidden" for="team-{{ day.date|date:'Ymd' }}">Team am {{ day.date|date:"d.m.Y" }}</label>
         <input type="text" id="team-{{ day.date|date:'Ymd' }}" name="note" maxlength="200"
-               value="{{ day.team_note.note|default:'' }}" placeholder="Team eintragen (z.B. Namen der Schicht)">
+               value="{{ day.team_note.note|default:'' }}" placeholder="Wer hat Dienst?">
         <button class="button secondary" type="submit">Speichern</button>
       </form>
     {% endif %}
-    <div class="item-list nested">
-      {% for entry in day.entries %}
-        <a class="list-row handover-list-row" href="{% url 'handover_detail' entry.pk %}">
-          <span class="status-label priority-{{ entry.priority }}">{{ entry.get_priority_display }}</span>
-          <span class="row-content"><strong>{{ entry.title }}</strong><small>{{ entry.get_category_display }} &middot; {{ entry.get_status_display }}</small></span>
-        </a>
-      {% empty %}<p class="empty-state">Keine Tagesaufgaben eingetragen.</p>{% endfor %}
-    </div>
+
+    {% if day.entries %}
+      <ul class="entries">
+        {% for entry in day.entries %}
+          <li>
+            <a href="{% url 'handover_detail' entry.pk %}">
+              <span class="entry-title">{{ entry.title }}</span>
+              <span class="entry-meta">{{ entry.get_category_display }}</span>
+            </a>
+            <span class="status-label priority-{{ entry.priority }}">{{ entry.get_priority_display }}</span>
+            {% if entry.status == 'done' %}<span class="status-label success">Erledigt</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="day-empty">–</p>
+    {% endif %}
   </section>
 {% endfor %}
 
-<section class="section-block" aria-label="Allgemeines">
-  <h2>Allgemeines</h2>
-  <div class="item-list nested">
-    {% for entry in general_entries %}
-      <a class="list-row handover-list-row" href="{% url 'handover_detail' entry.pk %}">
-        <span class="status-label priority-{{ entry.priority }}">{{ entry.get_priority_display }}</span>
-        <span class="row-content"><strong>{{ entry.title }}</strong><small>{{ entry.get_category_display }} &middot; {{ entry.get_status_display }}</small></span>
-      </a>
-    {% empty %}<p class="empty-state">Keine allgemeinen Einträge ohne Tagesbezug.</p>{% endfor %}
-  </div>
+<section class="day" aria-labelledby="general">
+  <header class="day-head"><h2 id="general">Allgemeines</h2></header>
+  {% if general_entries %}
+    <ul class="entries">
+      {% for entry in general_entries %}
+        <li>
+          <a href="{% url 'handover_detail' entry.pk %}">
+            <span class="entry-title">{{ entry.title }}</span>
+            <span class="entry-meta">{{ entry.get_category_display }}</span>
+          </a>
+          <span class="status-label priority-{{ entry.priority }}">{{ entry.get_priority_display }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="day-empty">Nichts ohne Tagesbezug offen.</p>
+  {% endif %}
 </section>
 {% endblock %}

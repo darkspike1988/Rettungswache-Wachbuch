@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Zusammengefuehrt zu einer Anwendung
+
+- **Die Woche ist die Startseite.** Das Dashboard ist ersatzlos entfallen - es
+  war die dritte Ansicht derselben Daten. Dringende, noch nicht bestaetigte
+  Eintraege stehen jetzt als offener Streifen ueber der Wochenansicht.
+- **Drei Navigationspunkte statt fuenf**: `Woche`, `Suchen`, `Wache`. Die
+  Sammelschublade `Mehr` mit neun Eintraegen ist aufgeloest. Module und
+  Verwaltung liegen gruppiert unter `Wache`, Persoenliches (Passwort,
+  Zwei-Faktor, Geburtstag) unter `/konto/` beim eigenen Namen.
+- Aus `Uebergaben` wurde `Suchen`: eine Liste mit Filtern dient dem
+  Wiederfinden, also heisst sie so. Alte Adressen (`/uebergaben/`,
+  `/wochenprotokoll/`, `/mehr/`) leiten dauerhaft weiter.
+- **Verschlankte Optik**: `h1` von bis zu 3rem auf 1,6rem - Werkzeugmassstab
+  statt Startseite. Statt flaechendeckender Karten gliedern Weissraum und
+  Trennlinien; die ganze Woche passt damit auf einen Blick.
+- **Animationen aus dem Werkzeug entfernt**: kein Einblenden beim Seitenaufbau,
+  keine Seitenwechsel-Effekte, kein Aufpoppen der Statuszeichen. Bewegung gibt
+  es nur noch als Rueckmeldung auf eine eigene Handlung. Slides und
+  scrollgebundener Fortschritt bleiben auf der Demoseite, wo sie das Produkt
+  erklaeren.
+- Fehler behoben: Die Kennung im Kopfbereich ist jetzt ein Link zum eigenen
+  Konto und erbte dabei die Linkfarbe - 1,52:1 Kontrast auf dunklem Grund. Sie
+  ist wieder weiss (13,2:1).
+
 - Touchbedienung geschaerft: Hovereffekte gelten nur noch fuer echte
   Zeigegeraete, damit auf Tablet und Smartphone kein Hoverzustand nach dem
   Antippen haengenbleibt. Unter `pointer: coarse` wachsen Bedienziele und

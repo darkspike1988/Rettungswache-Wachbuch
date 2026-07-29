@@ -14,6 +14,22 @@ def current_membership(request):
     return {"current_membership": membership, "other_memberships": others}
 
 
+# Seiten, die zum Wachenbereich gehoeren. Nur damit die Navigation weiss, wo
+# sie sich befindet - keine Rechtepruefung.
+STATION_AREA_PAGES = frozenset({
+    "station_area", "station_settings", "station_geocode", "switch_station",
+    "team", "team_create", "membership_update", "audit_log",
+    "birthdays", "birthday_settings",
+    "coffee", "coffee_create", "coffee_correct", "coffee_payment_update",
+    "feeds", "waste_source_update",
+    "calendar", "calendar_create",
+})
+
+
+def navigation(request):
+    return {"station_area_pages": STATION_AREA_PAGES}
+
+
 def application_metadata(request):
     return {
         "app_name": settings.APP_NAME,

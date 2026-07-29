@@ -71,6 +71,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context.current_membership",
+                "core.context.navigation",
                 "core.context.application_metadata",
                 "core.context.operator_metadata",
                 "core.context.demo_session",
