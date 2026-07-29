@@ -35,8 +35,10 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
 
 ## Datenmodell
 
-- `Station`, `Membership`: Wachen, Modulschalter, Rollen und Freigaben
-- `HandoverEntry`, `HandoverRevision`: Arbeitsstand und unveraenderte Revisionen
+- `Station`, `Membership`: Wachen (Name, Standort), Modulschalter, Rollen und Freigaben
+- `HandoverEntry`, `HandoverRevision`: Arbeitsstand, optionaler Tagesbezug (`for_date`)
+  und unveraenderte Revisionen
+- `DailyTeamNote`: Team je Tag fuer das Wochenprotokoll, eine Zeile je Wache und Datum
 - `CalendarEvent`: Wachen-, kein Dienstplankalender
 - `BirthdayPreference`: freiwillig, nur Tag und Monat
 - `CoffeeEntry`: append-only Buchungen in Cent und Korrekturbezug

@@ -14,6 +14,7 @@ from .models import (
     AuditEvent,
     BirthdayPreference,
     CoffeeEntry,
+    DailyTeamNote,
     FeedItem,
     FeedSource,
     HandoverEntry,
@@ -178,6 +179,67 @@ class HandoverTests(PilotTestCase):
         )
         response = self.client.get(reverse("handover_detail", args=[handover.pk]))
         self.assertEqual(response.status_code, 404)
+
+
+class WeeklyProtocolTests(PilotTestCase):
+    def test_week_view_groups_day_and_general_entries(self):
+        today = timezone.localdate()
+        HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.TASK,
+            title="Fahrzeugcheck",
+            details="Taeglicher Check der Ausruestung.",
+            author=self.user,
+            for_date=today,
+        )
+        HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.STATION,
+            title="Allgemeiner Hinweis",
+            details="Ohne Tagesbezug.",
+            author=self.user,
+        )
+        response = self.client.get(reverse("handover_week"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Fahrzeugcheck")
+        self.assertContains(response, "Allgemeiner Hinweis")
+
+    def test_shift_lead_sets_daily_team_note(self):
+        self.membership.role = Membership.Role.SHIFT_LEAD
+        self.membership.save(update_fields=["role"])
+        today = timezone.localdate()
+        response = self.client.post(
+            reverse("daily_team_update", args=[today.isoformat()]),
+            {"note": "Dotzki/Huber"},
+        )
+        year, week, _ = today.isocalendar()
+        self.assertRedirects(response, f"{reverse('handover_week')}?jahr={year}&kw={week}")
+        note = DailyTeamNote.objects.get(station=self.station, date=today)
+        self.assertEqual(note.note, "Dotzki/Huber")
+        self.assertTrue(AuditEvent.objects.filter(action="handover.team_set").exists())
+
+    def test_member_cannot_set_daily_team_note(self):
+        today = timezone.localdate()
+        response = self.client.post(
+            reverse("daily_team_update", args=[today.isoformat()]),
+            {"note": "Nicht erlaubt"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(DailyTeamNote.objects.filter(station=self.station).exists())
+
+    def test_station_settings_location_appears_in_header(self):
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        response = self.client.post(reverse("station_settings"), {
+            "name": "Rettungswache Steinhagen",
+            "location": "Steinhagen",
+        })
+        self.assertRedirects(response, reverse("station_settings"))
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.location, "Steinhagen")
+        dashboard = self.client.get(reverse("dashboard"))
+        self.assertContains(dashboard, "Rettungswache Steinhagen")
+        self.assertContains(dashboard, "Steinhagen")
 
 
 class MinimalInterfaceTests(PilotTestCase):

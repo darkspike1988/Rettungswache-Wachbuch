@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Wochenprotokoll | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading heading-with-action">
+  <div>
+    <p class="context-line">Wachenorganisation</p>
+    <h1>Wochenprotokoll</h1>
+    <p class="lead">KW {{ week }}/{{ year }} &middot; {{ monday|date:"d.m." }}–{{ sunday|date:"d.m.Y" }}</p>
+  </div>
+  <a class="button primary" href="{% url 'handover_create' %}">Übergabe anlegen</a>
+</header>
+
+<nav class="filter-nav" aria-label="Woche wechseln">
+  <a href="?jahr={{ prev_year }}&amp;kw={{ prev_week }}">&larr; Vorherige Woche</a>
+  <a href="{% url 'handover_week' %}">Aktuelle Woche</a>
+  <a href="?jahr={{ next_year }}&amp;kw={{ next_week }}">Nächste Woche &rarr;</a>
+</nav>
+
+{% for day in days %}
+  <section class="section-block day-card" aria-label="{{ day.date|date:'l, d.m.Y' }}">
+    <header class="day-card-header">
+      <h2>{{ day.date|date:"l, d.m.Y" }}</h2>
+      {% if day.team_note %}<span class="day-team">Team: {{ day.team_note.note }}</span>{% endif %}
+    </header>
+    {% if can_edit_team %}
+      <form method="post" action="{% url 'daily_team_update' day.date|date:'Y-m-d' %}" class="day-team-form">
+        {% csrf_token %}
+        <label class="visually-hidden" for="team-{{ day.date|date:'Ymd' }}">Team für {{ day.date|date:"d.m.Y" }}</label>
+        <input type="text" id="team-{{ day.date|date:'Ymd' }}" name="note" maxlength="200"
+               value="{{ day.team_note.note|default:'' }}" placeholder="Team eintragen (z.B. Namen der Schicht)">
+        <button class="button secondary" type="submit">Speichern</button>
+      </form>
+    {% endif %}
+    <div class="item-list nested">
+      {% for entry in day.entries %}
+        <a class="list-row handover-list-row" href="{% url 'handover_detail' entry.pk %}">
+          <span class="status-label priority-{{ entry.priority }}">{{ entry.get_priority_display }}</span>
+          <span class="row-content"><strong>{{ entry.title }}</strong><small>{{ entry.get_category_display }} &middot; {{ entry.get_status_display }}</small></span>
+        </a>
+      {% empty %}<p class="empty-state">Keine Tagesaufgaben eingetragen.</p>{% endfor %}
+    </div>
+  </section>
+{% endfor %}
+
+<section class="section-block" aria-label="Allgemeines">
+  <h2>Allgemeines</h2>
+  <div class="item-list nested">
+    {% for entry in general_entries %}
+      <a class="list-row handover-list-row" href="{% url 'handover_detail' entry.pk %}">
+        <span class="status-label priority-{{ entry.priority }}">{{ entry.get_priority_display }}</span>
+        <span class="row-content"><strong>{{ entry.title }}</strong><small>{{ entry.get_category_display }} &middot; {{ entry.get_status_display }}</small></span>
+      </a>
+    {% empty %}<p class="empty-state">Keine allgemeinen Einträge ohne Tagesbezug.</p>{% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -10,6 +10,7 @@ Dienstplanungs- oder Patientendokumentationssystem.
 ## Funktionen
 
 - versionierte Uebergaben mit Prioritaet und Status
+- Wochenprotokoll mit Team je Tag, analog zum Papier-Uebergabebogen
 - einfacher Wachenkalender
 - freiwillige Geburtstagsanzeige ohne Geburtsjahr
 - unveraenderliches Kaffeekassen-Ledger mit Korrekturbuchungen
@@ -20,7 +21,8 @@ Dienstplanungs- oder Patientendokumentationssystem.
 
 ## Administration
 
-Stationsadministratoren koennen unter `/einstellungen/` den Namen der Wache und
+Stationsadministratoren koennen unter `/einstellungen/` den Namen, den Standort
+(z.B. Ort oder Adresse, angezeigt zentriert im Kopfbereich unter dem Namen) und
 die sichtbaren Module selbst festlegen. Unter `/team/` verwalten sie Freigaben
 und Rollen. Technische Administratoren konfigurieren unter `/django-admin/`
 Systemkonten und externe Quellen. Fachliche Datensaetze sind dort bewusst nur

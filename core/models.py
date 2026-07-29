@@ -9,6 +9,7 @@ from django.db.models import Q
 
 class Station(models.Model):
     name = models.CharField(max_length=120)
+    location = models.CharField(max_length=160, blank=True, verbose_name="Standort")
     slug = models.SlugField(unique=True)
     is_active = models.BooleanField(default=True)
     calendar_enabled = models.BooleanField(default=True, verbose_name="Kalender aktiviert")
@@ -90,13 +91,20 @@ class HandoverEntry(models.Model):
     details = models.TextField(max_length=3000)
     author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="authored_handovers")
     version = models.PositiveIntegerField(default=1)
+    for_date = models.DateField(
+        null=True, blank=True, verbose_name="Betrifft Tag",
+        help_text="Leer lassen fuer Allgemeines ohne Tagesbezug.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["status", "-created_at"]
-        indexes = [models.Index(fields=["station", "status", "-created_at"])]
+        indexes = [
+            models.Index(fields=["station", "status", "-created_at"]),
+            models.Index(fields=["station", "for_date"]),
+        ]
 
     def __str__(self):
         return self.title
@@ -122,6 +130,23 @@ class HandoverRevision(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValidationError("Uebergaberevisionen duerfen nicht geloescht werden.")
+
+
+class DailyTeamNote(models.Model):
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="daily_team_notes")
+    date = models.DateField()
+    note = models.CharField(max_length=200, verbose_name="Team")
+    updated_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["station", "date"], name="unique_station_day_team")
+        ]
+        ordering = ["date"]
+
+    def __str__(self):
+        return f"{self.station} {self.date}: {self.note}"
 
 
 class CalendarEvent(models.Model):

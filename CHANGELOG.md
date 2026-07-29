@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Kopfzeile zeigt Wachenname und Standort zentriert statt statischem Markennamen
+- Standort der Wache unter `/einstellungen/` pflegbar (Feld `Station.location`)
+- Wochenprotokoll (`/wochenprotokoll/`) gruppiert Uebergaben nach Tag analog zum
+  Papier-Uebergabeprotokoll, inklusive Team-je-Tag und Allgemeines-Abschnitt
+- Uebergaben koennen optional einem Tag zugeordnet werden (`for_date`)
+
 ## Unreleased - Open-Source-Basis
 
 - portable Docker-Konfiguration ohne servergebundene Hosts und Datenbank-URLs

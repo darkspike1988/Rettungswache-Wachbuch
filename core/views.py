@@ -5,8 +5,9 @@ from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db import connection, transaction
 from django.db.models import Case, IntegerField, Sum, Value, When
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -17,6 +18,7 @@ from .forms import (
     CalendarEventForm,
     CoffeeCorrectionForm,
     CoffeeEntryForm,
+    DailyTeamForm,
     HandoverForm,
     HandoverStatusForm,
     MembershipAssignmentForm,
@@ -28,12 +30,13 @@ from .models import (
     BirthdayPreference,
     CalendarEvent,
     CoffeeEntry,
+    DailyTeamNote,
     FeedItem,
     FeedSource,
     HandoverEntry,
     Membership,
 )
-from .services import audit, change_handover_status, create_handover
+from .services import audit, change_handover_status, create_handover, set_daily_team
 
 
 def healthz(request):
@@ -180,6 +183,84 @@ def handover_status(request, pk):
     else:
         messages.error(request, "Status konnte nicht aktualisiert werden.")
     return redirect("handover_detail", pk=pk)
+
+
+def _week_start(year, week):
+    try:
+        return date.fromisocalendar(int(year), int(week), 1)
+    except (ValueError, TypeError):
+        today = timezone.localdate()
+        return today - timedelta(days=today.isoweekday() - 1)
+
+
+@membership_required(CONTENT_ROLES)
+def handover_week(request):
+    station = request.membership.station
+    today = timezone.localdate()
+    default_year, default_week, _ = today.isocalendar()
+    monday = _week_start(
+        request.GET.get("jahr", default_year), request.GET.get("kw", default_week)
+    )
+    week_days = [monday + timedelta(days=offset) for offset in range(7)]
+    year, week, _ = monday.isocalendar()
+
+    team_notes = {
+        note.date: note
+        for note in DailyTeamNote.objects.filter(station=station, date__in=week_days)
+    }
+    day_entries = {day: [] for day in week_days}
+    for entry in HandoverEntry.objects.filter(
+        station=station, for_date__in=week_days
+    ).select_related("author"):
+        day_entries[entry.for_date].append(entry)
+
+    days = [
+        {"date": day, "team_note": team_notes.get(day), "entries": day_entries[day]}
+        for day in week_days
+    ]
+
+    general_entries = (
+        HandoverEntry.objects.filter(station=station, for_date__isnull=True)
+        .exclude(status=HandoverEntry.Status.DONE)
+        .select_related("author")[:20]
+    )
+
+    previous_monday = monday - timedelta(days=7)
+    next_monday = monday + timedelta(days=7)
+    prev_year, prev_week, _ = previous_monday.isocalendar()
+    next_year, next_week, _ = next_monday.isocalendar()
+
+    return render(request, "core/handover_week.html", {
+        "days": days,
+        "general_entries": general_entries,
+        "year": year,
+        "week": week,
+        "monday": monday,
+        "sunday": week_days[-1],
+        "prev_year": prev_year,
+        "prev_week": prev_week,
+        "next_year": next_year,
+        "next_week": next_week,
+        "can_edit_team": request.membership.role in {Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN},
+        "team_form": DailyTeamForm(),
+    })
+
+
+@membership_required({Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN})
+@require_POST
+def daily_team_update(request, tag):
+    try:
+        day = date.fromisoformat(tag)
+    except ValueError as exc:
+        raise Http404 from exc
+    form = DailyTeamForm(request.POST)
+    if form.is_valid():
+        set_daily_team(request.membership.station, day, form.cleaned_data["note"], request.membership)
+        messages.success(request, "Team wurde gespeichert.")
+    else:
+        messages.error(request, "Team konnte nicht gespeichert werden.")
+    year, week, _ = day.isocalendar()
+    return redirect(f"{reverse('handover_week')}?jahr={year}&kw={week}")
 
 
 @membership_required(CONTENT_ROLES)

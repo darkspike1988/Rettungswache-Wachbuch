@@ -5,6 +5,7 @@ from .models import (
     BirthdayPreference,
     CalendarEvent,
     CoffeeEntry,
+    DailyTeamNote,
     FeedItem,
     FeedSource,
     HandoverEntry,
@@ -32,6 +33,7 @@ class ReadOnlyAdmin(admin.ModelAdmin):
 class StationAdmin(admin.ModelAdmin):
     list_display = (
         "name",
+        "location",
         "slug",
         "is_active",
         "calendar_enabled",
@@ -61,6 +63,12 @@ class HandoverAdmin(ReadOnlyAdmin):
 @admin.register(HandoverRevision)
 class HandoverRevisionAdmin(ReadOnlyAdmin):
     list_display = ("handover", "version", "changed_by", "created_at")
+
+
+@admin.register(DailyTeamNote)
+class DailyTeamNoteAdmin(ReadOnlyAdmin):
+    list_display = ("station", "date", "note", "updated_by", "updated_at")
+    list_filter = ("station",)
 
 
 @admin.register(CalendarEvent)

@@ -8,6 +8,12 @@
   {% include "core/form_errors.html" %}
   <div class="field">{{ form.category.errors }}<label for="{{ form.category.id_for_label }}">Kategorie</label>{{ form.category }}</div>
   <div class="field">{{ form.priority.errors }}<label for="{{ form.priority.id_for_label }}">Priorität</label>{{ form.priority }}</div>
+  <div class="field">
+    {{ form.for_date.errors }}
+    <label for="{{ form.for_date.id_for_label }}">Betrifft Tag</label>
+    <p class="field-hint">Leer lassen für Allgemeines ohne Tagesbezug im Wochenprotokoll.</p>
+    {{ form.for_date }}
+  </div>
   <div class="field">{{ form.title.errors }}<label for="{{ form.title.id_for_label }}">Titel</label>{{ form.title }}</div>
   <div class="field">
     {{ form.details.errors }}

@@ -4,18 +4,33 @@ from django import forms
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from .models import BirthdayPreference, CalendarEvent, HandoverEntry, Membership, Station
+from .models import BirthdayPreference, CalendarEvent, DailyTeamNote, HandoverEntry, Membership, Station
 
 
 class DateTimeLocalInput(forms.DateTimeInput):
     input_type = "datetime-local"
 
 
+class DateInput(forms.DateInput):
+    input_type = "date"
+
+
 class HandoverForm(forms.ModelForm):
     class Meta:
         model = HandoverEntry
-        fields = ["category", "priority", "title", "details"]
-        widgets = {"details": forms.Textarea(attrs={"rows": 6})}
+        fields = ["category", "priority", "title", "details", "for_date"]
+        widgets = {
+            "details": forms.Textarea(attrs={"rows": 6}),
+            "for_date": DateInput(),
+        }
+        labels = {"for_date": "Betrifft Tag"}
+
+
+class DailyTeamForm(forms.ModelForm):
+    class Meta:
+        model = DailyTeamNote
+        fields = ["note"]
+        labels = {"note": "Team"}
 
 
 class HandoverStatusForm(forms.ModelForm):
@@ -128,9 +143,10 @@ class StationSettingsForm(forms.ModelForm):
         model = Station
         fields = [
             "name",
+            "location",
             "calendar_enabled",
             "birthdays_enabled",
             "coffee_enabled",
             "feeds_enabled",
         ]
-        labels = {"name": "Name der Rettungswache"}
+        labels = {"name": "Name der Rettungswache", "location": "Standort"}
