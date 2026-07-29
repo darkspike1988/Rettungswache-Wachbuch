@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from io import BytesIO
 
 from django.contrib import messages
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db import connection, transaction
@@ -44,6 +45,7 @@ from .models import (
     HandoverEntry,
     Membership,
 )
+from .throttle import password_reset_is_throttled
 from .services import (
     acknowledge_handover,
     audit,
@@ -52,6 +54,20 @@ from .services import (
     set_daily_team,
     update_handover,
 )
+
+
+class ThrottledPasswordResetView(auth_views.PasswordResetView):
+    """Ohne Drosselung koennte jemand beliebig viele Reset-Mails an eine
+    bekannte Adresse ausloesen. Gedrosselte Versuche bekommen dieselbe Antwort
+    wie erfolgreiche, damit sich daraus nichts ueber vorhandene Konten ablesen
+    laesst."""
+
+    def post(self, request, *args, **kwargs):
+        if password_reset_is_throttled(
+            request.POST.get("email", ""), request.META.get("REMOTE_ADDR", ""),
+        ):
+            return redirect(self.success_url)
+        return super().post(request, *args, **kwargs)
 
 
 def healthz(request):

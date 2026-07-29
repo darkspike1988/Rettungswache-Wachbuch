@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core import mail
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
@@ -600,6 +601,7 @@ class BirthdayAndCoffeeTests(PilotTestCase):
 
 class PasswordResetTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(
             "mara@example.org", email="mara@example.org", password="alt-passwort-123",
         )
@@ -633,6 +635,37 @@ class PasswordResetTests(TestCase):
         response = self.request_reset("niemand@example.org")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(PASSWORD_RESET_MAX_PER_EMAIL=2, PASSWORD_RESET_MAX_PER_IP=99)
+    def test_repeated_requests_for_one_address_are_throttled(self):
+        for _ in range(2):
+            self.request_reset("mara@example.org")
+        self.assertEqual(len(mail.outbox), 2)
+
+        response = self.request_reset("mara@example.org")
+        # Gleiche Antwort wie im Erfolgsfall, aber keine weitere Mail.
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 2)
+
+    @override_settings(PASSWORD_RESET_MAX_PER_EMAIL=99, PASSWORD_RESET_MAX_PER_IP=2)
+    def test_many_addresses_from_one_client_are_throttled(self):
+        for index in range(3):
+            User.objects.create_user(
+                f"p{index}@example.org", email=f"p{index}@example.org", password="x-123456",
+            )
+            self.request_reset(f"p{index}@example.org")
+        self.assertEqual(len(mail.outbox), 2)
+
+    @override_settings(PASSWORD_RESET_MAX_PER_EMAIL=1, PASSWORD_RESET_MAX_PER_IP=99)
+    def test_throttling_one_address_does_not_block_another(self):
+        User.objects.create_user(
+            "other@example.org", email="other@example.org", password="x-123456",
+        )
+        self.request_reset("mara@example.org")
+        self.request_reset("mara@example.org")
+        self.request_reset("other@example.org")
+        recipients = [message.to[0] for message in mail.outbox]
+        self.assertEqual(recipients, ["mara@example.org", "other@example.org"])
 
     def test_login_page_links_to_password_reset(self):
         response = self.client.get(reverse("login"))

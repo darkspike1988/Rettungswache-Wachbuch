@@ -3,7 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path, reverse_lazy
 
 from core.forms import WachbuchPasswordResetForm
-from core.views import healthz
+from core.views import ThrottledPasswordResetView, healthz
 
 
 urlpatterns = [
@@ -19,7 +19,7 @@ urlpatterns = [
     path("abmelden/", auth_views.LogoutView.as_view(), name="logout"),
     path(
         "passwort-vergessen/",
-        auth_views.PasswordResetView.as_view(
+        ThrottledPasswordResetView.as_view(
             template_name="registration/password_reset_form.html",
             email_template_name="registration/password_reset_email.txt",
             subject_template_name="registration/password_reset_subject.txt",

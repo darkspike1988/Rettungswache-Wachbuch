@@ -109,6 +109,10 @@ docker compose run --rm migrate python manage.py purge_expired
 Der Lauf schreibt je Wache ein Audit-Ereignis `retention.purged` mit den
 Stueckzahlen. Kassenbuchungen bleiben ausgenommen.
 
+Im Normalbetrieb uebernimmt das der `maintenance`-Container, der den Befehl
+standardmaessig einmal taeglich ausfuehrt (`MAINTENANCE_INTERVAL_SECONDS` in
+`.env`). Der manuelle Aufruf oben bleibt fuer Probelaeufe sinnvoll.
+
 ## Passwort-Reset
 
 Ohne `EMAIL_HOST` in `.env` schreibt Django Nachrichten nur in das

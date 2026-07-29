@@ -144,6 +144,20 @@ SECURE_SSL_REDIRECT = False
 # The shared tailnet hostname must not impose preload/subdomain policy on other apps.
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
 
+# Der Cache liegt in der Datenbank, damit Zaehler wie die Reset-Drosselung ueber
+# alle Gunicorn-Worker hinweg gelten und kein zusaetzlicher Dienst noetig ist.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "wachbuch_cache",
+    }
+}
+
+# Passwort-Reset drosseln: je Adresse und je Absender-IP pro Stunde.
+PASSWORD_RESET_MAX_PER_EMAIL = int(os.getenv("PASSWORD_RESET_MAX_PER_EMAIL", "3"))
+PASSWORD_RESET_MAX_PER_IP = int(os.getenv("PASSWORD_RESET_MAX_PER_IP", "12"))
+PASSWORD_RESET_WINDOW_SECONDS = 3600
+
 # Ohne EMAIL_HOST schreibt Django Nachrichten in die Konsole statt sie zu
 # versenden. Der Passwort-Reset funktioniert dann nur im Testbetrieb.
 EMAIL_HOST = os.getenv("EMAIL_HOST", "").strip()

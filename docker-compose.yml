@@ -99,6 +99,33 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  maintenance:
+    image: rettungswache-wachbuch-web:local
+    restart: unless-stopped
+    command: ["/bin/sh", "/app/scripts/maintenance-loop.sh"]
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "false"
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB}
+      # Owner-Rolle: nur sie darf Audit-Ereignisse und Revisionen loeschen.
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      ALLOWED_HOSTS: localhost
+      MAINTENANCE_INTERVAL_SECONDS: ${MAINTENANCE_INTERVAL_SECONDS:-86400}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - app-db
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
   feed-worker:
     image: rettungswache-wachbuch-web:local
     restart: unless-stopped

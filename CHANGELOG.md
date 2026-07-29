@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Passwort-Reset wird jetzt gedrosselt (Standard: 3 Anfragen je Adresse und 12
+  je IP pro Stunde). Gedrosselte Versuche bekommen dieselbe Antwort wie
+  erfolgreiche, damit sich daraus nichts ueber vorhandene Konten ablesen laesst.
+  Die Zaehler liegen im Datenbank-Cache und gelten damit ueber alle
+  Gunicorn-Worker hinweg.
+- Neuer `maintenance`-Container fuehrt `purge_expired` taeglich aus. Bisher
+  waren Loeschfristen zwar einstellbar, wurden aber ohne manuellen Aufruf nie
+  angewendet.
 - Passwort-Reset per E-Mail (`/passwort-vergessen/`) samt Passwortwechsel unter
   `Mehr -> Passwort aendern`. Neue Konten brauchen im Django-Admin zwingend
   eine E-Mail-Adresse; `/team/` markiert Konten ohne Adresse. SMTP wird ueber
