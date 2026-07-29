@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Demo | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading heading-with-action">
+  <div>
+    <p class="context-line">Vorschau ohne Anmeldung</p>
+    <h1>So sieht euer Wachbuch aus</h1>
+    <p class="lead">Nicht-interaktive Beispielansicht mit erfundenen Daten. Keine echte Wache, kein Login nötig, nichts wird gespeichert.</p>
+  </div>
+  <a class="button primary" href="{% url 'login' %}">Für eure Wache anmelden</a>
+</header>
+
+<div class="demo-frame" aria-label="Beispielhafte Ansicht nach der Anmeldung, keine echten Daten">
+  <div class="demo-frame-bar">
+    <span class="demo-frame-dot"></span><span class="demo-frame-dot"></span><span class="demo-frame-dot"></span>
+    <span class="demo-frame-url">eure-wache.example.org</span>
+  </div>
+  <div class="app-header demo-header">
+    <div class="header-inner">
+      <div class="brand">
+        <img src="{% static 'core/logo-placeholder.svg' %}" alt="Platzhalter-Logo" class="demo-logo">
+        <span><strong>Rettungswache Demo</strong><small>Musterstadt</small></span>
+      </div>
+      <div class="account">
+        <div class="identity"><strong>Mara</strong><span>Rettungswache Demo &middot; Schichtleitung</span></div>
+      </div>
+    </div>
+  </div>
+  <nav class="app-nav demo-nav">
+    <div class="nav-inner">
+      <span aria-current="page">Übersicht</span><span>Übergaben</span><span>Wochenprotokoll</span><span>Kalender</span><span>Mehr</span>
+    </div>
+  </nav>
+  <div class="demo-body">
+    <div class="overview-layout">
+      <section class="section-block">
+        <div class="section-heading"><h2>Für die nächste Schicht</h2><span>Alle Übergaben</span></div>
+        <div class="item-list">
+          <div class="list-row"><span class="status-label priority-urgent">Dringend</span><span class="row-content"><strong>Sauerstoffflasche RTW 2 fast leer</strong><small>Fahrzeugstatus &middot; Offen</small></span><time>29.07. 14:10</time></div>
+          <div class="list-row"><span class="status-label priority-normal">Normal</span><span class="row-content"><strong>Neue Verbandskästen eingetroffen</strong><small>Material &middot; Offen</small></span><time>29.07. 09:32</time></div>
+        </div>
+      </section>
+      <section class="section-block">
+        <div class="section-heading"><h2>Nächste Termine</h2><span>Kalender</span></div>
+        <div class="agenda compact-agenda">
+          <div class="agenda-row"><time><strong>02.08.</strong><span>09:00</span></time><div><strong>Gefahrgut-Übung</strong><p>Jährliche Pflichtübung.</p></div></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="section-block day-card demo-day">
+      <header class="day-card-header"><h2>Mittwoch, 30.07.2026</h2><span class="day-team">Team: Dotzki/Huber</span></header>
+      <div class="item-list">
+        <div class="list-row"><span class="status-label success">Erledigt</span><span class="row-content"><strong>Fahrzeugcheck RTW 1</strong><small>Fahrzeugstatus</small></span></div>
+      </div>
+    </section>
+
+    <section class="section-block demo-day">
+      <h2>Kaffeekasse</h2>
+      <dl class="summary-list">
+        <div><dt>Gesamtsaldo</dt><dd>47,50 €</dd></div>
+        <div><dt>PayPal</dt><dd>paypal.me/beispielwache</dd></div>
+      </dl>
+    </section>
+  </div>
+</div>
+
+<section class="section-block prose demo-day">
+  <h2>Für eure Wache oder euren Kreis?</h2>
+  <p>
+    Das Wachbuch ist freie Software (AGPL-3.0) und wird von jeder Wache selbst
+    gehostet - keine Abhängigkeit von einem Anbieter, keine laufenden
+    Lizenzkosten. Das Logo oben ist ein Platzhalter: im eigenen Betrieb ersetzt
+    ihr die Datei oder passt den Header an euer Wappen/Logo an. Quellcode und
+    Installationsanleitung:
+    <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer">{{ source_url }}</a>.
+  </p>
+</section>
+{% endblock %}

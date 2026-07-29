@@ -127,6 +127,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .status-label.success { color: var(--success); background: var(--success-soft); }
 .status-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
 
+.demo-frame { margin-top: 1.5rem; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: 0 1.5rem 3rem -1.5rem rgba(0,0,0,.35); }
+.demo-frame-bar { display: flex; align-items: center; gap: .4rem; padding: .55rem .75rem; background: var(--line); }
+.demo-frame-dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--line-strong); }
+.demo-frame-url { margin-left: .75rem; padding: .15rem .6rem; color: var(--muted); background: var(--surface); border-radius: 999px; font-size: .75rem; }
+.demo-header .header-inner { grid-template-columns: auto 1fr auto; }
+.demo-header .brand { grid-column: 1; flex-direction: row; justify-self: start; align-items: center; gap: .6rem; text-align: left; }
+.demo-logo { width: 2.25rem; height: 2.25rem; border-radius: 50%; }
+.demo-nav .nav-inner span { min-height: 3.25rem; display: inline-flex; align-items: center; padding: 0 1rem; color: var(--text); font-weight: 650; border-bottom: 3px solid transparent; }
+.demo-nav .nav-inner span[aria-current="page"] { color: var(--accent-dark); border-color: var(--accent); }
+.demo-body { padding: 1.5rem; background: var(--bg); }
+.demo-day { margin-top: 1.5rem; }
+
 .setup-progress { display: flex; gap: .4rem; margin-bottom: 1.5rem; }
 .setup-dot { width: 2.5rem; height: .4rem; background: var(--line); border-radius: 999px; }
 .setup-dot.done { background: var(--accent); }

@@ -8,6 +8,7 @@ urlpatterns = [
     path("impressum/", views.imprint, name="imprint"),
     path("datenschutz/", views.privacy, name="privacy"),
     path("barrierefreiheit/", views.accessibility, name="accessibility"),
+    path("demo/", views.demo, name="demo"),
     path("", views.dashboard, name="dashboard"),
     path("einrichtung/", views.setup_wizard, name="setup_wizard"),
     path("einrichtung/<str:step>/", views.setup_wizard, name="setup_wizard"),

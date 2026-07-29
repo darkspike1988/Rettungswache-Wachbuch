@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="logoPlaceholderTitle">
+  <title id="logoPlaceholderTitle">Platzhalter-Logo (Traeger/Kreis)</title>
+  <circle cx="60" cy="60" r="58" fill="#17343d"/>
+  <circle cx="60" cy="60" r="58" fill="none" stroke="#5fc4d4" stroke-width="3"/>
+  <rect x="30" y="52" width="60" height="26" rx="4" fill="#eef4f4"/>
+  <rect x="38" y="40" width="30" height="16" rx="3" fill="#eef4f4"/>
+  <circle cx="44" cy="80" r="7" fill="#0f2229"/>
+  <circle cx="76" cy="80" r="7" fill="#0f2229"/>
+  <rect x="55" y="45" width="12" height="4" fill="#17343d"/>
+  <rect x="59" y="41" width="4" height="12" fill="#17343d"/>
+  <rect x="46" y="58" width="4" height="14" fill="#176b7a"/>
+  <rect x="41" y="63" width="14" height="4" fill="#176b7a"/>
+</svg>

@@ -105,6 +105,11 @@ class SetupWizardTests(TestCase):
 
 
 class SecurityAndAccessTests(PilotTestCase):
+    def test_anonymous_header_shows_login_link(self):
+        self.client.logout()
+        response = self.client.get(reverse("access"))
+        self.assertContains(response, f'href="{reverse("login")}"')
+
     def test_health_endpoint_and_security_headers(self):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
@@ -500,9 +505,18 @@ class BirthdayAndCoffeeTests(PilotTestCase):
 
 class LegalPagesTests(TestCase):
     def test_pages_are_reachable_without_login(self):
-        for url_name in ("imprint", "privacy", "accessibility"):
+        for url_name in ("imprint", "privacy", "accessibility", "demo"):
             response = self.client.get(reverse(url_name))
             self.assertEqual(response.status_code, 200)
+
+    def test_demo_page_has_no_login_form_and_links_to_source(self):
+        response = self.client.get(reverse("demo"))
+        self.assertNotContains(response, "<form", html=False)
+        self.assertContains(response, "AGPL")
+
+    def test_access_page_links_to_demo(self):
+        response = self.client.get(reverse("access"))
+        self.assertContains(response, f'href="{reverse("demo")}"')
 
     def test_imprint_shows_placeholder_without_operator_settings(self):
         response = self.client.get(reverse("imprint"))

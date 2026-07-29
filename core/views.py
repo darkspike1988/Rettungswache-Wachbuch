@@ -63,6 +63,10 @@ def accessibility(request):
     return render(request, "core/accessibility.html")
 
 
+def demo(request):
+    return render(request, "core/demo.html")
+
+
 def access(request):
     membership = None
     if request.user.is_authenticated:

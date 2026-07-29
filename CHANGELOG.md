@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- oeffentliche, nicht-interaktive Demo-Ansicht unter `/demo/` (Beispieldaten,
+  kein Login, kein Schreibzugriff) zum Vorstellen des Projekts fuer andere
+  Wachen/Kreise; verlinkt von der Fusszeile und der Anmeldeseite
+- Anmelden-Link oben rechts im Kopfbereich fuer nicht angemeldete Besucher
+- generischer Platzhalter-Logo (`core/static/core/logo-placeholder.svg`,
+  kein geschuetztes Kennzeichen wie Rotes Kreuz/Stern des Lebens) fuer die
+  Demo-Ansicht
 - gefuehrter Einrichtungsassistent (`/einrichtung/`): neu angelegte Wachen
   fuehren den ersten Admin-Login in 3 einfachen Schritten (Name/Standort,
   Module, Fertig) statt der vollen Einstellungsseite; jederzeit ueberspringbar
