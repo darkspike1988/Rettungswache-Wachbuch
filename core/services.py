@@ -1,0 +1,64 @@
+from django.db import transaction
+from django.utils import timezone
+
+from .models import AuditEvent, HandoverEntry, HandoverRevision
+
+
+def audit(actor, station, action, obj, metadata=None):
+    return AuditEvent.objects.create(
+        actor=actor,
+        station=station,
+        action=action,
+        object_type=obj.__class__.__name__,
+        object_id=str(obj.pk),
+        metadata=metadata or {},
+    )
+
+
+def handover_snapshot(handover):
+    return {
+        "category": handover.category,
+        "priority": handover.priority,
+        "status": handover.status,
+        "title": handover.title,
+        "details": handover.details,
+    }
+
+
+@transaction.atomic
+def create_handover(form, membership):
+    handover = form.save(commit=False)
+    handover.station = membership.station
+    handover.author = membership.user
+    handover.save()
+    HandoverRevision.objects.create(
+        handover=handover,
+        version=handover.version,
+        snapshot=handover_snapshot(handover),
+        changed_by=membership.user,
+    )
+    audit(membership.user, membership.station, "handover.created", handover, {"fields": [
+        "category", "priority", "title", "details"
+    ]})
+    return handover
+
+
+@transaction.atomic
+def change_handover_status(handover, status, membership):
+    locked = HandoverEntry.objects.select_for_update().get(pk=handover.pk)
+    if locked.status == status:
+        return locked
+    locked.status = status
+    locked.version += 1
+    locked.completed_at = timezone.now() if status == HandoverEntry.Status.DONE else None
+    locked.save(update_fields=["status", "version", "completed_at", "updated_at"])
+    HandoverRevision.objects.create(
+        handover=locked,
+        version=locked.version,
+        snapshot=handover_snapshot(locked),
+        changed_by=membership.user,
+    )
+    audit(membership.user, membership.station, "handover.status_changed", locked, {
+        "fields": ["status"], "version": locked.version
+    })
+    return locked

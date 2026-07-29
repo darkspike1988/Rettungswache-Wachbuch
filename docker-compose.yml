@@ -1,0 +1,168 @@
+services:
+  db:
+    image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      FEED_DB_USER: ${FEED_DB_USER}
+      FEED_DB_PASSWORD: ${FEED_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/10-rwsth-roles.sh:ro
+    networks:
+      - app-db
+      - worker-db
+      - backup-db
+    security_opt:
+      - no-new-privileges:true
+
+  migrate:
+    build: .
+    image: rettungswache-wachbuch-web:local
+    command: ["/app/scripts/migrate.sh"]
+    restart: "no"
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "false"
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      APP_DB_USER: ${APP_DB_USER}
+      FEED_DB_USER: ${FEED_DB_USER}
+      DEFAULT_STATION_NAME: ${DEFAULT_STATION_NAME:-Rettungswache}
+      DEFAULT_STATION_SLUG: ${DEFAULT_STATION_SLUG:-rettungswache}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-db
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    build: .
+    image: rettungswache-wachbuch-web:local
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+      SECURE_COOKIES: ${SECURE_COOKIES:-true}
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${APP_DB_USER}
+      DB_PASSWORD: ${APP_DB_PASSWORD}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8090}
+      DEFAULT_STATION_NAME: ${DEFAULT_STATION_NAME:-Rettungswache}
+      DEFAULT_STATION_SLUG: ${DEFAULT_STATION_SLUG:-rettungswache}
+      APP_NAME: ${APP_NAME:-Rettungswache-Wachbuch}
+      SOURCE_URL: ${SOURCE_URL:-https://github.com/Darkspike1988/Rettungswache-Wachbuch}
+      FEED_ALLOWED_HOSTS: ${FEED_ALLOWED_HOSTS:-}
+      TAILSCALE_ADMIN_LOGIN: ${TAILSCALE_ADMIN_LOGIN:-}
+      TRUST_TAILSCALE_HEADERS: ${TRUST_TAILSCALE_HEADERS:-false}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8090}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz/', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - app-db
+      - web-ingress
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  feed-worker:
+    image: rettungswache-wachbuch-web:local
+    restart: unless-stopped
+    command: ["/app/scripts/start-worker.sh"]
+    environment:
+      DJANGO_SECRET_KEY: ${FEED_WORKER_SECRET_KEY}
+      DJANGO_DEBUG: "false"
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${FEED_DB_USER}
+      DB_PASSWORD: ${FEED_DB_PASSWORD}
+      ALLOWED_HOSTS: localhost
+      FEED_ALLOWED_HOSTS: ${FEED_ALLOWED_HOSTS:-}
+      TRUST_TAILSCALE_HEADERS: "false"
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - worker-db
+      - egress
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  backup:
+    image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    restart: unless-stopped
+    user: "${BACKUP_UID:-70}:${BACKUP_GID:-70}"
+    entrypoint: ["/bin/sh", "/backup/backup-loop.sh"]
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backup-db
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup-loop.sh:/backup/backup-loop.sh:ro
+      - ./scripts/restore-test.sh:/backup/restore-test.sh:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  app-db:
+    internal: true
+  worker-db:
+    internal: true
+  backup-db:
+    internal: true
+  web-ingress:
+  egress:
+
+volumes:
+  postgres-data:

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Kalender | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading heading-with-action">
+  <div><p class="context-line">Wachenorganisation</p><h1>Kalender</h1><p class="lead">Termine der Wache, keine Dienstplanung.</p></div>
+  {% if can_create %}<a class="button primary" href="{% url 'calendar_create' %}">Termin anlegen</a>{% endif %}
+</header>
+<section class="section-block flush">
+  <div class="agenda">
+    {% for event in page_obj %}
+      <article class="agenda-row">
+        <time datetime="{{ event.starts_at|date:'c' }}"><strong>{{ event.starts_at|date:"d.m." }}</strong><span>{{ event.starts_at|date:"H:i" }}</span></time>
+        <div><h2>{{ event.title }}</h2>{% if event.description %}<p>{{ event.description|linebreaksbr }}</p>{% endif %}<small>Bis {{ event.ends_at|date:"d.m.Y H:i" }} &middot; {{ event.created_by.first_name|default:event.created_by.username }}</small></div>
+      </article>
+    {% empty %}<p class="empty-state">Keine anstehenden Termine.</p>{% endfor %}
+  </div>
+</section>
+{% include "core/pagination.html" %}
+{% endblock %}

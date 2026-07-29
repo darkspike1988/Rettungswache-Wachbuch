@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Kaffeekasse | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading heading-with-action">
+  <div><p class="context-line">Gemeinschaftskasse</p><h1>Kaffeekasse</h1><p class="lead">Fehler werden nachvollziehbar durch Gegenbuchung korrigiert.</p></div>
+  {% if can_book %}<a class="button primary" href="{% url 'coffee_create' %}">Buchung erfassen</a>{% endif %}
+</header>
+<div class="balance-row"><div><span>Mein Stand</span><strong>{{ own_euros|floatformat:2 }} €</strong></div>{% if can_book %}<div><span>Gesamtsaldo</span><strong>{{ total_euros|floatformat:2 }} €</strong></div>{% endif %}</div>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Kassenbuch, horizontal scrollbar auf kleinen Bildschirmen">
+  <table class="responsive-table">
+    <caption>Kassenbuchungen</caption>
+    <thead><tr><th scope="col">Datum</th><th scope="col">Person</th><th scope="col">Grund</th><th scope="col">Betrag</th>{% if can_book %}<th scope="col"><span class="visually-hidden">Aktion</span></th>{% endif %}</tr></thead>
+    <tbody>{% for entry in page_obj %}<tr><td data-label="Datum"><time datetime="{{ entry.created_at|date:'c' }}">{{ entry.created_at|date:"d.m.Y H:i" }}</time></td><td data-label="Person">{{ entry.member.first_name|default:entry.member.username }}</td><td data-label="Grund">{{ entry.reason }}{% if entry.correction_of %}<small>Gegenbuchung zu #{{ entry.correction_of_id }}</small>{% endif %}</td><td data-label="Betrag" class="amount {% if entry.amount_cents < 0 %}negative{% endif %}">{{ entry.amount_euros|floatformat:2 }} €</td>{% if can_book %}<td data-label="Aktion">{% if not entry.correction_of and not entry.corrections.exists %}<a href="{% url 'coffee_correct' entry.pk %}">Korrigieren</a>{% endif %}</td>{% endif %}</tr>{% empty %}<tr><td colspan="5">Noch keine Buchungen.</td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% include "core/pagination.html" %}
+{% endblock %}
