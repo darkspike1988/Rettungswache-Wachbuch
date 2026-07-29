@@ -24,6 +24,8 @@ Dienstplanungs- oder Patientendokumentationssystem.
 - Mehrfachzugehoerigkeit: Springer koennen auf mehreren Wachen freigegeben sein
   und dort mit unterschiedlichen Rollen arbeiten
 - lokaler Login mit Passwort-Reset per E-Mail oder Anmeldung ueber Tailscale
+- optionale Zwei-Faktor-Anmeldung per Authenticator-App inklusive
+  Wiederherstellungscodes
 - konfigurierbare Loeschfristen je Wache
 - responsive, JavaScript-freie Oberflaeche mit hellem und dunklem Farbschema
 - Impressum, Datenschutz- und Barrierefreiheitserklaerung als ausfuellbares Seiten-Geruest
@@ -150,6 +152,26 @@ Fuer den Versand werden in `.env` die `EMAIL_*`-Werte gesetzt. Ohne
 `EMAIL_HOST` schreibt Django die Nachrichten nur in das Containerlog - fuer
 einen Test brauchbar, fuer den Betrieb nicht. Angemeldete Personen aendern ihr
 Passwort selbst unter `Mehr -> Passwort aendern`.
+
+## Zwei-Faktor-Anmeldung
+
+Jede Person richtet den zweiten Faktor selbst unter
+`Mehr -> Zwei-Faktor-Anmeldung` ein: QR-Code mit einer TOTP-App scannen
+(Google Authenticator, Aegis, FreeOTP), einmal bestaetigen, fertig. Danach
+fragt die Anmeldung nach dem Passwort zusaetzlich einen sechsstelligen Code ab.
+
+Beim Aktivieren erscheinen acht Wiederherstellungscodes - jeder gilt einmal und
+sie werden nur an dieser einen Stelle angezeigt. Sie gehoeren ausgedruckt oder
+in einen Passwortmanager, nicht ins Wachbuch. Sind Handy und Codes weg, loescht
+die technische Verwaltung das Geraet unter
+`/django-admin/core/totpdevice/`; danach kann die Person neu einrichten.
+
+Der TOTP-Schluessel liegt im Klartext in der Datenbank, weil der Server ihn zum
+Pruefen braucht - so arbeiten auch die gaengigen Django-Bibliotheken. Der Schutz
+der Datenbank gehoert damit zur Sicherheit des zweiten Faktors.
+
+Im Tailscale-Modus entfaellt die Codeabfrage: dort ist das freigegebene Geraet
+selbst der zweite Faktor.
 
 ## Loeschfristen
 

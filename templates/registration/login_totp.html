@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Bestätigungscode | {{ app_name }}{% endblock %}
+{% block content %}
+<section class="access-panel">
+  <p class="context-line">Zweiter Faktor</p>
+  <h1>Code eingeben</h1>
+  <p class="lead">Öffne deine Authenticator-App und gib den sechsstelligen Code für dieses Konto ein.</p>
+  <form method="post" class="form-card">
+    {% csrf_token %}
+    {% include "core/form_errors.html" %}
+    <div class="field">
+      <label for="{{ form.code.id_for_label }}">{{ form.code.label }}</label>
+      <input type="text" name="code" id="{{ form.code.id_for_label }}"
+             inputmode="numeric" autocomplete="one-time-code" autofocus
+             maxlength="32" required>
+      <p class="field-hint">Handy weg? Dann nutze einen deiner Wiederherstellungscodes.</p>
+    </div>
+    <div class="form-actions">
+      <button class="button primary" type="submit">Bestätigen</button>
+      <a class="button secondary" href="{% url 'login' %}">Abbrechen</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

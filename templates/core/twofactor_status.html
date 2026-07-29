@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Zwei-Faktor-Anmeldung | {{ app_name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'more' %}">Zurück zu Mehr</a>
+<header class="page-heading narrow">
+  <p class="context-line">Persönlicher Zugang</p>
+  <h1>Zwei-Faktor-Anmeldung</h1>
+  <p class="lead">Zusätzlich zum Passwort ein Code aus einer App wie Google Authenticator.</p>
+</header>
+<div class="content-flow narrow">
+  {% if enabled %}
+    <section class="section-block">
+      <div class="status-row"><span class="status-label success">Aktiv</span></div>
+      <p class="field-hint">Bei jeder Anmeldung wird zusätzlich ein Code abgefragt.
+        Du hast noch <strong>{{ unused_codes }}</strong> unbenutzte Wiederherstellungscodes.</p>
+      <div class="form-actions">
+        <a class="button secondary" href="{% url 'twofactor_regenerate' %}">Neue Wiederherstellungscodes</a>
+        <a class="button secondary" href="{% url 'twofactor_disable' %}">Deaktivieren</a>
+      </div>
+    </section>
+  {% else %}
+    <section class="section-block">
+      <div class="status-row"><span class="status-label neutral">Nicht eingerichtet</span></div>
+      <p class="field-hint">Empfohlen, sobald das Wachbuch aus dem Internet erreichbar ist.
+        Du brauchst eine Authenticator-App auf dem Handy.</p>
+      <p><a class="button primary" href="{% url 'twofactor_setup' %}">Jetzt einrichten</a></p>
+    </section>
+  {% endif %}
+  <section class="section-block prose">
+    <h2>Gut zu wissen</h2>
+    <p>Bei Anmeldung über Tailscale entfällt die Codeabfrage, weil dort das Gerät
+      selbst der zweite Faktor ist. Verlierst du Handy und Wiederherstellungscodes,
+      kann nur die technische Verwaltung den zweiten Faktor zurücksetzen.</p>
+  </section>
+</div>
+{% endblock %}

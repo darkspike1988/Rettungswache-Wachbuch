@@ -306,3 +306,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .search-form input[type="search"] { flex: 1; min-width: 12rem; min-height: 44px; padding: .4rem .7rem; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); }
 .urgent-callout { border-left: 4px solid var(--danger); }
 .urgent-callout h2 { color: var(--danger); }
+
+.qr-block { display: grid; place-items: center; }
+.qr-block svg { width: min(15rem, 60vw); height: auto; background: #fff; padding: .5rem; border-radius: var(--radius); }
+.manual-key { display: inline-block; padding: .5rem .75rem; background: var(--chip-bg); border-radius: var(--radius); font-size: 1.05rem; letter-spacing: .08em; }
+.recovery-codes { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .5rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.recovery-codes code { display: block; padding: .5rem; text-align: center; background: var(--chip-bg); border-radius: var(--radius); font-size: 1rem; }

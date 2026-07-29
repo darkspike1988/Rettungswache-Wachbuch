@@ -16,6 +16,7 @@ from .models import (
     HandoverRevision,
     Membership,
     Station,
+    TotpDevice,
 )
 
 
@@ -115,6 +116,21 @@ class FeedItemAdmin(ReadOnlyAdmin):
 class AuditEventAdmin(ReadOnlyAdmin):
     list_display = ("created_at", "actor", "station", "action", "object_type", "object_id")
     list_filter = ("station", "action", "object_type")
+
+
+@admin.register(TotpDevice)
+class TotpDeviceAdmin(admin.ModelAdmin):
+    """Nur einsehen und loeschen: Loeschen ist der Weg, jemandem nach Verlust
+    von Handy und Wiederherstellungscodes wieder Zugang zu geben."""
+
+    list_display = ("user", "confirmed", "confirmed_at", "created_at")
+    readonly_fields = ("user", "secret", "confirmed", "last_timestep", "created_at", "confirmed_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 admin.site.unregister(User)

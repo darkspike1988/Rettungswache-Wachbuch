@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+from . import views_twofactor
 
 
 urlpatterns = [
@@ -32,6 +33,11 @@ urlpatterns = [
     path("lage/", views.feeds, name="feeds"),
     path("lage/muellabfuhr/", views.waste_source_update, name="waste_source_update"),
     path("mehr/", views.more, name="more"),
+    path("zwei-faktor/", views_twofactor.twofactor_status, name="twofactor_status"),
+    path("zwei-faktor/einrichten/", views_twofactor.twofactor_setup, name="twofactor_setup"),
+    path("zwei-faktor/codes/", views_twofactor.twofactor_codes, name="twofactor_codes"),
+    path("zwei-faktor/codes/neu/", views_twofactor.twofactor_regenerate, name="twofactor_regenerate"),
+    path("zwei-faktor/deaktivieren/", views_twofactor.twofactor_disable, name="twofactor_disable"),
     path("wache-wechseln/", views.switch_station, name="switch_station"),
     path("team/", views.team, name="team"),
     path("team/freigeben/", views.team_create, name="team_create"),

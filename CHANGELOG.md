@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Zwei-Faktor-Anmeldung per Authenticator-App (Google Authenticator, Aegis und
+  andere TOTP-Apps). Einrichtung unter `Mehr -> Zwei-Faktor-Anmeldung` mit
+  QR-Code und manuell eintragbarem Schluessel. Ein benutzter Code laesst sich
+  nicht erneut verwenden, Fehlversuche sind gedrosselt. Beim Aktivieren gibt es
+  acht einmalig nutzbare Wiederherstellungscodes, die nur als Hash gespeichert
+  werden. Bei Anmeldung ueber Tailscale entfaellt die Abfrage, weil dort das
+  Geraet der zweite Faktor ist.
 - Eine Person kann jetzt auf mehreren Wachen freigegeben sein. Bisher verhinderte
   das eine Datenbankbedingung - im Rettungsdienst arbeiten Springer und
   Aushilfen aber regelmaessig auf mehr als einer Wache. Unter `Mehr` laesst sich

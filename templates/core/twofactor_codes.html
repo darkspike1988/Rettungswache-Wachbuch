@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Wiederherstellungscodes | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading narrow">
+  <p class="context-line">Schritt 2 von 2</p>
+  <h1>Wiederherstellungscodes</h1>
+  <p class="lead">Jeder Code funktioniert genau einmal, falls du dein Handy nicht zur Hand hast.</p>
+</header>
+<div class="content-flow narrow">
+  <section class="section-block urgent-callout">
+    <h2>Jetzt sichern</h2>
+    <p class="field-hint">Diese Codes werden <strong>nur dieses eine Mal</strong> angezeigt.
+      Ausdrucken oder in einem Passwortmanager speichern - nicht im Wachbuch.</p>
+    <ul class="recovery-codes">{% for code in codes %}<li><code>{{ code }}</code></li>{% endfor %}</ul>
+  </section>
+  <p><a class="button primary" href="{% url 'twofactor_status' %}">Ich habe sie gesichert</a></p>
+</div>
+{% endblock %}

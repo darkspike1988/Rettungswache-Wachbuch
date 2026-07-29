@@ -112,6 +112,39 @@ class Membership(models.Model):
         return f"{self.user} - {self.station} ({self.get_role_display()})"
 
 
+class TotpDevice(models.Model):
+    """Zweiter Faktor per Authenticator-App (Google Authenticator, Aegis, ...).
+
+    Der Schluessel liegt im Klartext in der Datenbank - so arbeiten auch die
+    gaengigen Django-Bibliotheken, weil der Server ihn zum Pruefen im Klartext
+    braucht. Wer die Datenbank lesen kann, kann Codes erzeugen; entsprechend
+    zaehlt der Datenbankschutz zur Sicherheit des zweiten Faktors dazu.
+    """
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp_device")
+    secret = models.CharField(max_length=64)
+    confirmed = models.BooleanField(default=False)
+    # Verbrauchter Zeitschritt, damit ein abgefangener Code nicht erneut geht.
+    last_timestep = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Zwei-Faktor fuer {self.user}"
+
+
+class RecoveryCode(models.Model):
+    """Einmalcodes fuer den Fall, dass das Geraet verloren geht. Gespeichert
+    wird nur der Hash."""
+
+    device = models.ForeignKey(TotpDevice, on_delete=models.CASCADE, related_name="recovery_codes")
+    code_hash = models.CharField(max_length=128)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["pk"]
+
+
 class HandoverEntry(models.Model):
     class Category(models.TextChoices):
         STATION = "station", "Wache"

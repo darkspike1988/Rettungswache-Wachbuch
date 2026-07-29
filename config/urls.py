@@ -4,18 +4,20 @@ from django.urls import include, path, reverse_lazy
 
 from core.forms import WachbuchPasswordResetForm
 from core.views import ThrottledPasswordResetView, healthz
+from core.views_twofactor import TwoFactorLoginView, login_totp
 
 
 urlpatterns = [
     path("healthz/", healthz, name="healthz"),
     path(
         "anmelden/",
-        auth_views.LoginView.as_view(
+        TwoFactorLoginView.as_view(
             template_name="registration/login.html",
             redirect_authenticated_user=True,
         ),
         name="login",
     ),
+    path("anmelden/code/", login_totp, name="login_totp"),
     path("abmelden/", auth_views.LogoutView.as_view(), name="logout"),
     path(
         "passwort-vergessen/",

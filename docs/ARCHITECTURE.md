@@ -49,6 +49,7 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
 - `CalendarEvent`: Wachen-, kein Dienstplankalender
 - `BirthdayPreference`: freiwillig, nur Tag und Monat
 - `CoffeeEntry`: append-only Buchungen in Cent und Korrekturbezug
+- `TotpDevice`, `RecoveryCode`: zweiter Faktor je Person; Codes nur als Hash
 - `AuditEvent`: Akteur, Aktion, Objekt und Zeitpunkt ohne Freitextkopien
 
 ## Authentifizierung

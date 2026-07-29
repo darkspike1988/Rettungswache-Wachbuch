@@ -1,8 +1,11 @@
 import json
 import re
+import time
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
+
+import pyotp
 
 from django.contrib.auth.models import User
 from django.core import mail
@@ -16,6 +19,7 @@ from django.utils import timezone
 from .forms import WachbuchUserCreationForm
 from .feed_sync import fetch_source, sync_closure_csv, sync_rss, sync_waste_ics
 from .geocoding import GeocodingError, lookup_district
+from .twofactor import issue_recovery_codes
 from .models import (
     AuditEvent,
     BirthdayPreference,
@@ -27,6 +31,7 @@ from .models import (
     HandoverRevision,
     Membership,
     Station,
+    TotpDevice,
 )
 
 
@@ -914,6 +919,151 @@ class RetentionTests(PilotTestCase):
         self.station.save(update_fields=["retention_handover_days"])
         call_command("purge_expired")
         self.assertTrue(HandoverEntry.objects.filter(pk=keeper.pk).exists())
+
+
+class TwoFactorTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.password = "sicher-genug-123"
+        self.user = User.objects.create_user(
+            "tina@example.org", email="tina@example.org", password=self.password,
+        )
+
+    def enable_for(self, user):
+        device = TotpDevice.objects.create(
+            user=user, secret=pyotp.random_base32(), confirmed=True,
+        )
+        return device
+
+    def current_code(self, device, offset=0):
+        return pyotp.TOTP(device.secret).at(time.time() + offset)
+
+    def login_password(self):
+        return self.client.post(reverse("login"), {
+            "username": "tina@example.org", "password": self.password,
+        })
+
+    def test_login_without_second_factor_is_unchanged(self):
+        response = self.login_password()
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("_auth_user_id", self.client.session)
+
+    def test_password_alone_does_not_create_a_session(self):
+        self.enable_for(self.user)
+        response = self.login_password()
+        self.assertRedirects(response, reverse("login_totp"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_correct_code_completes_the_login(self):
+        device = self.enable_for(self.user)
+        self.login_password()
+        response = self.client.post(reverse("login_totp"), {
+            "code": self.current_code(device),
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("_auth_user_id", self.client.session)
+
+    def test_wrong_code_keeps_the_door_shut(self):
+        self.enable_for(self.user)
+        self.login_password()
+        response = self.client.post(reverse("login_totp"), {"code": "000000"})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_a_code_cannot_be_replayed(self):
+        device = self.enable_for(self.user)
+        code = self.current_code(device)
+        self.login_password()
+        self.client.post(reverse("login_totp"), {"code": code})
+        self.client.logout()
+
+        self.login_password()
+        response = self.client.post(reverse("login_totp"), {"code": code})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_code_page_is_useless_without_the_password_step(self):
+        self.enable_for(self.user)
+        response = self.client.get(reverse("login_totp"))
+        self.assertRedirects(response, reverse("login"))
+
+    def test_pending_login_expires(self):
+        device = self.enable_for(self.user)
+        self.login_password()
+        session = self.client.session
+        session["totp_pending_since"] = (
+            timezone.now() - timedelta(minutes=10)
+        ).isoformat()
+        session.save()
+        response = self.client.post(reverse("login_totp"), {
+            "code": self.current_code(device),
+        })
+        self.assertRedirects(response, reverse("login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_recovery_code_works_once(self):
+        device = self.enable_for(self.user)
+        codes = issue_recovery_codes(device)
+
+        self.login_password()
+        response = self.client.post(reverse("login_totp"), {"code": codes[0]})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("_auth_user_id", self.client.session)
+        self.client.logout()
+
+        self.login_password()
+        response = self.client.post(reverse("login_totp"), {"code": codes[0]})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_recovery_codes_are_not_stored_in_plain_text(self):
+        device = self.enable_for(self.user)
+        codes = issue_recovery_codes(device)
+        stored = list(device.recovery_codes.values_list("code_hash", flat=True))
+        for code in codes:
+            self.assertNotIn(code, stored)
+
+    def test_setup_flow_enables_and_shows_recovery_codes(self):
+        self.client.force_login(self.user)
+        self.client.get(reverse("twofactor_setup"))
+        secret = self.client.session["totp_setup_secret"]
+        response = self.client.post(reverse("twofactor_setup"), {
+            "code": pyotp.TOTP(secret).now(),
+        })
+        # Ohne fetch_redirect_response wuerde der Test die Einmal-Anzeige
+        # selbst verbrauchen.
+        self.assertRedirects(
+            response, reverse("twofactor_codes"), fetch_redirect_response=False,
+        )
+        self.assertTrue(TotpDevice.objects.filter(user=self.user, confirmed=True).exists())
+
+        codes_page = self.client.get(reverse("twofactor_codes"))
+        self.assertEqual(codes_page.status_code, 200)
+        self.assertEqual(len(codes_page.context["codes"]), 8)
+        # Nur einmal sichtbar.
+        self.assertRedirects(
+            self.client.get(reverse("twofactor_codes")), reverse("twofactor_status")
+        )
+        self.assertTrue(AuditEvent.objects.filter(action="twofactor.enabled").exists())
+
+    def test_setup_rejects_a_wrong_confirmation_code(self):
+        self.client.force_login(self.user)
+        self.client.get(reverse("twofactor_setup"))
+        response = self.client.post(reverse("twofactor_setup"), {"code": "000000"})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(TotpDevice.objects.filter(user=self.user).exists())
+
+    def test_disabling_requires_a_valid_code(self):
+        device = self.enable_for(self.user)
+        self.client.force_login(self.user)
+        self.client.post(reverse("twofactor_disable"), {"code": "000000"})
+        self.assertTrue(TotpDevice.objects.filter(user=self.user).exists())
+
+        self.client.post(reverse("twofactor_disable"), {
+            "code": self.current_code(device),
+        })
+        self.assertFalse(TotpDevice.objects.filter(user=self.user).exists())
+        self.assertTrue(AuditEvent.objects.filter(action="twofactor.disabled").exists())
 
 
 class LegalPagesTests(TestCase):

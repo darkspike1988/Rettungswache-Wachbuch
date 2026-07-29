@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Zwei-Faktor deaktivieren | {{ app_name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'twofactor_status' %}">Zurück</a>
+<header class="page-heading narrow">
+  <p class="context-line">Persönlicher Zugang</p>
+  <h1>Zwei-Faktor deaktivieren</h1>
+  <p class="lead">Danach reicht wieder das Passwort allein.</p>
+</header>
+<form method="post" class="form-card narrow">
+  {% csrf_token %}
+  {% include "core/form_errors.html" %}
+  <div class="field">
+    <label for="{{ form.code.id_for_label }}">Zur Bestätigung: Code aus der App</label>
+    <input type="text" name="code" id="{{ form.code.id_for_label }}"
+           inputmode="numeric" autocomplete="one-time-code" maxlength="32" required>
+  </div>
+  <div class="form-actions">
+    <button class="button primary" type="submit">Deaktivieren</button>
+    <a class="button secondary" href="{% url 'twofactor_status' %}">Abbrechen</a>
+  </div>
+</form>
+{% endblock %}
