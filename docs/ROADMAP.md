@@ -171,6 +171,10 @@ mit Foto in unter dreissig Sekunden erfassen.
 
 ## Vorgehen quer zu allen Phasen
 
+- **[`FRAGEN-AN-DIE-WACHE.md`](FRAGEN-AN-DIE-WACHE.md) beantworten lassen.**
+  Schichtmodell, Geraete, Netzloecher und Rollen entscheiden ueber mehrere
+  Punkte weiter oben - insbesondere darueber, ob der Kalendertag ueberhaupt die
+  richtige Einheit ist.
 - **Eine Schicht mitfahren, bevor Phase 1 beginnt.** Jedes Wort mitschreiben,
   das die Leute benutzen, und es genau so in die Oberflaeche uebernehmen.
   "Betrifft Tag" sagt niemand; die Frage lautet "Fuer welchen Tag?".

@@ -291,6 +291,8 @@ Loeschfristen oder organisatorische Freigabe. Details stehen in
 - [Test- und Go-live-Checkliste](docs/GO-LIVE-CHECKLIST.md)
 - [Recherche und Quellen](docs/RESEARCH.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Fragen an die Wache](docs/FRAGEN-AN-DIE-WACHE.md) - Entscheidungen, die keine
+  Software allein treffen kann; von der einfuehrenden Wache auszufuellen
 - [Designregeln](docs/DESIGN-SYSTEM.md)
 
 ## Mitwirken
