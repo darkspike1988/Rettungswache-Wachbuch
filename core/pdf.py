@@ -77,27 +77,36 @@ def _entry_table(entries, styles):
 STATE_MARKS = {"done": "[x]", "defect": "[!]", "skipped": "[-]"}
 
 
-def _task_table(blocks, styles):
+def _task_table(blocks, styles, show_person=True):
     """Die Aufgaben eines Tages - dasselbe Ankreuzbild wie auf dem Papierbogen.
-    [x] erledigt, [!] Mangel, [-] entfaellt, [ ] offen geblieben."""
+    [x] erledigt, [!] Mangel, [-] entfaellt, [ ] offen geblieben.
+
+    Zeigt die Wache keine Namen, faellt die Spalte "Von" weg statt leer zu
+    bleiben - ein Papierbogen mit einer durchgehend leeren Spalte sieht aus
+    wie ein Versaeumnis.
+    """
     rows = []
     for block in blocks:
         for row in block["rows"]:
             result = row["result"]
-            rows.append([
+            cells = [
                 STATE_MARKS.get(result.state, "[ ]") if result else "[ ]",
                 Paragraph(row["item"].title, styles["cell"]),
                 Paragraph(block["list"].title, styles["cell"]),
-                Paragraph(
+            ]
+            if show_person:
+                cells.append(Paragraph(
                     result.recorded_by.first_name or result.recorded_by.username
                     if result else "", styles["cell"],
-                ),
-            ])
+                ))
+            rows.append(cells)
     if not rows:
         return None
+    header = ["", "Aufgabe", "Liste"] + (["Von"] if show_person else [])
+    widths = [10 * mm, 85 * mm, 45 * mm] + ([25 * mm] if show_person else [])
     table = Table(
-        [["", "Aufgabe", "Liste", "Von"]] + rows,
-        colWidths=[10 * mm, 85 * mm, 45 * mm, 25 * mm], repeatRows=1,
+        [header] + rows,
+        colWidths=widths, repeatRows=1,
     )
     table.setStyle(TableStyle([
         ("FONTSIZE", (0, 0), (-1, -1), 8.5),
@@ -138,7 +147,11 @@ def build_week_pdf(buffer, station, year, week, days, general_entries):
     ]
 
     for index, day in enumerate(days):
-        team = day["team_note"].note if day["team_note"] else "-"
+        team = ", ".join(
+            (f"{slot['shift'].name}: {slot['note'].note}" if slot["shift"]
+             else slot["note"].note)
+            for slot in day["team_slots"] if slot["note"]
+        ) or "-"
         block = [
             Paragraph(
                 f"{WEEKDAYS[index]}, {day['date'].strftime('%d.%m.%Y')} &nbsp;&nbsp; "
@@ -147,7 +160,7 @@ def build_week_pdf(buffer, station, year, week, days, general_entries):
             ),
             _entry_table(day["entries"], styles),
         ]
-        tasks = _task_table(day.get("tasks") or [], styles)
+        tasks = _task_table(day.get("tasks") or [], styles, station.shows_task_person)
         if tasks is not None:
             block.append(Spacer(1, 1.5 * mm))
             block.append(tasks)

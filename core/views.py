@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, timedelta
 from io import BytesIO
 
@@ -39,6 +40,7 @@ from .forms import (
     SetupBasicsForm,
     SetupModulesForm,
     SetupTasksForm,
+    ShiftForm,
     StationSettingsForm,
     TaskDefectForm,
     TaskItemForm,
@@ -57,6 +59,7 @@ from .models import (
     FeedSource,
     HandoverEntry,
     Membership,
+    Shift,
     Station,
     TaskItem,
     TaskList,
@@ -67,6 +70,7 @@ from .throttle import password_reset_is_throttled
 from .twofactor import is_enabled as twofactor_is_enabled
 from .services import (
     acknowledge_handover,
+    active_shifts,
     audit,
     change_handover_status,
     clear_task_result,
@@ -75,6 +79,7 @@ from .services import (
     set_daily_team,
     task_day_overview,
     task_week_progress,
+    team_slots_for_day,
     update_handover,
 )
 
@@ -422,11 +427,11 @@ def handover_status(request, pk):
     return redirect("handover_detail", pk=pk)
 
 
-def _week_start(year, week):
+def _week_start(year, week, station):
     try:
         return date.fromisocalendar(int(year), int(week), 1)
     except (ValueError, TypeError):
-        today = timezone.localdate()
+        today = station.current_day()
         return today - timedelta(days=today.isoweekday() - 1)
 
 
@@ -438,10 +443,12 @@ def week_protocol(station, monday, detailed_tasks=False):
     Punkte. Deshalb holt nur der Export die volle Aufstellung.
     """
     week_days = [monday + timedelta(days=offset) for offset in range(7)]
-    team_notes = {
-        note.date: note
-        for note in DailyTeamNote.objects.filter(station=station, date__in=week_days)
-    }
+    shifts = active_shifts(station)
+    notes_by_day = defaultdict(dict)
+    for note in DailyTeamNote.objects.filter(
+        station=station, date__in=week_days
+    ).select_related("shift"):
+        notes_by_day[note.date][note.shift_id] = note
     day_entries = {day: [] for day in week_days}
     for entry in HandoverEntry.objects.filter(
         station=station, for_date__in=week_days
@@ -460,7 +467,7 @@ def week_protocol(station, monday, detailed_tasks=False):
     days = [
         {
             "date": day,
-            "team_note": team_notes.get(day),
+            "team_slots": team_slots_for_day(station, day, notes_by_day, shifts),
             "entries": day_entries[day],
             "task_progress": progress[day],
             "tasks": details[day],
@@ -478,10 +485,10 @@ def week_protocol(station, monday, detailed_tasks=False):
 @membership_required(CONTENT_ROLES)
 def handover_week_pdf(request):
     station = request.membership.station
-    today = timezone.localdate()
+    today = station.current_day()
     default_year, default_week, _ = today.isocalendar()
     monday = _week_start(
-        request.GET.get("jahr", default_year), request.GET.get("kw", default_week)
+        request.GET.get("jahr", default_year), request.GET.get("kw", default_week), station
     )
     year, week, _ = monday.isocalendar()
     days, general_entries = week_protocol(station, monday, detailed_tasks=True)
@@ -502,10 +509,10 @@ def handover_week(request):
     station = request.membership.station
     if request.membership.role == Membership.Role.ADMIN and not station.onboarded:
         return redirect("setup_wizard")
-    today = timezone.localdate()
+    today = station.current_day()
     default_year, default_week, _ = today.isocalendar()
     monday = _week_start(
-        request.GET.get("jahr", default_year), request.GET.get("kw", default_week)
+        request.GET.get("jahr", default_year), request.GET.get("kw", default_week), station
     )
     week_days = [monday + timedelta(days=offset) for offset in range(7)]
     year, week, _ = monday.isocalendar()
@@ -548,9 +555,16 @@ def daily_team_update(request, tag):
         day = date.fromisoformat(tag)
     except ValueError as exc:
         raise Http404 from exc
+    station = request.membership.station
+    shift = None
+    shift_pk = request.POST.get("schicht")
+    if shift_pk:
+        # Nur Schichten der eigenen Wache - sonst liesse sich ueber ein
+        # gefaelschtes Formularfeld in eine fremde Wache schreiben.
+        shift = get_object_or_404(Shift, pk=shift_pk, station=station, is_active=True)
     form = DailyTeamForm(request.POST)
     if form.is_valid():
-        set_daily_team(request.membership.station, day, form.cleaned_data["note"], request.membership)
+        set_daily_team(station, day, form.cleaned_data["note"], request.membership, shift=shift)
         messages.success(request, "Team wurde gespeichert.")
     else:
         messages.error(request, "Team konnte nicht gespeichert werden.")
@@ -594,8 +608,9 @@ def tasks_day(request, tag):
     overview = task_day_overview(station, day)
     year, week, _ = day.isocalendar()
     return render(request, "core/tasks_day.html", {
+        "station": station,
         "day": day,
-        "is_today": day == timezone.localdate(),
+        "is_today": day == station.current_day(),
         "overview": overview,
         "total": sum(block["total"] for block in overview),
         "settled": sum(block["settled"] for block in overview),
@@ -666,11 +681,60 @@ def task_lists(request):
 
 
 @membership_required({Membership.Role.ADMIN})
+@require_http_methods(["GET", "POST"])
+def shifts(request):
+    """Das Schichtmodell der Wache.
+
+    Wer eine Besetzung je Wachentag hat, legt hier nichts an - dann bleibt es
+    bei einem Team-Feld und einer Aufgabenliste je Tag.
+    """
+    station = request.membership.station
+    form = ShiftForm(request.POST or None, station=station)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            shift = form.save(commit=False)
+            shift.station = station
+            shift.position = Shift.objects.filter(station=station).count()
+            shift.full_clean()
+            shift.save()
+            audit(request.user, station, "shift.created", shift, {
+                "name": shift.name, "start": shift.start_time.isoformat(),
+                "minutes": shift.duration_minutes,
+            })
+        messages.success(request, f"Schicht „{shift.name}“ angelegt.")
+        return redirect("shifts")
+    return render(request, "core/shifts.html", {
+        "form": form,
+        "shifts": Shift.objects.filter(station=station),
+        "presets": ShiftForm.PRESETS,
+        "station": station,
+    })
+
+
+@membership_required({Membership.Role.ADMIN})
+@require_POST
+def shift_toggle(request, pk):
+    """Schichten werden nicht geloescht, sondern stillgelegt: an ihnen haengen
+    Team-Eintraege vergangener Tage, die lesbar bleiben muessen."""
+    station = request.membership.station
+    shift = get_object_or_404(Shift, pk=pk, station=station)
+    shift.is_active = not shift.is_active
+    shift.save(update_fields=["is_active"])
+    audit(request.user, station, "shift.toggled", shift, {"is_active": shift.is_active})
+    messages.success(
+        request,
+        f"Schicht „{shift.name}“ ist wieder aktiv." if shift.is_active
+        else f"Schicht „{shift.name}“ ist stillgelegt.",
+    )
+    return redirect("shifts")
+
+
+@membership_required({Membership.Role.ADMIN})
 @station_module_required("tasks_enabled")
 @require_http_methods(["GET", "POST"])
 def task_list_create(request):
     station = request.membership.station
-    form = TaskListForm(request.POST or None)
+    form = TaskListForm(request.POST or None, station=station)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             task_list = form.save(commit=False)
@@ -696,7 +760,7 @@ def _get_task_list(request, pk):
 def task_list_edit(request, pk):
     task_list = _get_task_list(request, pk)
     station = request.membership.station
-    form = TaskListForm(request.POST or None, instance=task_list)
+    form = TaskListForm(request.POST or None, instance=task_list, station=station)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             changed = [field for field in form.changed_data if field in form.fields]

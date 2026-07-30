@@ -13,6 +13,7 @@ from .models import (
     FeedSource,
     HandoverEntry,
     Membership,
+    Shift,
     Station,
     TaskItem,
     TaskList,
@@ -241,6 +242,8 @@ class StationSettingsForm(forms.ModelForm):
             "postal_code",
             "city",
             "district",
+            "day_start_time",
+            "task_attribution",
             "calendar_enabled",
             "birthdays_enabled",
             "coffee_enabled",
@@ -259,16 +262,21 @@ class StationSettingsForm(forms.ModelForm):
             "city": "Ort",
             "district": "Kreis/Landkreis",
         }
+        widgets = {"day_start_time": forms.TimeInput(attrs={"type": "time"}, format="%H:%M")}
 
 
 class SetupBasicsForm(forms.ModelForm):
     class Meta:
         model = Station
-        fields = ["name", "location"]
+        # Der Betriebstag steht bewusst schon hier und nicht erst in den
+        # Einstellungen: er bestimmt, auf welchem Tag ein Haken um 02:00 Uhr
+        # landet. Wer ihn nie sieht, merkt den Fehler erst Monate spaeter.
+        fields = ["name", "location", "day_start_time"]
         labels = {
             "name": "Name der Rettungswache",
             "location": "Standort (Anzeige im Kopfbereich unter dem Namen)",
         }
+        widgets = {"day_start_time": forms.TimeInput(attrs={"type": "time"}, format="%H:%M")}
 
 
 class SetupModulesForm(forms.ModelForm):
@@ -320,6 +328,40 @@ WEEKDAY_CHOICES = [
 ]
 
 
+class ShiftForm(forms.ModelForm):
+    """Die Schichten einer Wache. Vorgegeben wird nichts - im Rettungsdienst
+    laufen 24-Stunden-Dienste neben 12-Stunden-Wechseln und Tagesstandorten."""
+
+    PRESETS = [
+        ("24-Stunden-Dienst", "07:00", 1440),
+        ("Tagdienst", "07:00", 720),
+        ("Nachtdienst", "19:00", 720),
+    ]
+
+    class Meta:
+        model = Shift
+        fields = ["name", "start_time", "duration_minutes"]
+        labels = {"name": "Bezeichnung"}
+        help_texts = {
+            "name": "Zum Beispiel „24-Stunden-Dienst“, „Tagdienst“ oder „Nachtdienst“.",
+        }
+        widgets = {"start_time": forms.TimeInput(attrs={"type": "time"}, format="%H:%M")}
+
+    def __init__(self, *args, station=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.station = station
+        self.fields["duration_minutes"].widget.attrs.update({"min": 1, "max": 1440})
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        existing = Shift.objects.filter(station=self.station, name__iexact=name)
+        if self.instance.pk:
+            existing = existing.exclude(pk=self.instance.pk)
+        if existing.exists():
+            raise forms.ValidationError("Eine Schicht mit dieser Bezeichnung gibt es schon.")
+        return name
+
+
 class TaskListForm(forms.ModelForm):
     """Wochentage sind Ankreuzfelder, im Modell stehen sie als Ziffernkette.
     Der Umbau passiert hier, damit im Formular nichts zu tippen ist."""
@@ -334,14 +376,22 @@ class TaskListForm(forms.ModelForm):
 
     class Meta:
         model = TaskList
-        fields = ["title", "rhythm", "weekdays", "day_of_month"]
+        fields = ["title", "rhythm", "weekdays", "day_of_month", "shift"]
         help_texts = {
             "title": "Zum Beispiel „Tagesaufgaben“, „Fahrzeugcheck RTW 1“ oder „Wachenrundgang“.",
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, station=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["day_of_month"].widget.attrs.update({"min": 1, "max": 31})
+        # Nur die Schichten der eigenen Wache, und nur solange es welche gibt:
+        # eine Wache mit einer Besetzung je Tag soll das Feld nicht sehen.
+        shifts = Shift.objects.filter(station=station, is_active=True) if station else Shift.objects.none()
+        if shifts.exists():
+            self.fields["shift"].queryset = shifts
+            self.fields["shift"].empty_label = "Einmal je Wachentag"
+        else:
+            del self.fields["shift"]
         if self.instance.pk:
             # Muss in self.initial stehen, nicht am Feld: der Modellwert ist
             # eine Zeichenkette und wuerde sonst als *ein* Wert gelesen, sodass

@@ -19,6 +19,7 @@ def current_membership(request):
 STATION_AREA_PAGES = frozenset({
     "station_area", "station_settings", "station_geocode", "switch_station",
     "team", "team_create", "membership_update", "audit_log",
+    "shifts", "shift_toggle",
     "birthdays", "birthday_settings",
     "coffee", "coffee_create", "coffee_correct", "coffee_payment_update",
     "feeds", "waste_source_update",

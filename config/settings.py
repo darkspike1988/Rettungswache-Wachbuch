@@ -119,7 +119,13 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        # Die Manifest-Variante verlangt ein vorher gelaufenes collectstatic.
+        # Im Betrieb ist das richtig, in Entwicklung und Tests waere es nur
+        # eine Huerde - dort genuegt die einfache Auslieferung.
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage" if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     }
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

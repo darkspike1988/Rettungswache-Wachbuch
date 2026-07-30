@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, time as dt_time, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -12,6 +12,7 @@ from django.core import mail
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
+from django.db.utils import IntegrityError
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -30,6 +31,7 @@ from .models import (
     HandoverEntry,
     HandoverRevision,
     Membership,
+    Shift,
     Station,
     TaskItem,
     TaskList,
@@ -87,8 +89,11 @@ class SetupWizardTests(TestCase):
         self.client.force_login(self.admin)
         response = self.client.post(reverse("setup_wizard"), {
             "name": "Rettungswache Demo", "location": "Musterstadt",
+            "day_start_time": "07:00",
         })
         self.assertRedirects(response, reverse("setup_wizard", args=["modules"]))
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.day_start_time, dt_time(7, 0))
         response = self.client.post(reverse("setup_wizard", args=["modules"]), {
             "calendar_enabled": "on", "coffee_enabled": "on", "tasks_enabled": "on",
         })
@@ -528,6 +533,7 @@ class WeeklyProtocolTests(PilotTestCase):
         response = self.client.post(reverse("station_settings"), {
             "name": "Rettungswache Steinhagen",
             "location": "Steinhagen",
+            "day_start_time": "07:00", "task_attribution": "person",
         })
         self.assertRedirects(response, reverse("station_settings"))
         self.station.refresh_from_db()
@@ -1452,6 +1458,7 @@ class TeamAndAuditTests(PilotTestCase):
         response = self.client.post(reverse("station_settings"), {
             "name": "Wache Nord", "location": "", "street": "",
             "postal_code": "", "city": "", "district": "",
+            "day_start_time": "07:00", "task_attribution": "person",
         })
         self.assertRedirects(response, reverse("station_settings"))
         self.station.refresh_from_db()
@@ -1542,6 +1549,7 @@ class TeamAndAuditTests(PilotTestCase):
     def test_admin_configures_station_modules_with_audit_event(self):
         response = self.client.post(reverse("station_settings"), {
             "name": "Wache Nord",
+            "day_start_time": "07:00", "task_attribution": "person",
             "calendar_enabled": "on",
             "coffee_enabled": "on",
         })
@@ -1895,3 +1903,219 @@ class TaskRetentionAndExportTests(PilotTestCase):
         self.station.save(update_fields=["retention_task_days"])
         call_command("purge_expired")
         self.assertTrue(TaskRun.objects.filter(pk=run.pk).exists())
+
+
+class OperationalDayTests(PilotTestCase):
+    """Der Wachentag ist nicht der Kalendertag.
+
+    Im 24-Stunden-Dienst wird um 07:00 uebergeben. Alles, was zwischen
+    Mitternacht und 07:00 passiert, gehoert noch zum Dienst des Vortages -
+    und genau in diesen Stunden faellt es niemandem auf, wenn die Anwendung
+    falsch rechnet.
+    """
+
+    def _at(self, day, hour, minute=0):
+        return timezone.make_aware(
+            datetime.combine(day, dt_time(hour, minute)),
+            timezone.get_current_timezone(),
+        )
+
+    def test_night_hours_belong_to_the_previous_operational_day(self):
+        self.station.day_start_time = dt_time(7, 0)
+        day = date(2026, 3, 12)
+        self.assertEqual(self.station.current_day(self._at(day, 2, 0)), date(2026, 3, 11))
+        self.assertEqual(self.station.current_day(self._at(day, 6, 59)), date(2026, 3, 11))
+
+    def test_operational_day_turns_at_the_configured_start(self):
+        self.station.day_start_time = dt_time(7, 0)
+        day = date(2026, 3, 12)
+        self.assertEqual(self.station.current_day(self._at(day, 7, 0)), day)
+        self.assertEqual(self.station.current_day(self._at(day, 23, 59)), day)
+
+    def test_midnight_start_means_calendar_day(self):
+        self.station.day_start_time = dt_time(0, 0)
+        self.assertTrue(self.station.uses_calendar_day)
+        day = date(2026, 3, 12)
+        self.assertEqual(self.station.current_day(self._at(day, 2, 0)), day)
+
+    def test_twelve_hour_night_shift_stays_on_its_own_day(self):
+        """Ein Nachtdienst von 19:00 bis 07:00 laeuft ueber Mitternacht. Beide
+        Haelften muessen auf demselben Wachentag landen."""
+        self.station.day_start_time = dt_time(7, 0)
+        evening = self._at(date(2026, 3, 12), 22, 0)
+        early = self._at(date(2026, 3, 13), 3, 0)
+        self.assertEqual(self.station.current_day(evening), self.station.current_day(early))
+
+    def test_week_view_marks_the_operational_day_as_today(self):
+        self.station.day_start_time = dt_time(7, 0)
+        self.station.save(update_fields=["day_start_time"])
+        # 02:00 am 13. - der laufende Dienst hat am 12. begonnen.
+        with patch("django.utils.timezone.now", return_value=self._at(date(2026, 3, 13), 2, 0)):
+            response = self.client.get(reverse("home"))
+        self.assertEqual(response.context["today"], date(2026, 3, 12))
+
+    def test_task_day_is_today_follows_the_operational_day(self):
+        self.station.day_start_time = dt_time(7, 0)
+        self.station.save(update_fields=["day_start_time"])
+        with patch("django.utils.timezone.now", return_value=self._at(date(2026, 3, 13), 2, 0)):
+            response = self.client.get(reverse("tasks_day", args=["2026-03-12"]))
+            self.assertTrue(response.context["is_today"])
+            response = self.client.get(reverse("tasks_day", args=["2026-03-13"]))
+            self.assertFalse(response.context["is_today"])
+
+    def test_day_bounds_span_twentyfour_hours(self):
+        self.station.day_start_time = dt_time(7, 0)
+        start, end = self.station.day_bounds(date(2026, 3, 12))
+        self.assertEqual(timezone.localtime(start).hour, 7)
+        self.assertEqual((end - start), timedelta(days=1))
+
+
+class ShiftTests(PilotTestCase):
+    def setUp(self):
+        super().setUp()
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        self.day = Shift.objects.create(
+            station=self.station, name="Tagdienst",
+            start_time=dt_time(7, 0), duration_minutes=720, position=0,
+        )
+        self.night = Shift.objects.create(
+            station=self.station, name="Nachtdienst",
+            start_time=dt_time(19, 0), duration_minutes=720, position=1,
+        )
+
+    def test_window_label_reads_like_a_duty_roster(self):
+        self.assertEqual(self.day.window_label, "07:00 - 19:00 (12 h)")
+        self.assertEqual(self.night.window_label, "19:00 - 07:00 (12 h)")
+        full = Shift(station=self.station, name="24h", start_time=dt_time(7, 0), duration_minutes=1440)
+        self.assertEqual(full.window_label, "07:00 - 07:00 (24 h)")
+
+    def test_each_shift_keeps_its_own_team_entry(self):
+        today = self.station.current_day()
+        tag = today.isoformat()
+        self.client.post(reverse("daily_team_update", args=[tag]), {
+            "note": "Dotzki/Huber", "schicht": self.day.pk,
+        })
+        self.client.post(reverse("daily_team_update", args=[tag]), {
+            "note": "Kaminski/Ahrens", "schicht": self.night.pk,
+        })
+        notes = DailyTeamNote.objects.filter(station=self.station, date=today)
+        self.assertEqual(notes.count(), 2)
+        self.assertEqual(notes.get(shift=self.day).note, "Dotzki/Huber")
+        self.assertEqual(notes.get(shift=self.night).note, "Kaminski/Ahrens")
+
+    def test_second_post_to_the_same_shift_overwrites(self):
+        today = self.station.current_day()
+        tag = today.isoformat()
+        for note in ("Erst", "Dann"):
+            self.client.post(reverse("daily_team_update", args=[tag]), {
+                "note": note, "schicht": self.day.pk,
+            })
+        notes = DailyTeamNote.objects.filter(station=self.station, date=today, shift=self.day)
+        self.assertEqual(notes.count(), 1)
+        self.assertEqual(notes.first().note, "Dann")
+
+    def test_a_day_without_shift_keeps_exactly_one_entry(self):
+        """Ohne Schicht gilt weiter: eine Zeile je Tag. Zwei NULL sind in SQL
+        nicht gleich - ohne die passende Bedingung liesse die Datenbank
+        beliebig viele schichtlose Zeilen zu."""
+        today = self.station.current_day()
+        DailyTeamNote.objects.create(
+            station=self.station, date=today, note="Eins", updated_by=self.user,
+        )
+        with self.assertRaises(IntegrityError):
+            DailyTeamNote.objects.create(
+                station=self.station, date=today, note="Zwei", updated_by=self.user,
+            )
+
+    def test_shift_of_another_station_is_rejected(self):
+        other = Station.objects.create(name="Fremde Wache", slug="fremd")
+        foreign = Shift.objects.create(
+            station=other, name="Tagdienst", start_time=dt_time(7, 0), duration_minutes=720,
+        )
+        today = self.station.current_day()
+        response = self.client.post(
+            reverse("daily_team_update", args=[today.isoformat()]),
+            {"note": "Fremd", "schicht": foreign.pk},
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(DailyTeamNote.objects.filter(station=self.station).exists())
+
+    def test_shift_is_stilled_not_deleted(self):
+        response = self.client.post(reverse("shift_toggle", args=[self.day.pk]))
+        self.assertRedirects(response, reverse("shifts"))
+        self.day.refresh_from_db()
+        self.assertFalse(self.day.is_active)
+        self.assertTrue(Shift.objects.filter(pk=self.day.pk).exists())
+
+    def test_duplicate_shift_name_is_rejected(self):
+        response = self.client.post(reverse("shifts"), {
+            "name": "tagdienst", "start_time": "07:00", "duration_minutes": 720,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Shift.objects.filter(station=self.station).count(), 2)
+
+    def test_duration_beyond_a_day_is_rejected(self):
+        shift = Shift(
+            station=self.station, name="Zu lang",
+            start_time=dt_time(7, 0), duration_minutes=1441,
+        )
+        with self.assertRaises(ValidationError):
+            shift.full_clean()
+
+
+class TaskAttributionTests(PilotTestCase):
+    """Am gemeinsam genutzten Wachengeraet steht an jedem Haken derselbe Name.
+    Dann ist er keine Information mehr, sondern eine Behauptung."""
+
+    def setUp(self):
+        super().setUp()
+        self.task_list = TaskList.objects.create(
+            station=self.station, title="Tagesaufgaben", weekdays="1234567",
+        )
+        self.item = TaskItem.objects.create(task_list=self.task_list, title="Kühlschrank prüfen")
+        self.today = self.station.current_day()
+        run = TaskRun.objects.create(
+            station=self.station, task_list=self.task_list, date=self.today,
+        )
+        TaskResult.objects.create(
+            run=run, item=self.item, state=TaskResult.State.DONE, recorded_by=self.user,
+        )
+
+    def _task_by(self, response):
+        """Nur die Zeile unter dem Punkt - der eigene Name steht auch oben im
+        Kopfbereich, den darf die Pruefung nicht mitzaehlen."""
+        match = re.search(
+            r'<span class="task-by">(.*?)</span>',
+            response.content.decode(), re.S,
+        )
+        return match.group(1) if match else ""
+
+    def test_name_is_shown_by_default(self):
+        response = self.client.get(reverse("tasks_day", args=[self.today.isoformat()]))
+        self.assertIn("Mara", self._task_by(response))
+
+    def test_shared_device_mode_hides_the_name_but_keeps_the_time(self):
+        self.station.task_attribution = Station.TaskAttribution.NONE
+        self.station.save(update_fields=["task_attribution"])
+        response = self.client.get(reverse("tasks_day", args=[self.today.isoformat()]))
+        line = self._task_by(response)
+        self.assertNotIn("Mara", line)
+        self.assertRegex(line, r"\d{2}:\d{2}")
+
+    def test_template_comments_never_reach_the_page(self):
+        """Ein mehrzeiliger {# #}-Kommentar landet in Django als sichtbarer
+        Text auf der Seite. Diese Pruefung faengt das ab."""
+        response = self.client.get(reverse("tasks_day", args=[self.today.isoformat()]))
+        body = response.content.decode()
+        self.assertNotIn("{#", body)
+        self.assertNotIn("Wachengeraet", body)
+
+    def test_record_still_holds_the_account_for_the_audit_trail(self):
+        """Angezeigt wird kein Name - gespeichert bleibt er trotzdem. Sonst
+        waere im Audit nicht mehr nachvollziehbar, an welchem Zugang etwas
+        passiert ist."""
+        self.station.task_attribution = Station.TaskAttribution.NONE
+        self.station.save(update_fields=["task_attribution"])
+        self.client.get(reverse("tasks_day", args=[self.today.isoformat()]))
+        self.assertEqual(TaskResult.objects.first().recorded_by, self.user)

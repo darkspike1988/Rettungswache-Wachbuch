@@ -266,13 +266,32 @@ def clear_task_result(station, run, item, membership):
 
 
 @transaction.atomic
-def set_daily_team(station, day, note, membership):
+def set_daily_team(station, day, note, membership, shift=None):
     team_note, created = DailyTeamNote.objects.select_for_update().get_or_create(
-        station=station, date=day, defaults={"note": note, "updated_by": membership.user}
+        station=station, date=day, shift=shift,
+        defaults={"note": note, "updated_by": membership.user},
     )
     if not created:
         team_note.note = note
         team_note.updated_by = membership.user
         team_note.save(update_fields=["note", "updated_by", "updated_at"])
-    audit(membership.user, station, "handover.team_set", team_note, {"fields": ["note"], "date": day.isoformat()})
+    audit(membership.user, station, "handover.team_set", team_note, {
+        "fields": ["note"],
+        "date": day.isoformat(),
+        "shift": shift.name if shift else None,
+    })
     return team_note
+
+
+def active_shifts(station):
+    """Die Schichten einer Wache. Leer heisst: eine Besetzung je Wachentag."""
+    return list(station.shifts.filter(is_active=True))
+
+
+def team_slots_for_day(station, day, notes_by_day, shifts):
+    """Die Team-Felder eines Tages - eines je Schicht, oder ein einzelnes,
+    wenn die Wache ohne Schichten arbeitet."""
+    per_shift = notes_by_day.get(day, {})
+    if not shifts:
+        return [{"shift": None, "note": per_shift.get(None)}]
+    return [{"shift": shift, "note": per_shift.get(shift.pk)} for shift in shifts]

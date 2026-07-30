@@ -1,5 +1,6 @@
 import re
 from calendar import monthrange
+from datetime import date, datetime, time, timedelta
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -7,6 +8,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 
 def validate_iban(value):
@@ -19,6 +21,10 @@ def validate_iban(value):
 
 
 class Station(models.Model):
+    class TaskAttribution(models.TextChoices):
+        PERSON = "person", "Name der Person anzeigen"
+        NONE = "none", "Keinen Namen anzeigen (gemeinsames Wachengeraet)"
+
     name = models.CharField(max_length=120)
     location = models.CharField(max_length=160, blank=True, verbose_name="Standort")
     street = models.CharField(max_length=160, blank=True, verbose_name="Strasse und Hausnummer")
@@ -44,6 +50,27 @@ class Station(models.Model):
     coffee_account_holder = models.CharField(
         max_length=120, blank=True, verbose_name="Kontoinhaber/in",
     )
+    # Ein Wachentag ist kein Kalendertag. Wo im 24-Stunden-Dienst um 07:00
+    # uebergeben wird, gehoert der Haken um 02:00 Uhr noch zum Dienst, der am
+    # Vortag begonnen hat. Ohne diese Angabe wuerde er auf dem falschen Tag
+    # landen - und zwar in der Nacht, in der niemand nachrechnet.
+    # 00:00 bedeutet: Betriebstag gleich Kalendertag.
+    day_start_time = models.TimeField(
+        default=time(7, 0), verbose_name="Betriebstag beginnt um",
+        help_text=(
+            "Uhrzeit, zu der auf dieser Wache der neue Wachentag anfaengt - "
+            "in der Regel der Dienstbeginn der Fruehschicht. 00:00 bedeutet, "
+            "dass der Wachentag dem Kalendertag entspricht."
+        ),
+    )
+    task_attribution = models.CharField(
+        max_length=10, choices=TaskAttribution.choices, default=TaskAttribution.PERSON,
+        verbose_name="Namen bei Aufgaben",
+        help_text=(
+            "Haengt an der Wache ein gemeinsam genutztes Geraet, steht an jedem "
+            "Haken derselbe Name. Dann ist es ehrlicher, gar keinen anzuzeigen."
+        ),
+    )
     onboarded = models.BooleanField(default=False, verbose_name="Einrichtung abgeschlossen")
     # 0 = keine automatische Loeschung. Die Fristen legt die verantwortliche
     # Stelle fest; Kassenbuchungen bleiben bewusst ausgenommen.
@@ -65,6 +92,36 @@ class Station(models.Model):
 
     def __str__(self):
         return self.name
+
+    def current_day(self, when=None):
+        """Der Wachentag, der zu einem Zeitpunkt laeuft.
+
+        Beginnt der Betriebstag um 07:00, dann gehoert alles zwischen 00:00 und
+        06:59 noch zum Tag davor. Genau diese Stunden sind der Grund fuer die
+        Methode: die Nachtstunden eines 24-Stunden-Dienstes.
+        """
+        local = timezone.localtime(when or timezone.now())
+        day = local.date()
+        if local.time() < self.day_start_time:
+            day -= timedelta(days=1)
+        return day
+
+    def day_bounds(self, day):
+        """Anfang und Ende eines Wachentages als Zeitpunkte - fuer Auswertungen
+        und fuer die Zuordnung einer Schicht zu einem Tag."""
+        start = timezone.make_aware(
+            datetime.combine(day, self.day_start_time),
+            timezone.get_current_timezone(),
+        )
+        return start, start + timedelta(days=1)
+
+    @property
+    def uses_calendar_day(self):
+        return self.day_start_time == time(0, 0)
+
+    @property
+    def shows_task_person(self):
+        return self.task_attribution == self.TaskAttribution.PERSON
 
     @property
     def localities(self):
@@ -242,20 +299,106 @@ class HandoverAcknowledgement(models.Model):
 
 
 class DailyTeamNote(models.Model):
+    """Wer an einem Wachentag Dienst hatte.
+
+    Bei zwei oder drei Besetzungen je Tag haengt der Eintrag an der Schicht.
+    Wo nur eine Besetzung existiert, bleibt die Schicht leer und es gibt wie
+    bisher genau eine Zeile je Tag.
+    """
+
     station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="daily_team_notes")
     date = models.DateField()
+    shift = models.ForeignKey(
+        "Shift", on_delete=models.CASCADE, null=True, blank=True,
+        related_name="team_notes", verbose_name="Schicht",
+    )
     note = models.CharField(max_length=200, verbose_name="Team")
     updated_by = models.ForeignKey(User, on_delete=models.PROTECT)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        # Zwei Bedingungen statt einer: in SQL sind zwei NULL nicht gleich,
+        # eine gemeinsame Bedingung ueber station/date/shift wuerde beliebig
+        # viele schichtlose Zeilen je Tag durchlassen.
         constraints = [
-            models.UniqueConstraint(fields=["station", "date"], name="unique_station_day_team")
+            models.UniqueConstraint(
+                fields=["station", "date"], condition=Q(shift__isnull=True),
+                name="unique_station_day_team",
+            ),
+            models.UniqueConstraint(
+                fields=["station", "date", "shift"], condition=Q(shift__isnull=False),
+                name="unique_station_day_shift_team",
+            ),
         ]
-        ordering = ["date"]
+        ordering = ["date", "shift__position", "shift__start_time"]
 
     def __str__(self):
-        return f"{self.station} {self.date}: {self.note}"
+        label = f"{self.station} {self.date}"
+        if self.shift_id:
+            label = f"{label} {self.shift.name}"
+        return f"{label}: {self.note}"
+
+
+class Shift(models.Model):
+    """Eine Besetzung innerhalb eines Wachentages.
+
+    Der Rettungsdienst kennt kein einheitliches Schichtmodell: im Kreis
+    Guetersloh laufen Fahrzeuge im 24-Stunden-Dienst, andere im 12-Stunden-
+    Wechsel, und ein Tages-Standort wie Langenberg ist nur einen Teil des Tages
+    besetzt. Die Wache beschreibt ihr Modell deshalb selbst, statt dass die
+    Anwendung eines vorgibt.
+
+    Wer nur eine Besetzung je Tag hat, legt genau eine Schicht an - oder gar
+    keine, dann bleibt alles beim Wachentag.
+    """
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="shifts")
+    name = models.CharField(max_length=60, verbose_name="Bezeichnung")
+    start_time = models.TimeField(verbose_name="Beginn")
+    duration_minutes = models.PositiveIntegerField(
+        default=1440, verbose_name="Dauer in Minuten",
+        help_text="1440 Minuten sind 24 Stunden, 720 Minuten sind 12 Stunden.",
+    )
+    position = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True, verbose_name="Aktiv")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "start_time", "pk"]
+        constraints = [
+            models.UniqueConstraint(fields=["station", "name"], name="unique_station_shift_name"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        if not 1 <= (self.duration_minutes or 0) <= 1440:
+            raise ValidationError({
+                "duration_minutes": "Bitte eine Dauer zwischen 1 Minute und 24 Stunden angeben.",
+            })
+
+    @property
+    def end_time(self):
+        end = datetime.combine(date.min, self.start_time) + timedelta(
+            minutes=self.duration_minutes
+        )
+        return end.time()
+
+    @property
+    def duration_label(self):
+        hours, minutes = divmod(self.duration_minutes, 60)
+        if minutes == 0:
+            return f"{hours} h"
+        return f"{hours}:{minutes:02d} h"
+
+    @property
+    def window_label(self):
+        """"07:00 - 07:00 (24 h)" - die Form, in der Dienstplaene sie nennen."""
+        return (
+            f"{self.start_time.strftime('%H:%M')} - "
+            f"{self.end_time.strftime('%H:%M')} ({self.duration_label})"
+        )
 
 
 WEEKDAY_NAMES = {
@@ -299,6 +442,11 @@ class TaskList(models.Model):
     day_of_month = models.PositiveSmallIntegerField(
         default=1, verbose_name="Tag im Monat",
         help_text="Faellt der Tag in einem Monat aus, gilt der letzte Tag des Monats.",
+    )
+    shift = models.ForeignKey(
+        "Shift", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="task_lists", verbose_name="Schicht",
+        help_text="Leer lassen, wenn die Liste einmal je Wachentag gilt.",
     )
     position = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True, verbose_name="Aktiv")

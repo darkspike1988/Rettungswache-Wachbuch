@@ -45,6 +45,7 @@
       {% if current_membership.station.tasks_enabled %}
         <a href="{% url 'task_lists' %}"><strong>Aufgabenlisten</strong><span>Wiederkehrendes zum Abhaken anlegen</span></a>
       {% endif %}
+      <a href="{% url 'shifts' %}"><strong>Schichten</strong><span>Wie der Wachentag besetzt ist</span></a>
       <a href="{% url 'team' %}"><strong>Team &amp; Rollen</strong><span>Zugänge freigeben</span></a>
       <a href="{% url 'station_settings' %}"><strong>Einstellungen</strong><span>Name, Adresse, Module, Löschfristen</span></a>
     {% endif %}

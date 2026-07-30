@@ -29,6 +29,9 @@ urlpatterns = [
     path("eintrag/<int:pk>/gelesen/", views.handover_acknowledge, name="handover_acknowledge"),
     path("eintrag/<int:pk>/status/", views.handover_status, name="handover_status"),
 
+    path("wache/schichten/", views.shifts, name="shifts"),
+    path("wache/schichten/<int:pk>/umschalten/", views.shift_toggle, name="shift_toggle"),
+
     # Abgehakt wird beim Tag, angelegt wird im Wachenbereich.
     path("aufgaben/<str:tag>/", views.tasks_day, name="tasks_day"),
     path("aufgaben/<str:tag>/<int:item_pk>/", views.task_mark, name="task_mark"),

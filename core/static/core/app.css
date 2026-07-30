@@ -555,10 +555,14 @@ a.identity strong { text-decoration: underline; text-underline-offset: .2em; }
 .day-date { color: var(--muted); font-weight: 400; }
 .day-marker { padding: .05rem .4rem; color: var(--surface); background: var(--accent-dark); border-radius: 999px; font-size: .7rem; font-weight: 700; }
 .day-team { margin: 0; color: var(--muted); font-size: .9rem; }
+/* Die Schicht vor dem Namen - erkennbar, aber leiser als das Team selbst. */
+.day-shift { font-weight: 650; color: var(--accent-dark); }
+.day-shift::after { content: " ·"; color: var(--muted); }
 .day-today { background: linear-gradient(to right, var(--info-soft), transparent 60%); }
 .day-empty { margin: .35rem 0 0; color: var(--muted); }
 
-.team-form { display: flex; flex-wrap: wrap; gap: .5rem; margin: .6rem 0 .2rem; }
+.team-form { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .6rem 0 .2rem; }
+.team-form > label:not(.visually-hidden) { min-width: 7rem; color: var(--muted); font-size: .85rem; font-weight: 650; }
 .team-form input { flex: 1; min-width: 10rem; min-height: 44px; padding: .4rem .6rem; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); }
 
 .entries { margin: .5rem 0 0; padding: 0; list-style: none; }

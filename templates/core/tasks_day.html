@@ -32,10 +32,14 @@
             <span class="task-title">{{ row.item.title }}</span>
             {% if row.item.note %}<span class="task-note">{{ row.item.note }}</span>{% endif %}
             {% if row.result %}
-              {# Den Zustand sagt die Marke rechts. Hier steht nur, wer und wann. #}
+              {% comment %}
+                Den Zustand sagt die Marke rechts. Hier steht nur, wer und wann.
+                An einem gemeinsam genutzten Wachengeraet stuende ueberall
+                derselbe Name - dann zeigt die Wache lieber gar keinen.
+              {% endcomment %}
               <span class="task-by">
-                {{ row.result.recorded_by.first_name|default:row.result.recorded_by.username }}
-                · {{ row.result.recorded_at|date:"H:i" }}
+                {% if station.shows_task_person %}{{ row.result.recorded_by.first_name|default:row.result.recorded_by.username }}
+                · {% endif %}{{ row.result.recorded_at|date:"H:i" }}
                 {% if row.result.handover %}· <a href="{% url 'handover_detail' row.result.handover.pk %}">in der Übergabe</a>{% endif %}
               </span>
               {% if row.result.note %}<span class="task-note">{{ row.result.note }}</span>{% endif %}

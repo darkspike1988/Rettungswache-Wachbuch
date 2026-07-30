@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Schichten | {{ app_name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'station_area' %}">Zurück zur Wache</a>
+<header class="page-heading">
+  <p class="context-line">Administration</p>
+  <h1>Schichten</h1>
+  <p class="lead">
+    Wie der Wachentag besetzt ist. Wer eine Besetzung je Tag hat, lässt das leer -
+    dann bleibt es bei einem Team-Feld und einer Aufgabenliste je Tag.
+  </p>
+</header>
+
+<section class="section-block narrow">
+  <h2>Betriebstag</h2>
+  <p class="field-hint">
+    Der Wachentag dieser Wache beginnt um
+    <strong>{{ station.day_start_time|time:"H:i" }}</strong>.
+    {% if station.uses_calendar_day %}
+      Er entspricht damit dem Kalendertag.
+    {% else %}
+      Ein Haken um 02:00 Uhr zählt deshalb noch zum Dienst, der am Vortag begonnen hat.
+    {% endif %}
+    Ändern lässt sich das in den <a href="{% url 'station_settings' %}">Einstellungen</a>.
+  </p>
+</section>
+
+{% if shifts %}
+  <div class="link-list">
+    {% for shift in shifts %}
+      <div class="task-list-row">
+        <span>
+          <strong>{{ shift.name }}</strong>
+          <span>{{ shift.window_label }}</span>
+        </span>
+        <form method="post" action="{% url 'shift_toggle' shift.pk %}">
+          {% csrf_token %}
+          {% if shift.is_active %}
+            <button class="task-button" type="submit">Stilllegen<span class="visually-hidden">: {{ shift.name }}</span></button>
+          {% else %}
+            <span class="status-label neutral">Stillgelegt</span>
+            <button class="task-button primary" type="submit">Aktivieren<span class="visually-hidden">: {{ shift.name }}</span></button>
+          {% endif %}
+        </form>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <section class="section-block narrow">
+    <h2>Noch keine Schicht angelegt</h2>
+    <p class="field-hint">
+      Das ist der Normalfall für eine Wache im reinen 24-Stunden-Dienst: es gibt
+      genau eine Besetzung je Wachentag, und die Anwendung braucht dafür keine
+      eigene Schicht. Angelegt werden Schichten erst, wenn ein Tag von mehreren
+      Besetzungen getragen wird - etwa Tag- und Nachtdienst im 12-Stunden-Wechsel.
+    </p>
+  </section>
+{% endif %}
+
+<section class="section-block narrow">
+  <h2>Schicht anlegen</h2>
+  <p class="field-hint">
+    Üblich sind 1440 Minuten für den 24-Stunden-Dienst und 720 Minuten für den
+    12-Stunden-Wechsel. Ein Tages-Standort, der nur einen Teil des Tages besetzt
+    ist, bekommt entsprechend weniger.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    {% include "core/form_errors.html" %}
+    {{ form.as_p }}
+    <div class="form-actions">
+      <button class="button primary" type="submit">Schicht anlegen</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

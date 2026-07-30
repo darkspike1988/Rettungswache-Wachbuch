@@ -34,7 +34,14 @@
         {{ day.date|date:"D" }} <span class="day-date">{{ day.date|date:"d.m." }}</span>
         {% if day.date == today %}<span class="day-marker">heute</span>{% endif %}
       </h2>
-      {% if day.team_note %}<p class="day-team">{{ day.team_note.note }}</p>{% endif %}
+      {% for slot in day.team_slots %}
+        {% if slot.note %}
+          <p class="day-team">
+            {% if slot.shift %}<span class="day-shift">{{ slot.shift.name }}</span>{% endif %}
+            {{ slot.note.note }}
+          </p>
+        {% endif %}
+      {% endfor %}
       {% if day.task_progress %}
         <a class="day-tasks{% if day.task_progress.settled < day.task_progress.total %} day-tasks-open{% endif %}" href="{% url 'tasks_day' day.date|date:'Y-m-d' %}">
           Aufgaben {{ day.task_progress.settled }}/{{ day.task_progress.total }}{% if day.task_progress.defects %} · {{ day.task_progress.defects }} Mangel{% endif %}
@@ -43,13 +50,18 @@
     </header>
 
     {% if can_edit_team %}
-      <form method="post" action="{% url 'daily_team_update' day.date|date:'Y-m-d' %}" class="team-form">
-        {% csrf_token %}
-        <label class="visually-hidden" for="team-{{ day.date|date:'Ymd' }}">Team am {{ day.date|date:"d.m.Y" }}</label>
-        <input type="text" id="team-{{ day.date|date:'Ymd' }}" name="note" maxlength="200"
-               value="{{ day.team_note.note|default:'' }}" placeholder="Wer hat Dienst?">
-        <button class="button secondary" type="submit">Speichern</button>
-      </form>
+      {% for slot in day.team_slots %}
+        <form method="post" action="{% url 'daily_team_update' day.date|date:'Y-m-d' %}" class="team-form">
+          {% csrf_token %}
+          {% if slot.shift %}<input type="hidden" name="schicht" value="{{ slot.shift.pk }}">{% endif %}
+          <label {% if not slot.shift %}class="visually-hidden" {% endif %}for="team-{{ day.date|date:'Ymd' }}-{{ slot.shift.pk|default:'0' }}">
+            {% if slot.shift %}{{ slot.shift.name }}{% else %}Team am {{ day.date|date:"d.m.Y" }}{% endif %}
+          </label>
+          <input type="text" id="team-{{ day.date|date:'Ymd' }}-{{ slot.shift.pk|default:'0' }}" name="note" maxlength="200"
+                 value="{{ slot.note.note|default:'' }}" placeholder="Wer hat Dienst?">
+          <button class="button secondary" type="submit">Speichern</button>
+        </form>
+      {% endfor %}
     {% endif %}
 
     {% if day.entries %}
