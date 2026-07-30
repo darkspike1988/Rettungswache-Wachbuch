@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 from django import forms
@@ -54,8 +55,15 @@ class BirthdayForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("consent") and (not cleaned.get("day") or not cleaned.get("month")):
+        day = cleaned.get("day")
+        month = cleaned.get("month")
+        if cleaned.get("consent") and (not day or not month):
             raise forms.ValidationError("Bitte Tag und Monat angeben oder die Anzeige deaktivieren.")
+        if day and month:
+            try:
+                date(2000, month, day)
+            except ValueError as exc:
+                raise forms.ValidationError("Tag und Monat ergeben kein gültiges Datum.") from exc
         return cleaned
 
     def save(self, commit=True):
@@ -65,8 +73,9 @@ class BirthdayForm(forms.ModelForm):
         if instance.is_visible and not was_visible:
             instance.consented_at = timezone.now()
             instance.withdrawn_at = None
-        if not instance.is_visible and was_visible:
-            instance.withdrawn_at = timezone.now()
+        if not instance.is_visible:
+            if was_visible:
+                instance.withdrawn_at = timezone.now()
             instance.day = None
             instance.month = None
             instance.consented_at = None

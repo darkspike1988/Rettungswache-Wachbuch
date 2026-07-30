@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db import connection, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Case, IntegerField, Sum, Value, When
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -105,9 +105,19 @@ def page_for(request, queryset, per_page=20):
 def upcoming_birthdays(station):
     today = timezone.localdate()
     preferences = list(
-        BirthdayPreference.objects.filter(station=station, is_visible=True)
+        BirthdayPreference.objects.filter(
+            station=station,
+            is_visible=True,
+            day__isnull=False,
+            month__isnull=False,
+            user__is_active=True,
+            user__station_memberships__station=station,
+            user__station_memberships__is_active=True,
+        )
         .select_related("user")
+        .distinct()
     )
+
     def next_date(item):
         for year in range(today.year, today.year + 5):
             try:
@@ -293,29 +303,37 @@ def coffee_create(request):
 @station_module_required("coffee_enabled")
 @require_http_methods(["GET", "POST"])
 def coffee_correct(request, pk):
-    original = get_object_or_404(
-        CoffeeEntry.objects.select_related("member"),
+    base_qs = CoffeeEntry.objects.select_related("member").filter(
         pk=pk,
         station=request.membership.station,
         correction_of__isnull=True,
     )
+    original = get_object_or_404(base_qs)
     if original.corrections.exists():
         messages.error(request, "Diese Buchung wurde bereits korrigiert.")
         return redirect("coffee")
     form = CoffeeCorrectionForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        with transaction.atomic():
-            correction = CoffeeEntry.objects.create(
-                station=original.station,
-                member=original.member,
-                amount_cents=-original.amount_cents,
-                reason=form.cleaned_data["reason"],
-                created_by=request.user,
-                correction_of=original,
-            )
-            audit(request.user, original.station, "coffee.entry_corrected", correction, {
-                "fields": ["reason", "correction_of"]
-            })
+        try:
+            with transaction.atomic():
+                original = get_object_or_404(base_qs.select_for_update())
+                if original.corrections.exists():
+                    messages.error(request, "Diese Buchung wurde bereits korrigiert.")
+                    return redirect("coffee")
+                correction = CoffeeEntry.objects.create(
+                    station=original.station,
+                    member=original.member,
+                    amount_cents=-original.amount_cents,
+                    reason=form.cleaned_data["reason"],
+                    created_by=request.user,
+                    correction_of=original,
+                )
+                audit(request.user, original.station, "coffee.entry_corrected", correction, {
+                    "fields": ["reason", "correction_of"]
+                })
+        except IntegrityError:
+            messages.error(request, "Diese Buchung wurde bereits korrigiert.")
+            return redirect("coffee")
         messages.success(request, "Gegenbuchung wurde erfasst.")
         return redirect("coffee")
     return render(request, "core/coffee_correction.html", {
@@ -330,11 +348,14 @@ def coffee_correct(request, pk):
 def feeds(request):
     feed_type = "verkehr" if request.GET.get("typ") == "verkehr" else "meldungen"
     kind = FeedSource.Kind.CLOSURE_CSV if feed_type == "verkehr" else FeedSource.Kind.NEWS_RSS
-    items = FeedItem.objects.filter(source__kind=kind).select_related("source")
+    items = FeedItem.objects.filter(
+        source__kind=kind,
+        source__is_enabled=True,
+    ).select_related("source")
     return render(request, "core/feeds.html", {
         "page_obj": page_for(request, items, 25),
         "feed_type": feed_type,
-        "sources": FeedSource.objects.filter(is_enabled=True),
+        "sources": FeedSource.objects.filter(is_enabled=True, kind=kind),
     })
 
 
@@ -361,17 +382,43 @@ def team(request):
 def team_create(request):
     form = MembershipAssignmentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        with transaction.atomic():
-            membership = Membership.objects.create(
-                user=form.cleaned_data["user"],
-                station=request.membership.station,
-                role=form.cleaned_data["role"],
-            )
-            audit(request.user, request.membership.station, "membership.created", membership, {
-                "fields": ["user", "role", "is_active"]
-            })
-        messages.success(request, "Mitgliedschaft wurde freigegeben.")
-        return redirect("team")
+        station = request.membership.station
+        user = form.cleaned_data["user"]
+        role = form.cleaned_data["role"]
+        try:
+            with transaction.atomic():
+                membership = (
+                    Membership.objects.select_for_update()
+                    .filter(user=user, station=station)
+                    .first()
+                )
+                if membership is None:
+                    membership = Membership.objects.create(
+                        user=user,
+                        station=station,
+                        role=role,
+                    )
+                    action = "membership.created"
+                    success = "Mitgliedschaft wurde freigegeben."
+                elif membership.is_active:
+                    form.add_error("user", "Dieses Konto besitzt bereits eine aktive Mitgliedschaft.")
+                    membership = None
+                else:
+                    membership.role = role
+                    membership.is_active = True
+                    membership.save(update_fields=["role", "is_active"])
+                    action = "membership.reactivated"
+                    success = "Mitgliedschaft wurde erneut freigegeben."
+                if membership is not None:
+                    audit(request.user, station, action, membership, {
+                        "fields": ["user", "role", "is_active"]
+                    })
+        except IntegrityError:
+            form.add_error("user", "Dieses Konto kann derzeit nicht freigegeben werden.")
+            membership = None
+        if membership is not None and not form.errors:
+            messages.success(request, success)
+            return redirect("team")
     return render(request, "core/team_form.html", {
         "form": form,
     })

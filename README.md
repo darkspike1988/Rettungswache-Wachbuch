@@ -110,6 +110,7 @@ Loeschfristen oder organisatorische Freigabe. Details stehen in
 - [Datenschutz und Sicherheit](docs/SECURITY-PRIVACY.md)
 - [Test- und Go-live-Checkliste](docs/GO-LIVE-CHECKLIST.md)
 - [Recherche und Quellen](docs/RESEARCH.md)
+- [Audit und Folgeplan](docs/AUDIT-2026-07.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Designregeln](docs/DESIGN-SYSTEM.md)
 

@@ -12,6 +12,7 @@
 - Rollenmatrix und Formulare mit dem Team vereinfachen
 - Loeschfristen technisch umsetzen, sobald sie freigegeben sind
 - Backup/Restore, Monitoring, Updates und Incident-Ablauf testen
+- offene technische Befunde aus [`AUDIT-2026-07.md`](AUDIT-2026-07.md) abarbeiten
 
 ## Phase 2 - formaler betrieblicher Pilot
 

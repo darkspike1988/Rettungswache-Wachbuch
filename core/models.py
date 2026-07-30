@@ -1,3 +1,4 @@
+from datetime import date
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -166,6 +167,12 @@ class BirthdayPreference(models.Model):
             raise ValidationError({"day": "Ungueltiger Tag."})
         if self.month and not 1 <= self.month <= 12:
             raise ValidationError({"month": "Ungueltiger Monat."})
+        if self.day and self.month:
+            try:
+                # Schaltjahr, damit der 29. Februar zulaessig bleibt.
+                date(2000, self.month, self.day)
+            except ValueError as exc:
+                raise ValidationError("Tag und Monat ergeben kein gueltiges Datum.") from exc
 
 
 class CoffeeEntry(models.Model):

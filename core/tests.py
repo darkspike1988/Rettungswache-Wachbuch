@@ -302,6 +302,49 @@ class BirthdayAndCoffeeTests(PilotTestCase):
         self.assertIsNone(preference.consented_at)
         self.assertIsNotNone(preference.withdrawn_at)
 
+    def test_birthday_without_consent_does_not_persist_date(self):
+        response = self.client.post(reverse("birthday_settings"), {
+            "day": 14,
+            "month": 6,
+        })
+        self.assertRedirects(response, reverse("birthdays"))
+        preference = BirthdayPreference.objects.get(user=self.user, station=self.station)
+        self.assertFalse(preference.is_visible)
+        self.assertIsNone(preference.day)
+        self.assertIsNone(preference.month)
+        self.assertIsNone(preference.consented_at)
+
+    def test_birthday_rejects_impossible_calendar_date(self):
+        response = self.client.post(reverse("birthday_settings"), {
+            "day": 31,
+            "month": 2,
+            "consent": "on",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "kein gültiges Datum")
+        self.assertFalse(
+            BirthdayPreference.objects.filter(
+                user=self.user,
+                station=self.station,
+                is_visible=True,
+            ).exists()
+        )
+
+    def test_upcoming_birthdays_hide_inactive_members(self):
+        BirthdayPreference.objects.create(
+            user=self.user,
+            station=self.station,
+            day=1,
+            month=1,
+            is_visible=True,
+            consented_at=timezone.now(),
+        )
+        self.membership.is_active = False
+        self.membership.save(update_fields=["is_active"])
+        from .views import upcoming_birthdays
+
+        self.assertEqual(upcoming_birthdays(self.station), [])
+
     def test_coffee_entries_are_immutable(self):
         entry = CoffeeEntry.objects.create(
             station=self.station,
@@ -365,9 +408,30 @@ class BirthdayAndCoffeeTests(PilotTestCase):
         )
         self.assertEqual(correction.amount_cents, -500)
 
+    def test_coffee_correct_view_rejects_second_correction(self):
+        self.membership.role = Membership.Role.CASHIER
+        self.membership.save(update_fields=["role"])
+        original = CoffeeEntry.objects.create(
+            station=self.station,
+            member=self.user,
+            amount_cents=500,
+            reason="Einzahlung",
+            created_by=self.user,
+        )
+        first = self.client.post(reverse("coffee_correct", args=[original.pk]), {
+            "reason": "Falscher Betrag",
+        })
+        self.assertRedirects(first, reverse("coffee"))
+        second = self.client.post(reverse("coffee_correct", args=[original.pk]), {
+            "reason": "Nochmals",
+        })
+        self.assertRedirects(second, reverse("coffee"))
+        self.assertEqual(CoffeeEntry.objects.filter(correction_of=original).count(), 1)
 
-class FeedTests(TestCase):
+
+class FeedTests(PilotTestCase):
     def setUp(self):
+        super().setUp()
         self.news = FeedSource.objects.create(
             name="Test RSS",
             url="https://www.guetersloh.de/feed.xml",
@@ -463,6 +527,40 @@ class FeedTests(TestCase):
         self.assertFalse(FeedItem.objects.filter(external_id="old").exists())
         self.assertTrue(FeedItem.objects.filter(external_id="new").exists())
 
+    def test_feeds_view_hides_disabled_sources_and_names_coverage_gap(self):
+        FeedItem.objects.create(
+            source=self.news,
+            external_id="live",
+            title="Aktive Meldung",
+        )
+        self.news.is_enabled = False
+        self.news.save(update_fields=["is_enabled"])
+        FeedItem.objects.create(
+            source=self.news,
+            external_id="disabled",
+            title="Deaktivierte Meldung",
+        )
+        enabled = FeedSource.objects.create(
+            name="Aktive Quelle",
+            url="https://www.guetersloh.de/active.xml",
+            kind=FeedSource.Kind.NEWS_RSS,
+            locality="GT",
+            attribution="Test",
+            is_enabled=True,
+        )
+        FeedItem.objects.create(
+            source=enabled,
+            external_id="visible",
+            title="Sichtbare Meldung",
+        )
+        news_page = self.client.get(reverse("feeds"))
+        self.assertEqual(news_page.status_code, 200)
+        self.assertContains(news_page, "Sichtbare Meldung")
+        self.assertNotContains(news_page, "Deaktivierte Meldung")
+        traffic = self.client.get(reverse("feeds") + "?typ=verkehr")
+        self.assertEqual(traffic.status_code, 200)
+        self.assertContains(traffic, "kein gleichwertiger vollständiger Baustellenfeed")
+
 
 class TeamAndAuditTests(PilotTestCase):
     def setUp(self):
@@ -481,6 +579,25 @@ class TeamAndAuditTests(PilotTestCase):
         self.assertEqual(assigned.station, self.station)
         self.assertEqual(assigned.role, Membership.Role.SHIFT_LEAD)
         self.assertTrue(AuditEvent.objects.filter(action="membership.created").exists())
+
+    def test_station_admin_reactivates_inactive_membership(self):
+        pending = User.objects.create_user("returning@example.org", first_name="Rita")
+        Membership.objects.create(
+            user=pending,
+            station=self.station,
+            role=Membership.Role.MEMBER,
+            is_active=False,
+        )
+        response = self.client.post(reverse("team_create"), {
+            "user": pending.pk,
+            "role": Membership.Role.CASHIER,
+        })
+        self.assertRedirects(response, reverse("team"))
+        membership = Membership.objects.get(user=pending, station=self.station)
+        self.assertTrue(membership.is_active)
+        self.assertEqual(membership.role, Membership.Role.CASHIER)
+        self.assertEqual(Membership.objects.filter(user=pending, station=self.station).count(), 1)
+        self.assertTrue(AuditEvent.objects.filter(action="membership.reactivated").exists())
 
     def test_grant_station_admin_does_not_grant_global_superuser(self):
         pending = User.objects.create_user("local-admin@example.org")
@@ -553,3 +670,20 @@ class TeamAndAuditTests(PilotTestCase):
         self.assertEqual(response.status_code, 403)
         handover.refresh_from_db()
         self.assertEqual(handover.title, "Nicht direkt aendern")
+
+
+class MigrationDefaultTests(TestCase):
+    def test_feeds_enabled_data_migration_resets_opt_in_default(self):
+        from importlib import import_module
+
+        from django.apps import apps
+
+        migration = import_module("core.migrations.0004_disable_feeds_after_module_defaults")
+        station = Station.objects.create(
+            name="Alt",
+            slug="alt-feeds",
+            feeds_enabled=True,
+        )
+        migration.disable_feeds_for_existing_stations(apps, None)
+        station.refresh_from_db()
+        self.assertFalse(station.feeds_enabled)

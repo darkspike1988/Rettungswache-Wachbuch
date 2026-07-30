@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased - Audit-Fixes
+
+- Geburtstage speichern Tag/Monat nur noch bei aktivem Opt-in und pruefen echte Kalenderdaten
+- Geburtstagsliste blendet inaktive Mitglieder aus
+- erneute Teamfreigabe reaktiviert bestehende Mitgliedschaften statt in einen 500-Fehler zu laufen
+- Kaffeekorrekturen sperren die Originalbuchung und fangen parallele Doppelkorrekturen ab
+- Feedansicht zeigt nur aktivierte Quellen und benennt die Guetersloh-Datenluecke
+- Migration setzt externe Meldungen nach dem Modul-Upgrade wieder auf Opt-in
+- Audit-Dokument mit Funktionsueberblick und Folgeplan ergaenzt
+
 ## Unreleased - Open-Source-Basis
 
 - portable Docker-Konfiguration ohne servergebundene Hosts und Datenbank-URLs
