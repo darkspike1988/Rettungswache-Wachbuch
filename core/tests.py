@@ -13,6 +13,7 @@ from .feed_sync import fetch_source, sync_closure_csv, sync_rss
 from .models import (
     AuditEvent,
     BirthdayPreference,
+    CalendarEvent,
     CoffeeEntry,
     FeedItem,
     FeedSource,
@@ -37,6 +38,43 @@ class PilotTestCase(TestCase):
             role=Membership.Role.MEMBER,
         )
         self.client.force_login(self.user)
+
+
+class ProgressiveWebAppTests(PilotTestCase):
+    def test_manifest_is_installable(self):
+        response = self.client.get(reverse("web_manifest"))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["display"], "standalone")
+        self.assertEqual(payload["start_url"], reverse("dashboard"))
+        self.assertTrue(payload["icons"])
+        self.assertTrue(any(item["name"] == "Dringend" for item in payload["shortcuts"]))
+
+    def test_service_worker_and_offline_page_are_available(self):
+        worker = self.client.get(reverse("service_worker"))
+        self.assertEqual(worker.status_code, 200)
+        self.assertIn("javascript", worker["Content-Type"])
+        self.assertEqual(worker["Service-Worker-Allowed"], "/")
+        self.assertContains(worker, reverse("offline"))
+        offline = self.client.get(reverse("offline"))
+        self.assertEqual(offline.status_code, 200)
+        self.assertContains(offline, "Offline")
+        self.assertContains(offline, "nicht möglich")
+
+    def test_shell_exposes_manifest_and_urgent_nav_badge(self):
+        HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.TASK,
+            priority=HandoverEntry.Priority.URGENT,
+            title="Dringend im Badge",
+            details="Bitte beachten",
+            author=self.user,
+        )
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, reverse("web_manifest"))
+        self.assertContains(response, 'name="apple-mobile-web-app-capable"')
+        self.assertContains(response, "nav-badge")
+        self.assertContains(response, "1")
 
 
 class SecurityAndAccessTests(PilotTestCase):
@@ -184,6 +222,8 @@ class MinimalInterfaceTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Für die nächste Schicht")
         self.assertContains(response, "Nächste Termine")
+        self.assertContains(response, "Schnellzugriff")
+        self.assertContains(response, reverse("handover_list") + "?ansicht=dringend")
         self.assertNotContains(response, "Aktuelle Meldungen")
         self.assertNotContains(response, "Datenraum")
         self.assertNotContains(response, "Geburtstage")
@@ -212,6 +252,22 @@ class MinimalInterfaceTests(PilotTestCase):
         self.assertNotContains(calendar, '<form method="post" class="form-card"', html=False)
         self.assertContains(calendar, "Termin anlegen")
         self.assertContains(create, "<form", html=False)
+
+    def test_calendar_event_ics_download(self):
+        event = CalendarEvent.objects.create(
+            station=self.station,
+            title="Übung Wache",
+            description="Nur Organisation",
+            starts_at=timezone.now() + timedelta(hours=2),
+            ends_at=timezone.now() + timedelta(hours=3),
+            created_by=self.user,
+        )
+        response = self.client.get(reverse("calendar_event_ics", args=[event.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/calendar", response["Content-Type"])
+        self.assertIn("BEGIN:VEVENT", response.content.decode())
+        self.assertIn("Übung Wache", response.content.decode())
+        self.assertIn("attachment", response["Content-Disposition"])
 
     def test_more_page_holds_secondary_modules(self):
         response = self.client.get(reverse("more"))

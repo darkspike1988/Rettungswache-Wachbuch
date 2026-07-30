@@ -1,14 +1,20 @@
+import json
 from datetime import date, timedelta
+from urllib.parse import quote
 
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.core.paginator import Paginator
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Case, IntegerField, Sum, Value, When
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_http_methods, require_POST
+from django.utils.text import slugify
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .access import CONTENT_ROLES, membership_required, station_module_required
 
@@ -41,6 +47,148 @@ def healthz(request):
         cursor.execute("SELECT 1")
         cursor.fetchone()
     return JsonResponse({"status": "ok"})
+
+
+def _static_url(path):
+    return staticfiles_storage.url(path)
+
+
+@require_GET
+def web_manifest(request):
+    icons = [
+        {
+            "src": _static_url("core/icons/icon-192.png"),
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any",
+        },
+        {
+            "src": _static_url("core/icons/icon-512.png"),
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any",
+        },
+        {
+            "src": _static_url("core/icons/icon-maskable-512.png"),
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable",
+        },
+    ]
+    shortcuts = [
+        {
+            "name": "Übersicht",
+            "url": reverse("dashboard"),
+            "icons": [{"src": _static_url("core/icons/icon-192.png"), "sizes": "192x192"}],
+        },
+        {
+            "name": "Übergaben",
+            "url": reverse("handover_list"),
+            "icons": [{"src": _static_url("core/icons/icon-192.png"), "sizes": "192x192"}],
+        },
+        {
+            "name": "Dringend",
+            "url": f"{reverse('handover_list')}?ansicht=dringend",
+            "icons": [{"src": _static_url("core/icons/icon-192.png"), "sizes": "192x192"}],
+        },
+    ]
+    payload = {
+        "name": "Rettungswache-Wachbuch",
+        "short_name": "Wachbuch",
+        "description": "Mobiles Wachbuch für die interne Organisation einer Rettungswache.",
+        "lang": "de",
+        "start_url": reverse("dashboard"),
+        "scope": "/",
+        "display": "standalone",
+        "orientation": "any",
+        "background_color": "#0f242b",
+        "theme_color": "#17343d",
+        "icons": icons,
+        "shortcuts": shortcuts,
+        "categories": ["medical", "productivity"],
+    }
+    return JsonResponse(payload)
+
+
+@require_GET
+@never_cache
+def service_worker(request):
+    shell_assets = [
+        _static_url("core/app.css"),
+        _static_url("core/app.js"),
+        _static_url("core/icons/icon-192.png"),
+        _static_url("core/icons/icon-512.png"),
+    ]
+    response = render(
+        request,
+        "core/service_worker.js",
+        {
+            "sw_version": "2026-07-30-pwa-1",
+            "offline_url": reverse("offline"),
+            "shell_assets": json.dumps(shell_assets),
+        },
+        content_type="application/javascript; charset=utf-8",
+    )
+    response["Service-Worker-Allowed"] = "/"
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
+@require_GET
+def offline(request):
+    return render(request, "core/offline.html")
+
+
+def _ics_escape(value):
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\r\n", "\\n")
+        .replace("\n", "\\n")
+    )
+
+
+def _ics_datetime(value):
+    return timezone.localtime(value).strftime("%Y%m%dT%H%M%S")
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("calendar_enabled")
+@require_GET
+def calendar_event_ics(request, pk):
+    event = get_object_or_404(
+        CalendarEvent,
+        pk=pk,
+        station=request.membership.station,
+    )
+    stamp = timezone.now().strftime("%Y%m%dT%H%M%SZ")
+    uid = f"wachbuch-event-{event.pk}@rettungswache-wachbuch"
+    description = _ics_escape(event.description or "")
+    body = "\r\n".join([
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Rettungswache-Wachbuch//DE",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "BEGIN:VEVENT",
+        f"UID:{uid}",
+        f"DTSTAMP:{stamp}",
+        f"DTSTART:{_ics_datetime(event.starts_at)}",
+        f"DTEND:{_ics_datetime(event.ends_at)}",
+        f"SUMMARY:{_ics_escape(event.title)}",
+        f"DESCRIPTION:{description}",
+        "END:VEVENT",
+        "END:VCALENDAR",
+        "",
+    ])
+    filename = f"{slugify(event.title) or 'termin'}.ics"
+    response = HttpResponse(body, content_type="text/calendar; charset=utf-8")
+    response["Content-Disposition"] = (
+        f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}"
+    )
+    return response
 
 
 def access(request):

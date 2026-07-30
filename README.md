@@ -16,7 +16,8 @@ Dienstplanungs- oder Patientendokumentationssystem.
 - optionale offizielle RSS- und Verkehrsquellen
 - stationsbezogene Rollen und nachvollziehbare Audit-Ereignisse
 - lokaler Login mit persoenlichen Konten
-- responsive, JavaScript-freie Oberflaeche
+- installierbare PWA fuer Handy und Wachenterminals
+- responsive App-Shell mit Offline-Hinweis fuer gelesene Seiten
 
 ## Stack
 
@@ -31,7 +32,9 @@ Ein Docker-Compose-Projekt startet alles:
 | `backup` | taegliche lokale PostgreSQL-Dumps |
 
 Authentifizierung laeuft ausschliesslich ueber lokale Django-Konten. TLS und
-Netzfreigabe liegen beim Reverse-Proxy vor dem Container.
+Netzfreigabe liegen beim Reverse-Proxy vor dem Container. Die Oberflaeche kann
+ueber den Browser als App installiert werden; Schreibvorgänge brauchen weiterhin
+eine aktive Verbindung.
 
 ## Schnellstart mit Docker
 

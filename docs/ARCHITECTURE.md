@@ -7,7 +7,7 @@ Feed-Worker, Migrationen und Backup verwenden dasselbe Image bzw. Repository,
 aber getrennte Container und Datenbankrollen.
 
 ```text
-Browser
+Installierte PWA / Browser
   |
 TLS-Reverse-Proxy
   |
@@ -17,6 +17,10 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
   |                            |
   +--------- PostgreSQL ------+
 ```
+
+Die PWA bleibt ein serverseitig gerenderter Client. Manifest und Service Worker
+liefern Shell-Assets und einen Lese-Cache; Schreibvorgänge laufen weiterhin nur
+online gegen Django.
 
 ## Container
 

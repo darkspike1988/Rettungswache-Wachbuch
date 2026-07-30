@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased - Docker-Login und Audit-Fixes
+## Unreleased - PWA-App und Docker-Login
 
+- installierbare PWA mit Manifest, Service Worker, Icons und Offline-Hinweis
+- App-Shell mit Safe Areas, Installationshinweis, Dringend-Badge und Schnellzugriff
+- ICS-Export fuer einzelne Wachentermine
+- Design der Oberflaeche fuer Standalone-Nutzung aufpoliert
 - Tailscale-Header-Login und zugehoerige Konfiguration vollstaendig entfernt
 - Authentifizierung nur noch ueber lokale Django-Konten hinter Docker/Reverse-Proxy
 - Docker-Image mit Labels, ausfuehrbaren Startskripten und Healthcheck gestrafft

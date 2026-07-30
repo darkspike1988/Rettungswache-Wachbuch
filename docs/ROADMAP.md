@@ -27,6 +27,7 @@
 - finalen Betriebs-, Support- und Notfallprozess abnehmen
 - erst nach schriftlichem Go-live einen oeffentlichen DNS-Namen anbinden
 
-Spaetere Optionen sind eine installierbare PWA, CalDAV-Export und weitere
-offizielle Verkehrsdaten. Chat, Patientendaten, Dienstplanung und Uploads bleiben
-ausserhalb des Wachbuchs, solange kein eigener freigegebener Zweck besteht.
+Die installierbare PWA ist Teil der Basis. Spaetere Optionen sind CalDAV-Export,
+Web-Push fuer dringende Uebergaben und weitere offizielle Verkehrsdaten. Chat,
+Patientendaten, Dienstplanung und Uploads bleiben ausserhalb des Wachbuchs,
+solange kein eigener freigegebener Zweck besteht.

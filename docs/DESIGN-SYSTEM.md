@@ -21,14 +21,17 @@ erprobte, nicht markengebundene Muster aus offenen Designsystemen:
 | [Pico CSS](https://github.com/picocss/pico) | MIT | Semantisches HTML als Referenz; bewusst nicht eingebunden |
 
 Es wurden keine Logos, Markenfarben, proprietaeren Schriften oder kopierten
-Komponentenpakete eingebunden. Die eigene CSS-Schicht bleibt klein, lokal,
-offline-faehig und ohne JavaScript-Abhaengigkeit.
+Komponentenpakete eingebunden. Die eigene CSS-Schicht bleibt klein, lokal und
+offline-faehig. Minimales JavaScript dient ausschliesslich der installierbaren
+PWA (Service-Worker, Installationshinweis, Online-Status) und ist keine
+Voraussetzung fuer die Kernablaeufe.
 
 ## Zehn verbindliche Regeln
 
 1. Jede Seite hat genau eine Hauptaufgabe und genau eine `h1`.
 2. Pro Ansicht gibt es hoechstens eine hervorgehobene Primaeraktion.
-3. Das Dashboard zeigt nur aktive Uebergaben und die naechsten drei Termine.
+3. Das Dashboard zeigt Status der aktiven Uebergaben, einen kurzen Schnellzugriff
+   auf Schichtaufgaben sowie die naechsten drei Termine.
 4. Kritische Informationen stehen offen sichtbar, nie in einem geschlossenen
    Accordion oder nur hinter Farbe.
 5. Status und Prioritaet werden immer ausgeschrieben. Farbe ist nur zusaetzlich.
@@ -51,6 +54,17 @@ Die globale Navigation besitzt vier Punkte:
 Kalendertermine, Kassenbuchungen, Geburtstagsfreigaben und Teamfreigaben werden
 jeweils auf einer eigenen Seite erfasst. Region zeigt nie Nachrichten und
 Verkehr gleichzeitig, sondern einen ausgewaehlten Inhaltstyp.
+
+## Installierbare App (PWA)
+
+Die Webapp bleibt serverseitig gerendert und kann als Standalone-App auf Handy
+oder Wachenterminal installiert werden:
+
+- Web-App-Manifest mit Shortcuts zu Uebersicht, Uebergaben und Dringend
+- Service Worker mit Shell-Precache und Network-first fuer Lese-Navigation
+- Offline-Hinweisseite; keine Offline-Schreibwarteschlange
+- Safe-Area- und Standalone-Anpassungen fuer Notch und Home-Indicator
+- ICS-Export einzelner Wachentermine fuer den Geraetekalender
 
 ## Responsive Verhalten
 

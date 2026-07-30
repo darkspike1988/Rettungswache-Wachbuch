@@ -12,6 +12,7 @@ urlpatterns = [
     path("uebergaben/<int:pk>/status/", views.handover_status, name="handover_status"),
     path("kalender/", views.calendar_view, name="calendar"),
     path("kalender/neu/", views.calendar_create, name="calendar_create"),
+    path("kalender/<int:pk>/termin.ics", views.calendar_event_ics, name="calendar_event_ics"),
     path("geburtstage/", views.birthdays, name="birthdays"),
     path("geburtstage/einstellung/", views.birthday_settings, name="birthday_settings"),
     path("kaffeekasse/", views.coffee, name="coffee"),

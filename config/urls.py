@@ -2,11 +2,14 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from core.views import healthz
+from core.views import healthz, offline, service_worker, web_manifest
 
 
 urlpatterns = [
     path("healthz/", healthz, name="healthz"),
+    path("manifest.webmanifest", web_manifest, name="web_manifest"),
+    path("service-worker.js", service_worker, name="service_worker"),
+    path("offline/", offline, name="offline"),
     path(
         "anmelden/",
         auth_views.LoginView.as_view(

@@ -10,7 +10,12 @@
     {% for event in page_obj %}
       <article class="agenda-row">
         <time datetime="{{ event.starts_at|date:'c' }}"><strong>{{ event.starts_at|date:"d.m." }}</strong><span>{{ event.starts_at|date:"H:i" }}</span></time>
-        <div><h2>{{ event.title }}</h2>{% if event.description %}<p>{{ event.description|linebreaksbr }}</p>{% endif %}<small>Bis {{ event.ends_at|date:"d.m.Y H:i" }} &middot; {{ event.created_by.first_name|default:event.created_by.username }}</small></div>
+        <div>
+          <h2>{{ event.title }}</h2>
+          {% if event.description %}<p>{{ event.description|linebreaksbr }}</p>{% endif %}
+          <small>Bis {{ event.ends_at|date:"d.m.Y H:i" }} &middot; {{ event.created_by.first_name|default:event.created_by.username }}</small>
+          <p><a class="text-action" href="{% url 'calendar_event_ics' event.pk %}">Als ICS speichern</a></p>
+        </div>
       </article>
     {% empty %}<p class="empty-state">Keine anstehenden Termine.</p>{% endfor %}
   </div>
