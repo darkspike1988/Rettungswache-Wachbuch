@@ -4,6 +4,10 @@ Diese Fragen kann eine Software nicht selbst beantworten. Sie entscheiden
 darueber, wie das Wachbuch gebaut wird - nicht daurueber, ob es huebsch
 aussieht, sondern ob es im Alltag benutzt oder umgangen wird.
 
+> **Stand 30. Juli 2026:** A1, B3, C2 und E1 sind beantwortet. Die Antworten
+> stehen jeweils unter der Frage, zusammen mit dem, was daraufhin gebaut wurde.
+> Offen sind vor allem A2 bis A4 und C3 bis C6.
+
 **So funktioniert das Dokument:** Jede Frage hat vorgegebene Antworten. Kreuze
 an oder schreib daneben, wenn nichts passt - "keine der Antworten trifft es"
 ist die wertvollste Rueckmeldung. Unter jeder Frage steht, **was sich in der
@@ -17,23 +21,33 @@ dringendsten, Block F kann warten.
 
 ## A - Schichtbetrieb und was ein "Tag" ist
 
-Die ganze Anwendung ist um den Kalendertag herum gebaut: das Wochenprotokoll,
-das Team-Feld, die Aufgabenlisten. Wenn eure Schichten nicht auf Kalendertage
-passen, ist das die wichtigste offene Frage im Projekt.
+Diese Fragen waren die wichtigsten im Projekt: die Anwendung war um den
+Kalendertag herum gebaut - Wochenprotokoll, Team-Feld, Aufgabenlisten. A1 ist
+beantwortet und der Kalendertag inzwischen ersetzt; A2 bis A4 sind offen.
 
 ### A1 - Wie sind die Dienste geschnitten?
 
-- [ ] **24-Stunden-Dienst** (z.B. 07:00 bis 07:00 am Folgetag)
-- [ ] **12 Stunden**, Tag und Nacht (z.B. 07:00-19:00 / 19:00-07:00)
+- [x] **24-Stunden-Dienst** (z.B. 07:00 bis 07:00 am Folgetag) - auf der
+      eigenen Wache
+- [x] **12 Stunden**, Tag und Nacht - auf anderen Wachen im Kreis
 - [ ] **8 Stunden**: Frueh, Spaet, Nacht
-- [ ] **Gemischt**, je nach Fahrzeug (RTW anders als KTW anders als NEF)
-- [ ] Anders: ______________________________
+- [x] **Gemischt** - es gibt verschiedene Wachenkonstellationen
 
-> **Was sich aendert:** Bei 24 Stunden laeuft eine Schicht ueber Mitternacht.
-> Dann muss geklaert sein, welchem Tag die Aufgaben zugeschlagen werden - dem
-> Tag des Dienstbeginns oder dem Kalendertag. Heute schlaegt die Software es
-> stumpf dem Kalendertag zu, und um 02:00 Uhr haekelt jemand die Aufgaben von
-> "morgen" ab. Das waere ein echter Fehler, kein Schoenheitsfehler.
+> **Antwort (30.07.2026):** Beides, je nach Wache. Die Recherche im
+> Rettungsdienstbedarfsplan 2025 des Kreises Guetersloh bestaetigt das und geht
+> noch weiter: der Plan weist **je Fahrzeug** eigene Vorhaltezeiten aus, und
+> der neue Standort Langenberg wird als **Tages-Standort** eingerichtet, also
+> nur einen Teil des Tages besetzt. Ein Schichtmodell ist dort ausserdem nichts
+> Festes - die Vorhaltezeiten sollen schrittweise verlaengert werden. Belege in
+> [`RESEARCH.md`](RESEARCH.md).
+>
+> **Gebaut:** Der Wachentag ist nicht mehr der Kalendertag. Jede Wache stellt
+> ein, wann ihr Betriebstag beginnt (Vorgabe 07:00); ein Haken um 02:00 Uhr
+> zaehlt seitdem zum Dienst, der am Vortag begonnen hat. Dazu ein
+> Schichtmodell, das die Wache selbst beschreibt (`Wache` -> `Schichten`): wer
+> eine Besetzung je Tag hat, legt keine an und merkt nichts davon; wer zwei
+> hat, bekommt zwei Team-Felder je Tag und kann Aufgabenlisten an eine Schicht
+> binden. Der Betriebstag wird schon im Einrichtungsassistenten abgefragt.
 
 ### A2 - Wie viele verschiedene Besetzungen hat ein Kalendertag?
 
@@ -98,17 +112,26 @@ passen, ist das die wichtigste offene Frage im Projekt.
 
 ### B3 - Wenn ein gemeinsames Tablet an der Wache haengt: wie wird es benutzt?
 
-- [ ] Es ist **dauerhaft mit einem Sammelkonto** angemeldet
+- [x] Gemeinsames Tablet, und es soll **kein Name** an den Haken stehen
 - [ ] **Jede/r meldet sich kurz an**, hakt ab, meldet sich ab
 - [ ] Es bleibt bei dem angemeldet, der es zuletzt benutzt hat
 
-> **Was sich aendert:** An jedem Haken steht, wer ihn gesetzt hat. Bei einem
-> Sammelkonto steht dort immer derselbe Name, und die Nachvollziehbarkeit ist
-> weg - dann ist die Anzeige irrefuehrend und ich sollte sie weglassen.
-> Gemeinsam genutzte Konten sind ausserdem in `docs/SECURITY-PRIVACY.md`
-> ausdruecklich ausgeschlossen. Wenn ihr trotzdem eins braucht, sag es lieber
-> jetzt - dann suchen wir eine ehrliche Loesung (z.B. Namensauswahl beim
-> Abhaken ohne eigenes Konto).
+> **Antwort (30.07.2026):** Gemeinsames Geraet, keine Namen.
+>
+> **Gebaut:** Die Wache stellt unter `Einstellungen` -> `Namen bei Aufgaben`
+> auf "Keinen Namen anzeigen". Dann steht an der Zeile nur noch die Uhrzeit,
+> und im Wochen-PDF faellt die Spalte "Von" ganz weg, statt leer zu bleiben -
+> eine durchgehend leere Spalte sieht auf Papier aus wie ein Versaeumnis.
+>
+> **Was dabei bewusst nicht passiert:** Gespeichert bleibt, an welchem Zugang
+> der Haken gesetzt wurde. Ohne das waere das Audit-Log wertlos. Angezeigt wird
+> es nur nicht mehr.
+>
+> **Was noch offen ist:** Die Einstellung wirkt auf die Aufgaben. Uebergaben
+> und Lesebestaetigungen haengen weiter an persoenlichen Konten - "3 von 12
+> haben gelesen" waere sonst keine Aussage mehr. Wenn auch Uebergaben vom
+> gemeinsamen Geraet aus geschrieben werden sollen, ist das eine eigene
+> Entscheidung, die wir getrennt treffen sollten.
 
 ---
 
@@ -127,16 +150,20 @@ passen, ist das die wichtigste offene Frage im Projekt.
 
 ### C2 - Wie sind Fahrzeugchecks organisiert?
 
-- [ ] **Eine Liste je Fahrzeug** ("Fahrzeugcheck RTW 1", "... RTW 2") - so wie
-      es jetzt gebaut ist
+- [ ] **Eine Liste je Fahrzeug** ("Fahrzeugcheck RTW 1", "... RTW 2")
 - [ ] **Eine Liste**, aber pro Fahrzeug einmal abzuhaken
-- [ ] Fahrzeugchecks laufen ueber ein **anderes System** (Fachverfahren, Papier
-      im Fahrzeug) und gehoeren hier gar nicht rein
+- [ ] Fahrzeugchecks laufen ueber ein **anderes System**
+- [x] **Spaeter, als eigenes Modul**
 
-> **Was sich aendert:** Die dritte Antwort wuerde bedeuten, dass die
-> Aufgabenlisten nur die Wachenaufgaben abdecken sollen. Das waere eine
-> deutliche Vereinfachung - ich wuerde die Fahrzeug-Beispiele aus der Demo
-> nehmen und die Doku umschreiben.
+> **Antwort (30.07.2026):** Kann man spaeter reinmachen, als zusaetzliches
+> Modul.
+>
+> **Folge:** Fahrzeugchecks werden vorerst nicht eigens gebaut. Wer heute schon
+> einen braucht, legt ihn als gewoehnliche Aufgabenliste an - das funktioniert,
+> ist aber nicht mehr als eine Liste mit passendem Namen. Ein echtes Modul
+> (Fahrzeugstamm, Liste je Fahrzeug, Pruefintervalle) steht jetzt in Phase 3
+> der Roadmap und wird erst begonnen, wenn die taeglichen Aufgaben im Betrieb
+> laufen.
 
 ### C3 - Was passiert heute mit einer Aufgabe, die nicht erledigt wurde?
 
@@ -231,17 +258,35 @@ an sein soll, wenn eine fremde Wache das Wachbuch installiert.
 
 ### E1 - Externe Meldungen (Nachrichten-RSS, Verkehr, Muellkalender)
 
-- [ ] **Alles raus** - *empfohlen*
-- [ ] **Nur den Muellkalender behalten**
+- [ ] **Alles raus**
+- [x] **Muellkalender ist wichtig** - der bleibt
 - [ ] **Alles behalten**
 
-> **Was sich aendert:** Das ist die einzige Stelle im ganzen Projekt, die aktiv
-> ins Internet greift. Sie kostet einen eigenen Container, ein eigenes
-> Datenbankkonto, ein eigenes Netz, vier `.env`-Variablen, eine
-> Host-Freigabeliste und rund 250 Zeilen Code mit Absicherung gegen
-> Server-Side-Request-Forgery. Fuer Abfuhrtermine, die auch in jeder
-> Kalender-App stehen. Bei "nur Muellkalender" hole ich die Termine direkt beim
-> Seitenaufruf - dann fallen Container und Extra-Datenbankkonto trotzdem weg.
+> **Antwort (30.07.2026):** Der Muellkalender ist wichtig.
+>
+> **Folge:** Mein Vorschlag, das Feeds-Modul zu streichen, ist damit vom Tisch;
+> der entsprechende Punkt faellt aus der Roadmap. Die Absicherung gegen
+> Server-Side-Request-Forgery und die Host-Freigabeliste bleiben noetig,
+> solange die Anwendung fremde Adressen abruft - das ist der Preis des Moduls,
+> nicht der Anteil, den man wegsparen kann.
+>
+> **Was ich stattdessen vorschlage:** RSS und Verkehrsmeldungen sind damit
+> nicht mitbeantwortet. Wenn davon nur der Muellkalender gebraucht wird, kann
+> der eigene Worker-Container entfallen und die Termine direkt beim
+> Seitenaufruf geholt werden - deutlich weniger bewegliche Teile bei gleichem
+> Nutzen. Die Frage steht offen; siehe E1a.
+
+### E1a - Werden RSS und Verkehrsmeldungen gebraucht?
+
+- [ ] **Ja, beides**
+- [ ] **Nur die Nachrichten** (Kreis/Stadt)
+- [ ] **Nein, nur der Muellkalender** - dann faellt ein Container weg
+- [ ] Weiss noch nicht
+
+> **Was sich aendert:** Bei "nur der Muellkalender" holt die Anwendung die
+> Abfuhrtermine beim Seitenaufruf statt ueber einen Hintergrunddienst. Das
+> spart einen Container, ein Datenbankkonto und ein eigenes Netz - der Rest der
+> Absicherung bleibt.
 
 ### E2 - Wachenkalender
 
@@ -360,3 +405,16 @@ Zwoelf Jahre Rettungsdienst schlagen jede Wettbewerbsanalyse. Wenn etwas
 - **Block D und E** sind Aufraeumarbeiten, die ich sofort umsetzen kann.
 - **Block F** gehoert in die Go-live-Vorbereitung.
 - **Block G** kann alles davon ueber den Haufen werfen. Gut so.
+
+## Was aus den bisherigen Antworten geworden ist
+
+| Frage | Antwort | Umgesetzt |
+| --- | --- | --- |
+| A1 Schichtmodell | 24 h und 12 h, je nach Wache | Betriebstag mit einstellbarem Beginn, Schichtmodell je Wache |
+| B3 Gemeinsames Geraet | Kein Name an den Haken | Einstellung "Namen bei Aufgaben", Spalte faellt auch im PDF weg |
+| C2 Fahrzeugchecks | Spaeter als eigenes Modul | Nach Phase 3 verschoben, vorerst als gewoehnliche Liste moeglich |
+| E1 Feeds | Muellkalender ist wichtig | Streichung zurueckgenommen, Modul bleibt |
+
+**Als naechstes waeren A2 bis A4 dran** - wie viele Besetzungen ein Tag hat,
+ob es einen festen Uebergabemoment gibt und wer eintraegt. Daran haengt
+Roadmap 1.3, der gefuehrte Dienstbeginn und das Dienstende.

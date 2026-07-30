@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+### Der Wachentag ist nicht der Kalendertag
+
+Die Anwendung hatte den Wachentag stillschweigend mit dem Kalendertag
+gleichgesetzt. Auf einer Wache im 24-Stunden-Dienst wird um 07:00 uebergeben -
+ein Haken um 02:00 Uhr landete damit auf dem Tag, der erst fuenf Stunden
+spaeter beginnt. Der Fehler faellt genau in den Stunden an, in denen niemand
+nachrechnet.
+
+- **Betriebstag mit einstellbarem Beginn.** Jede Wache legt fest, wann ihr
+  Wachentag anfaengt (Vorgabe 07:00). `00:00` bedeutet weiterhin Kalendertag.
+  Wochenansicht, Wochen-PDF und Tagesansicht rechnen seitdem damit. Die Angabe
+  wird schon im Einrichtungsassistenten abgefragt, nicht erst in den
+  Einstellungen.
+- **Schichtmodell je Wache** (`Wache` -> `Schichten`, nur Admin). Es gibt kein
+  Modell, das fuer alle passt: der Rettungsdienstbedarfsplan 2025 des Kreises
+  Guetersloh weist je Fahrzeug eigene Vorhaltezeiten aus und richtet mit
+  Langenberg einen Tages-Standort ein. Wer eine Besetzung je Tag hat, legt
+  keine Schicht an und merkt nichts davon. Wer zwei hat, bekommt zwei
+  Team-Felder je Tag und kann Aufgabenlisten an eine Schicht binden. Schichten
+  werden stillgelegt statt geloescht - an ihnen haengen Eintraege vergangener
+  Tage.
+- **Namensanzeige bei Aufgaben abschaltbar.** Haengt an der Wache ein gemeinsam
+  genutztes Geraet, steht an jedem Haken derselbe Name. Unter `Einstellungen`
+  laesst sich das auf "Keinen Namen anzeigen" stellen; dann bleibt nur die
+  Uhrzeit, und im Wochen-PDF faellt die Spalte "Von" weg, statt leer zu
+  bleiben. Gespeichert bleibt das Konto - sonst waere das Audit-Log wertlos.
+
+**Beim Aktualisieren zu beachten:** Bestehende Wachen bekommen 07:00 als
+Betriebstagsbeginn. Wer beim Kalendertag bleiben will, stellt in den
+Einstellungen auf `00:00`.
+
+Behoben: ein mehrzeiliger `{# #}`-Kommentar in der Tagesansicht wurde als
+sichtbarer Text auf der Seite ausgegeben - Django-Kommentare dieser Form
+gelten nur fuer eine Zeile. Eine Pruefung faengt das kuenftig ab. Ausserdem
+laeuft die Testsuite jetzt ohne vorheriges `collectstatic`.
+
 ### Aufgaben: die Tagesaufgaben vom Papierbogen
 
 Das Ankreuzfeld unter "Tagesaufgaben" war der letzte Teil des Papierbogens ohne

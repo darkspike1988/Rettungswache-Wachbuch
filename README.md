@@ -9,6 +9,10 @@ Dienstplanungs- oder Patientendokumentationssystem.
 
 ## Funktionen
 
+- Betriebstag statt Kalendertag: der Wachentag beginnt zur Dienstzeit der
+  Wache, damit ein Haken um 02:00 Uhr zum richtigen Dienst zaehlt
+- Schichtmodell je Wache - 24-Stunden-Dienst, 12-Stunden-Wechsel oder
+  Tages-Standort, je nachdem was die Wache faehrt
 - wiederkehrende Aufgabenlisten: der Wachenrundgang, der Fahrzeugcheck und die
   Tagesaufgaben vom Papierbogen, taeglich oder monatlich, abgehakt am Tablet
 - ein als Mangel gemeldeter Punkt wird automatisch zur Uebergabe fuer die
@@ -204,6 +208,26 @@ der Datenbank gehoert damit zur Sicherheit des zweiten Faktors.
 Im Tailscale-Modus entfaellt die Codeabfrage: dort ist das freigegebene Geraet
 selbst der zweite Faktor.
 
+## Betriebstag und Schichten
+
+**Der Wachentag ist nicht der Kalendertag.** Wo im 24-Stunden-Dienst um 07:00
+uebergeben wird, gehoert ein Haken um 02:00 Uhr noch zum Dienst, der am Vortag
+begonnen hat. Unter `Wache` -> `Einstellungen` stellt jede Wache ein, wann ihr
+Betriebstag anfaengt; `00:00` bedeutet, dass Wachentag und Kalendertag
+zusammenfallen. Wochenansicht, Tagesansicht und Wochen-PDF richten sich danach.
+
+**Schichten (`Wache` -> `Schichten`, nur Admin).** Ein Schichtmodell, das fuer
+alle passt, gibt es im Rettungsdienst nicht: allein im Kreis Guetersloh laufen
+24-Stunden-Dienste neben 12-Stunden-Wechseln, und mit Langenberg wird ein
+Tages-Standort eingerichtet, der nur einen Teil des Tages besetzt ist. Deshalb
+beschreibt die Wache ihr Modell selbst - Bezeichnung, Beginn, Dauer.
+
+Wer **eine** Besetzung je Wachentag hat, legt keine Schicht an und merkt von
+der Funktion nichts: es bleibt bei einem Team-Feld und einer Aufgabenliste je
+Tag. Wer **zwei** hat, bekommt je Tag zwei Team-Felder und kann Aufgabenlisten
+an eine Schicht binden. Schichten werden stillgelegt statt geloescht, weil an
+ihnen die Eintraege vergangener Tage haengen.
+
 ## Aufgaben
 
 Die Aufgabenlisten sind das digitale Gegenstueck zu den Ankreuzfeldern unter
@@ -221,6 +245,14 @@ Liste laesst sich pausieren, ohne sie zu verlieren.
 ("Aufgaben 5/9"). Ein Klick fuehrt auf den Tag, dort steht je Punkt
 `Erledigt`, `Mangel` oder `Entfaellt`. Wer wann was vermerkt hat, steht an der
 Zeile; ein Haken laesst sich zuruecknehmen.
+
+**Namen am Haken.** Haengt an der Wache ein gemeinsam genutztes Geraet, steht
+an jedem Haken derselbe Name - das ist keine Information mehr, sondern eine
+Behauptung. Unter `Einstellungen` -> `Namen bei Aufgaben` laesst sich die
+Anzeige deshalb abschalten; dann bleibt nur die Uhrzeit, und im Wochen-PDF
+faellt die Spalte "Von" ganz weg statt leer zu bleiben. Gespeichert bleibt in
+beiden Faellen, an welchem Zugang der Haken gesetzt wurde - sonst waere das
+Audit-Log wertlos.
 
 **Mangel wird zur Uebergabe.** Ein als Mangel gemeldeter Punkt legt automatisch
 eine Uebergabe an (Kategorie "Sicherheit/Mangel", Prioritaet "Wichtig", mit dem

@@ -1,6 +1,6 @@
 # Roadmap
 
-Stand: 30. Juli 2026
+Stand: 30. Juli 2026 (Betriebstag und Schichten ergaenzt)
 
 Dieses Dokument beschreibt den Weg von der jetzigen Codebasis zu einer
 Anwendung, die im taeglichen Wachenalltag traegt. Es benennt auch, was
@@ -41,6 +41,7 @@ Weitere uebereinstimmende Muster der Wettbewerber:
 | Bericht als PDF fuer die Akte | vorhanden |
 | Unveraenderliche Historie | vorhanden, sogar auf Datenbankebene |
 | KI-Zusammenfassungen | bewusst nicht geplant, siehe unten |
+| Schichtmodell je Wache statt Kalendertag | vorhanden (Phase 1.3a) |
 
 Die offenen deutschsprachigen Projekte decken den Wachenalltag nicht ab:
 `ignis`/`intraRP` zielt auf Rollenspiel-Communities (FiveM), `feuerwehr-app` auf
@@ -118,16 +119,32 @@ altem und neuem Stand.
 
 Bildet den Ablauf ab, den die Leute ohnehin im Kopf haben.
 
+### 1.3a Betriebstag und Schichten - **erledigt**
+
+Vorgezogen, weil es kein Ausbau war, sondern eine Korrektur: die Anwendung
+hatte den Wachentag mit dem Kalendertag gleichgesetzt.
+
+- [x] `Station.day_start_time` - der Wachentag beginnt zu einer einstellbaren
+      Uhrzeit (Vorgabe 07:00), nicht um Mitternacht. Ein Haken um 02:00 Uhr
+      zaehlt seitdem zum Dienst, der am Vortag begonnen hat.
+- [x] Schichtmodell je Wache (`Shift`), weil es kein allgemeingueltiges gibt -
+      der Bedarfsplan des Kreises Guetersloh weist je Fahrzeug eigene
+      Vorhaltezeiten aus und richtet mit Langenberg einen Tages-Standort ein.
+- [x] Team-Eintrag je Schicht statt je Tag, wo es Schichten gibt
+- [x] Aufgabenlisten optional an eine Schicht gebunden
+- [x] Namensanzeige bei Aufgaben abschaltbar - am gemeinsam genutzten
+      Wachengeraet steht sonst ueberall derselbe Name
+
 ### 1.4 Verschlanken
 
-- **Feeds-Modul entfernen** (RSS, Verkehr, Muellabfuhr). Es kostet Allowlist,
-  SSRF-Haertung, einen Worker-Container, eine Datenbankrolle und ICS-Parsing -
-  fuer Abfuhrtermine. Als eigenes optionales Plugin auslagern oder streichen.
-  Das ist eine Migration, die Tabellen verwirft, und braucht eine bewusste
-  Entscheidung.
 - **Rollen von fuenf auf drei**: Mitglied, Schichtleitung, Admin. Kassenwart und
   Auditor gehen in Admin auf; die Nachvollziehbarkeit leistet das Audit-Log.
   Braucht eine Datenmigration fuer bestehende Mitgliedschaften.
+- **Feeds-Modul bleibt.** Der urspruengliche Vorschlag war, es zu streichen;
+  die Wache hat den Muellkalender ausdruecklich als wichtig benannt. Offen
+  bleibt, ob RSS und Verkehrsmeldungen gebraucht werden - fallen sie weg,
+  koennen die Abfuhrtermine beim Seitenaufruf geholt werden und der eigene
+  Worker-Container entfaellt.
 
 **Fertig, wenn:** Eine Schicht kann einen kompletten Tag ausschliesslich in der
 Anwendung abwickeln, ohne zum Papier zu greifen.
@@ -154,7 +171,14 @@ mit Foto in unter dreissig Sekunden erfassen.
 - Upgrade-Pfad zwischen Versionen dokumentiert und getestet
 - Entscheidung zur Mandantenfaehigkeit: eine Instanz je Wache (heutiges Modell,
   einfach) oder eine Kreis-Instanz mit mehreren Wachen (dafuer waeren die
-  bekannten Grenzen zu schliessen)
+  bekannten Grenzen zu schliessen). Der Kreis Guetersloh hat neun eigene
+  Rettungswachen, die Stadt Guetersloh ist Traegerin einer zehnten - die Frage
+  ist dort also nicht theoretisch.
+- **Fahrzeugchecks als eigenes Modul.** Auf Wunsch der Wache spaeter statt
+  jetzt: Fahrzeugstamm, Pruefliste je Fahrzeug, Intervalle. Bis dahin genuegt
+  eine gewoehnliche Aufgabenliste mit passendem Namen. Beginnt erst, wenn die
+  taeglichen Aufgaben im Betrieb laufen - sonst waere es ein Ausbau auf
+  ungepruefter Grundlage.
 
 **Fertig, wenn:** Eine fremde Wache installiert das Wachbuch ohne Rueckfrage.
 
@@ -171,10 +195,11 @@ mit Foto in unter dreissig Sekunden erfassen.
 
 ## Vorgehen quer zu allen Phasen
 
-- **[`FRAGEN-AN-DIE-WACHE.md`](FRAGEN-AN-DIE-WACHE.md) beantworten lassen.**
-  Schichtmodell, Geraete, Netzloecher und Rollen entscheiden ueber mehrere
-  Punkte weiter oben - insbesondere darueber, ob der Kalendertag ueberhaupt die
-  richtige Einheit ist.
+- **[`FRAGEN-AN-DIE-WACHE.md`](FRAGEN-AN-DIE-WACHE.md) weiter beantworten
+  lassen.** A1 (Schichtmodell), B3 (gemeinsames Geraet), C2 (Fahrzeugchecks)
+  und E1 (Feeds) sind beantwortet und umgesetzt. Offen sind vor allem A2 bis
+  A4 - wie viele Besetzungen ein Tag hat, ob es einen festen Uebergabemoment
+  gibt und wer eintraegt. Daran haengt Phase 1.3.
 - **Eine Schicht mitfahren, bevor Phase 1 beginnt.** Jedes Wort mitschreiben,
   das die Leute benutzen, und es genau so in die Oberflaeche uebernehmen.
   "Betrifft Tag" sagt niemand; die Frage lautet "Fuer welchen Tag?".
