@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Mangel melden | {{ app_name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'tasks_day' day|date:'Y-m-d' %}">Zurück zu den Aufgaben</a>
+<header class="page-heading narrow">
+  <p class="context-line">{{ task_list.title }} · {{ day|date:"d.m.Y" }}</p>
+  <h1>{{ item.title }}</h1>
+  <p class="lead">Der Text geht als Übergabe an die nächste Schicht.</p>
+</header>
+<form method="post" class="form-card narrow">
+  {% csrf_token %}
+  {% include "core/form_errors.html" %}
+  {{ form.as_p }}
+  <div class="form-actions">
+    <button class="button primary" type="submit">Mangel melden</button>
+    <a class="button secondary" href="{% url 'tasks_day' day|date:'Y-m-d' %}">Abbrechen</a>
+  </div>
+</form>
+{% endblock %}

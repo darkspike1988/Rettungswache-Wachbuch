@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Aufgaben {{ day|date:"d.m.Y" }} | {{ app_name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'home' %}?jahr={{ year }}&amp;kw={{ week }}">Zurück zur Woche</a>
+
+<header class="page-heading">
+  <p class="context-line">{{ day|date:"l" }}{% if is_today %} · heute{% endif %}</p>
+  <h1>Aufgaben am {{ day|date:"d.m.Y" }}</h1>
+  {% if total %}
+    {# "abgehakt" statt "erledigt": ein Mangel ist bearbeitet, aber nicht erledigt. #}
+    <p class="lead">{{ settled }} von {{ total }} abgehakt{% if defects %} · {% if defects == 1 %}ein Mangel{% else %}{{ defects }} Mängel{% endif %}{% endif %}</p>
+  {% endif %}
+</header>
+
+<nav class="week-nav" aria-label="Tag wechseln">
+  <a href="{% url 'tasks_day' previous_day|date:'Y-m-d' %}" rel="prev">&larr; {{ previous_day|date:"d.m." }}</a>
+  <a href="{% url 'tasks_day' next_day|date:'Y-m-d' %}" rel="next">{{ next_day|date:"d.m." }} &rarr;</a>
+  {% if can_manage %}<a class="week-pdf" href="{% url 'task_lists' %}">Listen bearbeiten</a>{% endif %}
+</nav>
+
+{% for block in overview %}
+  <section class="day" aria-labelledby="liste-{{ block.list.pk }}">
+    <header class="day-head">
+      <h2 id="liste-{{ block.list.pk }}">{{ block.list.title }}</h2>
+      <p class="day-team">{{ block.settled }}/{{ block.total }} · {{ block.list.rhythm_label }}</p>
+    </header>
+
+    <ul class="task-list">
+      {% for row in block.rows %}
+        <li class="task-row{% if row.result %} task-row-{{ row.result.state }}{% endif %}">
+          <span class="task-text">
+            <span class="task-title">{{ row.item.title }}</span>
+            {% if row.item.note %}<span class="task-note">{{ row.item.note }}</span>{% endif %}
+            {% if row.result %}
+              {# Den Zustand sagt die Marke rechts. Hier steht nur, wer und wann. #}
+              <span class="task-by">
+                {{ row.result.recorded_by.first_name|default:row.result.recorded_by.username }}
+                · {{ row.result.recorded_at|date:"H:i" }}
+                {% if row.result.handover %}· <a href="{% url 'handover_detail' row.result.handover.pk %}">in der Übergabe</a>{% endif %}
+              </span>
+              {% if row.result.note %}<span class="task-note">{{ row.result.note }}</span>{% endif %}
+            {% endif %}
+          </span>
+
+          {% if row.result %}
+            <form method="post" action="{% url 'task_mark' day|date:'Y-m-d' row.item.pk %}" class="task-actions">
+              {% csrf_token %}
+              <span class="status-label {% if row.result.state == 'done' %}success{% elif row.result.state == 'defect' %}priority-important{% else %}neutral{% endif %}">{{ row.result.get_state_display }}</span>
+              <button class="task-button" type="submit" name="state" value="clear">Zurücknehmen<span class="visually-hidden">: {{ row.item.title }}</span></button>
+            </form>
+          {% else %}
+            <span class="task-actions">
+              <form method="post" action="{% url 'task_mark' day|date:'Y-m-d' row.item.pk %}">
+                {% csrf_token %}
+                <button class="task-button primary" type="submit" name="state" value="done">Erledigt<span class="visually-hidden">: {{ row.item.title }}</span></button>
+              </form>
+              <a class="task-button" href="{% url 'task_defect' day|date:'Y-m-d' row.item.pk %}">Mangel<span class="visually-hidden"> melden: {{ row.item.title }}</span></a>
+              <form method="post" action="{% url 'task_mark' day|date:'Y-m-d' row.item.pk %}">
+                {% csrf_token %}
+                <button class="task-button" type="submit" name="state" value="skipped">Entfällt<span class="visually-hidden">: {{ row.item.title }}</span></button>
+              </form>
+            </span>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li class="day-empty">In dieser Liste steht noch keine Aufgabe.</li>
+      {% endfor %}
+    </ul>
+  </section>
+{% empty %}
+  <section class="section-block narrow">
+    <h2>Für diesen Tag ist keine Liste fällig</h2>
+    <p class="field-hint">
+      {% if can_manage %}
+        Listen werden einmal angelegt und erscheinen danach automatisch an den
+        gewählten Tagen.
+      {% else %}
+        Wiederkehrende Aufgaben legt die Administration im Wachenbereich an.
+      {% endif %}
+    </p>
+    {% if can_manage %}
+      <div class="form-actions"><a class="button primary" href="{% url 'task_list_create' %}">Erste Liste anlegen</a></div>
+    {% endif %}
+  </section>
+{% endfor %}
+{% endblock %}

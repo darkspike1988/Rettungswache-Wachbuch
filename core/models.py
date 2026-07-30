@@ -1,4 +1,5 @@
 import re
+from calendar import monthrange
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -29,6 +30,7 @@ class Station(models.Model):
     calendar_enabled = models.BooleanField(default=True, verbose_name="Kalender aktiviert")
     birthdays_enabled = models.BooleanField(default=True, verbose_name="Geburtstage aktiviert")
     coffee_enabled = models.BooleanField(default=True, verbose_name="Kaffeekasse aktiviert")
+    tasks_enabled = models.BooleanField(default=True, verbose_name="Aufgaben aktiviert")
     feeds_enabled = models.BooleanField(default=False, verbose_name="Externe Meldungen aktiviert")
     coffee_paypal_link = models.CharField(
         max_length=200, blank=True, verbose_name="PayPal.me-Link",
@@ -53,6 +55,9 @@ class Station(models.Model):
     )
     retention_audit_days = models.PositiveIntegerField(
         default=0, verbose_name="Audit-Ereignisse loeschen nach (Tagen)",
+    )
+    retention_task_days = models.PositiveIntegerField(
+        default=0, verbose_name="Erledigte Aufgaben loeschen nach (Tagen)",
     )
 
     class Meta:
@@ -251,6 +256,161 @@ class DailyTeamNote(models.Model):
 
     def __str__(self):
         return f"{self.station} {self.date}: {self.note}"
+
+
+WEEKDAY_NAMES = {
+    1: "Mo", 2: "Di", 3: "Mi", 4: "Do", 5: "Fr", 6: "Sa", 7: "So",
+}
+
+
+def validate_weekdays(value):
+    """Wochentage stehen als ISO-Ziffern in einer Zeichenkette: "12345" ist
+    Montag bis Freitag. Kompakt, ohne zusaetzliche Tabelle und in jeder
+    Datenbank gleich."""
+    if not value:
+        raise ValidationError("Mindestens ein Wochentag muss ausgewaehlt sein.")
+    digits = set(value)
+    if not digits <= set("1234567") or len(digits) != len(value):
+        raise ValidationError("Wochentage werden als Ziffern 1-7 ohne Wiederholung angegeben.")
+
+
+class TaskList(models.Model):
+    """Eine wiederkehrende Aufgabenliste einer Wache - das digitale Gegenstueck
+    zu den Ankreuzfeldern unter "Tagesaufgaben" auf dem Papierbogen.
+
+    Die Liste beschreibt nur, *was* wann faellig ist. Was an einem konkreten Tag
+    tatsaechlich passiert ist, steht in TaskRun und TaskResult.
+    """
+
+    class Rhythm(models.TextChoices):
+        WEEKDAYS = "weekdays", "An bestimmten Wochentagen"
+        MONTHLY = "monthly", "Einmal im Monat"
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="task_lists")
+    title = models.CharField(max_length=120, verbose_name="Name der Liste")
+    rhythm = models.CharField(
+        max_length=20, choices=Rhythm.choices, default=Rhythm.WEEKDAYS,
+        verbose_name="Rhythmus",
+    )
+    weekdays = models.CharField(
+        max_length=7, default="1234567", validators=[validate_weekdays],
+        verbose_name="Wochentage",
+    )
+    day_of_month = models.PositiveSmallIntegerField(
+        default=1, verbose_name="Tag im Monat",
+        help_text="Faellt der Tag in einem Monat aus, gilt der letzte Tag des Monats.",
+    )
+    position = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True, verbose_name="Aktiv")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "pk"]
+
+    def __str__(self):
+        return self.title
+
+    def clean(self):
+        if self.rhythm == self.Rhythm.MONTHLY and not 1 <= (self.day_of_month or 0) <= 31:
+            raise ValidationError({"day_of_month": "Bitte einen Tag zwischen 1 und 31 angeben."})
+
+    def occurs_on(self, day):
+        if not self.is_active:
+            return False
+        if self.rhythm == self.Rhythm.MONTHLY:
+            last = monthrange(day.year, day.month)[1]
+            return day.day == min(self.day_of_month, last)
+        return str(day.isoweekday()) in self.weekdays
+
+    @property
+    def rhythm_label(self):
+        """Kurzform fuer die Anzeige, damit niemand Ziffernketten lesen muss."""
+        if self.rhythm == self.Rhythm.MONTHLY:
+            return f"Monatlich am {self.day_of_month}."
+        if self.weekdays == "1234567":
+            return "Täglich"
+        if self.weekdays == "12345":
+            return "Montag bis Freitag"
+        return ", ".join(WEEKDAY_NAMES[int(digit)] for digit in sorted(self.weekdays))
+
+
+class TaskItem(models.Model):
+    """Ein abhakbarer Punkt einer Liste.
+
+    Punkte werden nie geloescht, sondern nur deaktiviert: sonst waere nicht
+    mehr nachvollziehbar, was an einem vergangenen Tag abgehakt wurde.
+    """
+
+    task_list = models.ForeignKey(TaskList, on_delete=models.CASCADE, related_name="items")
+    title = models.CharField(max_length=160, verbose_name="Aufgabe")
+    note = models.CharField(
+        max_length=300, blank=True, verbose_name="Hinweis",
+        help_text="Optional, zum Beispiel wo etwas liegt oder worauf zu achten ist.",
+    )
+    position = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position", "pk"]
+
+    def __str__(self):
+        return self.title
+
+
+class TaskRun(models.Model):
+    """Eine Liste an einem konkreten Tag. Entsteht erst, wenn jemand den ersten
+    Punkt abhakt - leere Tage erzeugen keine Datensaetze."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="task_runs")
+    task_list = models.ForeignKey(TaskList, on_delete=models.CASCADE, related_name="runs")
+    date = models.DateField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["task_list", "date"], name="unique_task_run_per_day")
+        ]
+        ordering = ["date"]
+        indexes = [models.Index(fields=["station", "date"])]
+
+    def __str__(self):
+        return f"{self.task_list} am {self.date}"
+
+
+class TaskResult(models.Model):
+    """Der Haken an einem Punkt.
+
+    Anders als Kassenbuchungen und Uebergaberevisionen ist ein Haken
+    veraenderbar - auf einem Tablet vertippt man sich, und ein Wachbuch, in dem
+    ein Fehlgriff fuer immer stehenbleibt, wird nicht benutzt. Jede Aenderung
+    schreibt stattdessen ein Audit-Ereignis mit altem und neuem Stand.
+    """
+
+    class State(models.TextChoices):
+        DONE = "done", "Erledigt"
+        DEFECT = "defect", "Mangel"
+        SKIPPED = "skipped", "Entfällt"
+
+    run = models.ForeignKey(TaskRun, on_delete=models.CASCADE, related_name="results")
+    item = models.ForeignKey(TaskItem, on_delete=models.PROTECT, related_name="results")
+    state = models.CharField(max_length=20, choices=State.choices)
+    note = models.CharField(max_length=300, blank=True)
+    recorded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="task_results")
+    recorded_at = models.DateTimeField(auto_now=True)
+    handover = models.ForeignKey(
+        HandoverEntry, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="task_results",
+        help_text="Der Uebergabe-Eintrag, der aus einem Mangel entstanden ist.",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["run", "item"], name="unique_task_result_per_item")
+        ]
+        ordering = ["item__position", "pk"]
+
+    def __str__(self):
+        return f"{self.item}: {self.get_state_display()}"
 
 
 class CalendarEvent(models.Model):

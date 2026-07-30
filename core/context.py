@@ -23,11 +23,22 @@ STATION_AREA_PAGES = frozenset({
     "coffee", "coffee_create", "coffee_correct", "coffee_payment_update",
     "feeds", "waste_source_update",
     "calendar", "calendar_create",
+    "task_lists", "task_list_create", "task_list_edit", "task_list_toggle",
+    "task_item_create", "task_item_action",
+})
+
+# Seiten, die an einem Tag der Woche haengen. Wer Aufgaben abhakt, ist in der
+# Woche unterwegs - nicht in einem eigenen Menuepunkt.
+WEEK_AREA_PAGES = frozenset({
+    "home", "daily_team_update", "tasks_day", "task_mark", "task_defect",
 })
 
 
 def navigation(request):
-    return {"station_area_pages": STATION_AREA_PAGES}
+    return {
+        "station_area_pages": STATION_AREA_PAGES,
+        "week_area_pages": WEEK_AREA_PAGES,
+    }
 
 
 def application_metadata(request):

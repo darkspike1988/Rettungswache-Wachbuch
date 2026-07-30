@@ -14,6 +14,8 @@ from .models import (
     HandoverEntry,
     Membership,
     Station,
+    TaskItem,
+    TaskList,
     validate_iban,
 )
 
@@ -216,6 +218,10 @@ class StationSettingsForm(forms.ModelForm):
     retention_handover_days = _retention_field("Erledigte Uebergaben loeschen nach (Tagen)")
     retention_calendar_days = _retention_field("Vergangene Termine loeschen nach (Tagen)")
     retention_audit_days = _retention_field("Audit-Ereignisse loeschen nach (Tagen)")
+    retention_task_days = _retention_field("Erledigte Aufgaben loeschen nach (Tagen)")
+
+    def clean_retention_task_days(self):
+        return self.cleaned_data.get("retention_task_days") or 0
 
     def clean_retention_handover_days(self):
         return self.cleaned_data.get("retention_handover_days") or 0
@@ -238,10 +244,12 @@ class StationSettingsForm(forms.ModelForm):
             "calendar_enabled",
             "birthdays_enabled",
             "coffee_enabled",
+            "tasks_enabled",
             "feeds_enabled",
             "retention_handover_days",
             "retention_calendar_days",
             "retention_audit_days",
+            "retention_task_days",
         ]
         labels = {
             "name": "Name der Rettungswache",
@@ -266,7 +274,37 @@ class SetupBasicsForm(forms.ModelForm):
 class SetupModulesForm(forms.ModelForm):
     class Meta:
         model = Station
-        fields = ["calendar_enabled", "birthdays_enabled", "coffee_enabled", "feeds_enabled"]
+        fields = [
+            "calendar_enabled", "birthdays_enabled", "coffee_enabled",
+            "tasks_enabled", "feeds_enabled",
+        ]
+
+
+DEFAULT_DAILY_TASKS = """Wachenrundgang
+Fahrzeugcheck
+Müll und Wäsche
+Kaffeemaschine reinigen"""
+
+
+class SetupTasksForm(forms.Form):
+    """Der schnellste Weg vom Papierbogen in die Anwendung: die vorhandenen
+    Punkte einmal untereinander eintippen. Feinheiten wie Rhythmus und
+    Reihenfolge kommen danach im Wachenbereich dazu."""
+
+    titles = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 8}),
+        label="Eine Aufgabe je Zeile",
+        help_text="Leer lassen, wenn ihr das später machen wollt.",
+        initial=DEFAULT_DAILY_TASKS,
+    )
+
+    def clean_titles(self):
+        lines = [line.strip() for line in self.cleaned_data["titles"].splitlines()]
+        titles = [line[:160] for line in lines if line]
+        if len(titles) > 40:
+            raise forms.ValidationError("Bitte höchstens 40 Aufgaben auf einmal anlegen.")
+        return titles
 
 
 class WasteSourceForm(forms.ModelForm):
@@ -274,6 +312,69 @@ class WasteSourceForm(forms.ModelForm):
         model = FeedSource
         fields = ["url"]
         labels = {"url": "ICS-Abo-Link des Abfallkalenders"}
+
+
+WEEKDAY_CHOICES = [
+    ("1", "Montag"), ("2", "Dienstag"), ("3", "Mittwoch"), ("4", "Donnerstag"),
+    ("5", "Freitag"), ("6", "Samstag"), ("7", "Sonntag"),
+]
+
+
+class TaskListForm(forms.ModelForm):
+    """Wochentage sind Ankreuzfelder, im Modell stehen sie als Ziffernkette.
+    Der Umbau passiert hier, damit im Formular nichts zu tippen ist."""
+
+    weekdays = forms.MultipleChoiceField(
+        choices=WEEKDAY_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="An diesen Wochentagen",
+        initial=[value for value, _ in WEEKDAY_CHOICES],
+    )
+
+    class Meta:
+        model = TaskList
+        fields = ["title", "rhythm", "weekdays", "day_of_month"]
+        help_texts = {
+            "title": "Zum Beispiel „Tagesaufgaben“, „Fahrzeugcheck RTW 1“ oder „Wachenrundgang“.",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["day_of_month"].widget.attrs.update({"min": 1, "max": 31})
+        if self.instance.pk:
+            # Muss in self.initial stehen, nicht am Feld: der Modellwert ist
+            # eine Zeichenkette und wuerde sonst als *ein* Wert gelesen, sodass
+            # kein einziges Haekchen gesetzt waere.
+            self.initial["weekdays"] = list(self.instance.weekdays)
+
+    def clean_weekdays(self):
+        return "".join(sorted(self.cleaned_data["weekdays"]))
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("rhythm") == TaskList.Rhythm.MONTHLY:
+            # Wochentage sind bei monatlichen Listen bedeutungslos, duerfen aber
+            # nicht leer in die Datenbank - sonst schlaegt die Modellpruefung zu.
+            cleaned["weekdays"] = cleaned.get("weekdays") or "1234567"
+        elif not cleaned.get("weekdays"):
+            self.add_error("weekdays", "Bitte mindestens einen Wochentag auswählen.")
+        return cleaned
+
+
+class TaskItemForm(forms.ModelForm):
+    class Meta:
+        model = TaskItem
+        fields = ["title", "note"]
+
+
+class TaskDefectForm(forms.Form):
+    note = forms.CharField(
+        max_length=300,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        label="Was fehlt oder ist defekt?",
+        help_text="Landet wörtlich in der Übergabe. Keine Patienten- oder Einsatzdaten.",
+    )
 
 
 class CoffeePaymentForm(forms.ModelForm):

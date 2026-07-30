@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db import connection, transaction
 from django.core.exceptions import PermissionDenied
-from django.db.models import Case, IntegerField, Q, Sum, Value, When
+from django.db.models import Case, Count, IntegerField, Q, Sum, Value, When
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -38,7 +38,11 @@ from .forms import (
     MembershipEditForm,
     SetupBasicsForm,
     SetupModulesForm,
+    SetupTasksForm,
     StationSettingsForm,
+    TaskDefectForm,
+    TaskItemForm,
+    TaskListForm,
     WasteSourceForm,
 )
 from .geocoding import GeocodingError, lookup_district
@@ -54,6 +58,10 @@ from .models import (
     HandoverEntry,
     Membership,
     Station,
+    TaskItem,
+    TaskList,
+    TaskResult,
+    TaskRun,
 )
 from .throttle import password_reset_is_throttled
 from .twofactor import is_enabled as twofactor_is_enabled
@@ -61,8 +69,12 @@ from .services import (
     acknowledge_handover,
     audit,
     change_handover_status,
+    clear_task_result,
     create_handover,
+    record_task_result,
     set_daily_team,
+    task_day_overview,
+    task_week_progress,
     update_handover,
 )
 
@@ -168,15 +180,17 @@ def prioritized_handovers(station):
     )
 
 
-SETUP_STEPS = ["basics", "modules", "done"]
+SETUP_STEPS = ["basics", "modules", "tasks", "done"]
 SETUP_TITLES = {
     "basics": "Name und Standort",
     "modules": "Module aktivieren",
+    "tasks": "Tägliche Aufgaben",
     "done": "Fertig eingerichtet",
 }
 SETUP_HINTS = {
     "basics": "So heisst die Wache im Kopfbereich der Anwendung.",
     "modules": "Nur aktivierte Module erscheinen im Menue. Jederzeit spaeter unter Einstellungen aenderbar.",
+    "tasks": "Die Punkte vom Papierbogen, die jeden Tag abgehakt werden.",
     "done": "",
 }
 SETUP_FORMS = {
@@ -211,6 +225,31 @@ def setup_wizard(request, step="basics"):
             "Einrichtung übersprungen - alles lässt sich jederzeit unter Einstellungen anpassen.",
         )
         return redirect("home")
+
+    if step == "tasks":
+        # Ohne aktiviertes Modul waere der Schritt eine leere Frage.
+        if not station.tasks_enabled:
+            return redirect("setup_wizard", step="done")
+        form = SetupTasksForm(request.POST or None)
+        if request.method == "POST" and form.is_valid():
+            titles = form.cleaned_data["titles"]
+            if titles:
+                with transaction.atomic():
+                    task_list = TaskList.objects.create(
+                        station=station, title="Tagesaufgaben",
+                        position=TaskList.objects.filter(station=station).count(),
+                    )
+                    TaskItem.objects.bulk_create([
+                        TaskItem(task_list=task_list, title=title, position=index)
+                        for index, title in enumerate(titles)
+                    ])
+                    audit(request.user, station, "task.list_created", task_list, {
+                        "source": "setup", "items": len(titles),
+                    })
+            return redirect("setup_wizard", step="done")
+        context["form"] = form
+        context["existing_lists"] = TaskList.objects.filter(station=station).count()
+        return render(request, "core/setup_wizard.html", context)
 
     if step == "done":
         if request.method == "POST":
@@ -391,9 +430,13 @@ def _week_start(year, week):
         return today - timedelta(days=today.isoweekday() - 1)
 
 
-def week_protocol(station, monday):
-    """Tage der Woche mit Team und Eintraegen sowie die Eintraege ohne
-    Tagesbezug - gemeinsame Grundlage fuer Web-Ansicht und PDF."""
+def week_protocol(station, monday, detailed_tasks=False):
+    """Tage der Woche mit Team, Eintraegen und Aufgaben sowie die Eintraege
+    ohne Tagesbezug - gemeinsame Grundlage fuer Web-Ansicht und PDF.
+
+    Die Wochenansicht braucht je Tag nur den Zaehler, das PDF die einzelnen
+    Punkte. Deshalb holt nur der Export die volle Aufstellung.
+    """
     week_days = [monday + timedelta(days=offset) for offset in range(7)]
     team_notes = {
         note.date: note
@@ -405,8 +448,23 @@ def week_protocol(station, monday):
     ).select_related("author"):
         day_entries[entry.for_date].append(entry)
 
+    if not station.tasks_enabled:
+        progress = {day: None for day in week_days}
+        details = {day: [] for day in week_days}
+    else:
+        progress = task_week_progress(station, week_days)
+        details = {
+            day: (task_day_overview(station, day) if detailed_tasks else [])
+            for day in week_days
+        }
     days = [
-        {"date": day, "team_note": team_notes.get(day), "entries": day_entries[day]}
+        {
+            "date": day,
+            "team_note": team_notes.get(day),
+            "entries": day_entries[day],
+            "task_progress": progress[day],
+            "tasks": details[day],
+        }
         for day in week_days
     ]
     general_entries = (
@@ -426,7 +484,7 @@ def handover_week_pdf(request):
         request.GET.get("jahr", default_year), request.GET.get("kw", default_week)
     )
     year, week, _ = monday.isocalendar()
-    days, general_entries = week_protocol(station, monday)
+    days, general_entries = week_protocol(station, monday, detailed_tasks=True)
 
     buffer = BytesIO()
     build_week_pdf(buffer, station, year, week, days, general_entries)
@@ -498,6 +556,238 @@ def daily_team_update(request, tag):
         messages.error(request, "Team konnte nicht gespeichert werden.")
     year, week, _ = day.isocalendar()
     return redirect(f"{reverse('home')}?jahr={year}&kw={week}")
+
+
+# ---------------------------------------------------------------------------
+# Aufgaben. Angelegt wird im Wachenbereich, abgehakt wird am Tag - deshalb
+# liegen Verwaltung und Bedienung an getrennten Adressen.
+# ---------------------------------------------------------------------------
+
+def _parse_day(tag):
+    try:
+        return date.fromisoformat(tag)
+    except ValueError as exc:
+        raise Http404 from exc
+
+
+def _task_context(request, tag, item_pk):
+    """Tag, Liste und Punkt aus der Adresse - immer gegen die aktive Wache
+    geprueft, damit sich nichts aus einer fremden Wache abhaken laesst."""
+    day = _parse_day(tag)
+    item = get_object_or_404(
+        TaskItem.objects.select_related("task_list"),
+        pk=item_pk,
+        is_active=True,
+        task_list__station=request.membership.station,
+        task_list__is_active=True,
+    )
+    if not item.task_list.occurs_on(day):
+        raise Http404
+    return day, item.task_list, item
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("tasks_enabled")
+def tasks_day(request, tag):
+    day = _parse_day(tag)
+    station = request.membership.station
+    overview = task_day_overview(station, day)
+    year, week, _ = day.isocalendar()
+    return render(request, "core/tasks_day.html", {
+        "day": day,
+        "is_today": day == timezone.localdate(),
+        "overview": overview,
+        "total": sum(block["total"] for block in overview),
+        "settled": sum(block["settled"] for block in overview),
+        "defects": sum(block["defects"] for block in overview),
+        "year": year,
+        "week": week,
+        "previous_day": day - timedelta(days=1),
+        "next_day": day + timedelta(days=1),
+        "can_manage": request.membership.role == Membership.Role.ADMIN,
+    })
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("tasks_enabled")
+@require_POST
+def task_mark(request, tag, item_pk):
+    """Erledigt, entfaellt oder zurueckgenommen. Ein Mangel laeuft ueber
+    task_defect, weil dort beschrieben werden muss, was fehlt."""
+    day, task_list, item = _task_context(request, tag, item_pk)
+    station = request.membership.station
+    action = request.POST.get("state", "")
+
+    if action == "clear":
+        run = TaskRun.objects.filter(station=station, task_list=task_list, date=day).first()
+        if run is not None:
+            clear_task_result(station, run, item, request.membership)
+        messages.success(request, f"„{item.title}“ ist wieder offen.")
+    elif action in {TaskResult.State.DONE, TaskResult.State.SKIPPED}:
+        record_task_result(station, task_list, item, day, action, "", request.membership)
+        messages.success(request, f"„{item.title}“ ist vermerkt.")
+    else:
+        messages.error(request, "Unbekannte Angabe, nichts geändert.")
+    return redirect("tasks_day", tag=day.isoformat())
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("tasks_enabled")
+@require_http_methods(["GET", "POST"])
+def task_defect(request, tag, item_pk):
+    day, task_list, item = _task_context(request, tag, item_pk)
+    form = TaskDefectForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        result = record_task_result(
+            request.membership.station, task_list, item, day,
+            TaskResult.State.DEFECT, form.cleaned_data["note"], request.membership,
+        )
+        if result.handover_id:
+            messages.success(
+                request,
+                "Mangel vermerkt und als Übergabe angelegt - die nächste Schicht sieht ihn.",
+            )
+        else:
+            messages.success(request, "Mangel vermerkt.")
+        return redirect("tasks_day", tag=day.isoformat())
+    return render(request, "core/task_defect.html", {
+        "form": form, "day": day, "item": item, "task_list": task_list,
+    })
+
+
+@membership_required({Membership.Role.ADMIN})
+@station_module_required("tasks_enabled")
+def task_lists(request):
+    lists = (
+        TaskList.objects.filter(station=request.membership.station)
+        .annotate(item_count=Count("items", filter=Q(items__is_active=True)))
+    )
+    return render(request, "core/task_lists.html", {"task_lists": lists})
+
+
+@membership_required({Membership.Role.ADMIN})
+@station_module_required("tasks_enabled")
+@require_http_methods(["GET", "POST"])
+def task_list_create(request):
+    station = request.membership.station
+    form = TaskListForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            task_list = form.save(commit=False)
+            task_list.station = station
+            task_list.position = TaskList.objects.filter(station=station).count()
+            task_list.full_clean()
+            task_list.save()
+            audit(request.user, station, "task.list_created", task_list, {
+                "fields": ["title", "rhythm", "weekdays", "day_of_month"],
+            })
+        messages.success(request, "Liste angelegt. Jetzt die einzelnen Aufgaben eintragen.")
+        return redirect("task_list_edit", pk=task_list.pk)
+    return render(request, "core/task_list_form.html", {"form": form})
+
+
+def _get_task_list(request, pk):
+    return get_object_or_404(TaskList, pk=pk, station=request.membership.station)
+
+
+@membership_required({Membership.Role.ADMIN})
+@station_module_required("tasks_enabled")
+@require_http_methods(["GET", "POST"])
+def task_list_edit(request, pk):
+    task_list = _get_task_list(request, pk)
+    station = request.membership.station
+    form = TaskListForm(request.POST or None, instance=task_list)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            changed = [field for field in form.changed_data if field in form.fields]
+            saved = form.save(commit=False)
+            saved.full_clean()
+            saved.save()
+            audit(request.user, station, "task.list_updated", saved, {"fields": changed})
+        messages.success(request, "Liste gespeichert.")
+        return redirect("task_list_edit", pk=task_list.pk)
+    return render(request, "core/task_list_form.html", {
+        "form": form,
+        "task_list": task_list,
+        "items": task_list.items.filter(is_active=True),
+        "item_form": TaskItemForm(),
+        "used_count": TaskResult.objects.filter(item__task_list=task_list).count(),
+    })
+
+
+@membership_required({Membership.Role.ADMIN})
+@station_module_required("tasks_enabled")
+@require_POST
+def task_item_create(request, pk):
+    task_list = _get_task_list(request, pk)
+    form = TaskItemForm(request.POST)
+    if form.is_valid():
+        with transaction.atomic():
+            item = form.save(commit=False)
+            item.task_list = task_list
+            item.position = task_list.items.count()
+            item.save()
+            audit(request.user, request.membership.station, "task.item_created", item, {
+                "task_list": task_list.pk, "fields": ["title", "note"],
+            })
+        messages.success(request, "Aufgabe hinzugefügt.")
+    else:
+        messages.error(request, "Aufgabe konnte nicht hinzugefügt werden - fehlt der Text?")
+    return redirect("task_list_edit", pk=task_list.pk)
+
+
+@membership_required({Membership.Role.ADMIN})
+@station_module_required("tasks_enabled")
+@require_POST
+def task_item_action(request, pk, item_pk):
+    """Verschieben oder entfernen.
+
+    Entfernen deaktiviert nur: waren Haken daran, muss nachvollziehbar bleiben,
+    was an einem vergangenen Tag abgehakt wurde.
+    """
+    task_list = _get_task_list(request, pk)
+    item = get_object_or_404(TaskItem, pk=item_pk, task_list=task_list, is_active=True)
+    action = request.POST.get("aktion", "")
+    siblings = list(task_list.items.filter(is_active=True))
+    index = siblings.index(item)
+
+    if action in {"up", "down"}:
+        target = index - 1 if action == "up" else index + 1
+        if 0 <= target < len(siblings):
+            with transaction.atomic():
+                siblings[index], siblings[target] = siblings[target], siblings[index]
+                for position, sibling in enumerate(siblings):
+                    if sibling.position != position:
+                        sibling.position = position
+                        sibling.save(update_fields=["position"])
+    elif action == "remove":
+        with transaction.atomic():
+            item.is_active = False
+            item.save(update_fields=["is_active"])
+            audit(request.user, request.membership.station, "task.item_removed", item, {
+                "task_list": task_list.pk,
+            })
+        messages.success(request, f"„{item.title}“ erscheint ab jetzt nicht mehr.")
+    else:
+        raise Http404
+    return redirect("task_list_edit", pk=task_list.pk)
+
+
+@membership_required({Membership.Role.ADMIN})
+@station_module_required("tasks_enabled")
+@require_POST
+def task_list_toggle(request, pk):
+    task_list = _get_task_list(request, pk)
+    with transaction.atomic():
+        task_list.is_active = not task_list.is_active
+        task_list.save(update_fields=["is_active"])
+        audit(request.user, request.membership.station, "task.list_toggled", task_list, {
+            "is_active": task_list.is_active,
+        })
+    messages.success(request, "Liste ist jetzt {}.".format(
+        "aktiv" if task_list.is_active else "pausiert"
+    ))
+    return redirect("task_lists")
 
 
 @membership_required(CONTENT_ROLES)

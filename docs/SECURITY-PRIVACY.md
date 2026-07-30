@@ -8,6 +8,14 @@
 - Kaffeekasse als nachvollziehbares Ledger statt stiller Aenderungen.
 - Audit speichert Feldnamen und Ereignisse, nicht die fachlichen Freitexte.
 - Keine Rankings, Lesestatistiken oder personenbezogene Leistungskennzahlen.
+  Das gilt ausdruecklich auch fuer die Aufgabenlisten: An einer abgehakten
+  Aufgabe steht, wer sie wann vermerkt hat - damit die naechste Schicht
+  nachfragen kann, nicht damit jemand ausgewertet wird. Es gibt keine
+  Auswertung je Person, keine Quote und keinen Vergleich zwischen Personen.
+  Ein Tag ohne einen einzigen Haken erzeugt keinen Datensatz, und fuer
+  abgehakte Aufgabentage laesst sich eine eigene Loeschfrist setzen
+  (`retention_task_days`). Die Listen und ihre Punkte selbst enthalten keinen
+  Personenbezug und bleiben erhalten.
 - Wachenadresse, Geocoding und Abfallkalender betreffen die Organisation, nicht
   einzelne Personen. Beide Funktionen sind Opt-in (leerer `GEOCODING_HOST` bzw.
   keine gesetzte Abfallkalender-URL deaktiviert sie) und senden ausschliesslich

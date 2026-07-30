@@ -46,7 +46,7 @@
         {% if current_membership.role == 'auditor' %}
           <a href="{% url 'audit_log' %}" aria-current="page">Audit</a>
         {% else %}
-          <a href="{% url 'home' %}"{% if request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'daily_team_update' %} aria-current="page"{% endif %}>Woche</a>
+          <a href="{% url 'home' %}"{% if request.resolver_match.url_name in week_area_pages %} aria-current="page"{% endif %}>Woche</a>
           <a href="{% url 'handover_search' %}"{% if request.resolver_match.url_name == 'handover_search' or 'handover' in request.resolver_match.url_name and request.resolver_match.url_name != 'home' %} aria-current="page"{% endif %}>Suchen</a>
           <a href="{% url 'station_area' %}"{% if request.resolver_match.url_name in station_area_pages %} aria-current="page"{% endif %}>Wache</a>
         {% endif %}

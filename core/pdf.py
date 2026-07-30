@@ -74,6 +74,45 @@ def _entry_table(entries, styles):
     return table
 
 
+STATE_MARKS = {"done": "[x]", "defect": "[!]", "skipped": "[-]"}
+
+
+def _task_table(blocks, styles):
+    """Die Aufgaben eines Tages - dasselbe Ankreuzbild wie auf dem Papierbogen.
+    [x] erledigt, [!] Mangel, [-] entfaellt, [ ] offen geblieben."""
+    rows = []
+    for block in blocks:
+        for row in block["rows"]:
+            result = row["result"]
+            rows.append([
+                STATE_MARKS.get(result.state, "[ ]") if result else "[ ]",
+                Paragraph(row["item"].title, styles["cell"]),
+                Paragraph(block["list"].title, styles["cell"]),
+                Paragraph(
+                    result.recorded_by.first_name or result.recorded_by.username
+                    if result else "", styles["cell"],
+                ),
+            ])
+    if not rows:
+        return None
+    table = Table(
+        [["", "Aufgabe", "Liste", "Von"]] + rows,
+        colWidths=[10 * mm, 85 * mm, 45 * mm, 25 * mm], repeatRows=1,
+    )
+    table.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("BACKGROUND", (0, 0), (-1, 0), MUTED),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("GRID", (0, 0), (-1, -1), 0.4, LINE),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (0, 1), (0, -1), "CENTER"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return table
+
+
 def build_week_pdf(buffer, station, year, week, days, general_entries):
     styles = _styles()
     document = SimpleDocTemplate(
@@ -108,6 +147,10 @@ def build_week_pdf(buffer, station, year, week, days, general_entries):
             ),
             _entry_table(day["entries"], styles),
         ]
+        tasks = _task_table(day.get("tasks") or [], styles)
+        if tasks is not None:
+            block.append(Spacer(1, 1.5 * mm))
+            block.append(tasks)
         story.append(KeepTogether(block))
 
     story.append(PageBreak())

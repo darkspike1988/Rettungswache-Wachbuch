@@ -33,8 +33,8 @@ Weitere uebereinstimmende Muster der Wettbewerber:
 
 | Muster | Stand hier |
 | --- | --- |
-| Wiederkehrende Checklisten mit Haken je Punkt | **fehlt** |
-| Mangel aus der Checkliste wird automatisch zur Aufgabe | **fehlt** |
+| Wiederkehrende Checklisten mit Haken je Punkt | vorhanden (Phase 1.1) |
+| Mangel aus der Checkliste wird automatisch zur Aufgabe | vorhanden (Phase 1.2) |
 | Foto zum Mangel | **fehlt** |
 | Offline erfassen und spaeter senden | **fehlt** |
 | Lesebestaetigung fuer Wichtiges | vorhanden |
@@ -84,26 +84,33 @@ Admin kann sich anmelden, sein Passwort zuruecksetzen und die Wache einrichten.
 Hier entsteht der Nutzen. Reihenfolge ist bewusst gewaehlt: die Checkliste
 zuerst, weil sie der taegliche Anlass ist, die Anwendung ueberhaupt zu oeffnen.
 
-### 1.1 Checklisten (groesster Einzelposten)
+### 1.1 Aufgabenlisten - **erledigt**
 
-- Vorlagen je Wache: Punkte, Reihenfolge, Rhythmus (taeglich, woechentlich,
-  monatlich, je Fahrzeug)
-- Erledigung je Tag mit Haken, Person und Zeitpunkt - unveraenderlich wie die
-  bestehenden Revisionen
-- Die Wochenansicht zeigt je Tag den Stand ("7 von 9")
-- Ein nicht erledigter Punkt bleibt sichtbar, verschwindet nicht lautlos
+- [x] Listen je Wache: Punkte, Reihenfolge, Rhythmus (Wochentage oder monatlich)
+- [x] Erledigung je Tag mit Haken, Person und Zeitpunkt
+- [x] Die Wochenansicht zeigt je Tag den Stand ("5/9")
+- [x] Punkte werden nie geloescht, nur deaktiviert - die Vergangenheit bleibt lesbar
+- [x] Aufgaben im PDF, mit demselben Ankreuzbild wie auf dem Papierbogen
+- [x] Eigene Loeschfrist fuer abgehakte Aufgabentage
 
-Neue Modelle: `ChecklistTemplate`, `ChecklistItem`, `ChecklistRun`,
-`ChecklistResult`. Damit steigt die Modellzahl - im Gegenzug faellt in 1.4
-anderes weg.
+Modelle: `TaskList`, `TaskItem`, `TaskRun`, `TaskResult`. Ein Tag ohne einen
+einzigen Haken erzeugt keine Datensaetze.
 
-### 1.2 Mangel wird zur Aufgabe
+Eine Abweichung vom urspruenglichen Plan: die Haken sind **nicht**
+unveraenderlich wie die Uebergaberevisionen. Auf einem Tablet vertippt man
+sich, und ein Wachbuch, in dem ein Fehlgriff fuer immer stehenbleibt, wird
+nicht benutzt. Stattdessen schreibt jede Aenderung ein Audit-Ereignis mit
+altem und neuem Stand.
 
-Ein Punkt auf "Mangel" erzeugt direkt einen Uebergabe-Eintrag mit Verweis auf
-Checkliste und Punkt. Das ist die Schleife, die aus Dokumentation Arbeit macht -
-und der Punkt, an dem alle Wettbewerber ihren Nutzen zeigen.
+### 1.2 Mangel wird zur Aufgabe - **erledigt**
 
-### 1.3 Dienstbeginn und Dienstende
+- [x] Ein Punkt auf "Mangel" erzeugt einen Uebergabe-Eintrag (Sicherheit/Mangel,
+      Prioritaet Wichtig) mit dem eingegebenen Text und dem Verweis auf Liste
+      und Tag, versioniert wie jede andere Uebergabe
+- [x] Der Eintrag lebt danach eigenstaendig weiter: wer den Haken spaeter
+      korrigiert, loescht die Uebergabe nicht - sie wurde bereits gelesen
+
+### 1.3 Dienstbeginn und Dienstende - offen
 
 - "Dienst beginnen": was ist seit der letzten Uebergabe passiert, was ist offen,
   was ist noch nicht bestaetigt
@@ -179,4 +186,5 @@ Kalender, Kaffeekasse mit Einzahlwegen, freiwillige Geburtstage, Rollen und
 Audit, Mehrfachzugehoerigkeit fuer Springer, Passwort-Reset mit Drosselung,
 Zwei-Faktor per Authenticator-App, Loeschfristen mit taeglichem Lauf,
 Demobetrieb, Rechtstexte mit Deploy-Pruefung, helles und dunkles Farbschema,
-Touchbedienung ab `pointer: coarse`, 127 automatisierte Tests.
+Touchbedienung ab `pointer: coarse`, wiederkehrende Aufgabenlisten mit
+Mangelmeldung in die Uebergabe, 156 automatisierte Tests.

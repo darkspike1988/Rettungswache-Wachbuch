@@ -35,6 +35,11 @@
         {% if day.date == today %}<span class="day-marker">heute</span>{% endif %}
       </h2>
       {% if day.team_note %}<p class="day-team">{{ day.team_note.note }}</p>{% endif %}
+      {% if day.task_progress %}
+        <a class="day-tasks{% if day.task_progress.settled < day.task_progress.total %} day-tasks-open{% endif %}" href="{% url 'tasks_day' day.date|date:'Y-m-d' %}">
+          Aufgaben {{ day.task_progress.settled }}/{{ day.task_progress.total }}{% if day.task_progress.defects %} · {{ day.task_progress.defects }} Mangel{% endif %}
+        </a>
+      {% endif %}
     </header>
 
     {% if can_edit_team %}

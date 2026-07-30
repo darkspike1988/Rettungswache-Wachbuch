@@ -29,6 +29,11 @@ urlpatterns = [
     path("eintrag/<int:pk>/gelesen/", views.handover_acknowledge, name="handover_acknowledge"),
     path("eintrag/<int:pk>/status/", views.handover_status, name="handover_status"),
 
+    # Abgehakt wird beim Tag, angelegt wird im Wachenbereich.
+    path("aufgaben/<str:tag>/", views.tasks_day, name="tasks_day"),
+    path("aufgaben/<str:tag>/<int:item_pk>/", views.task_mark, name="task_mark"),
+    path("aufgaben/<str:tag>/<int:item_pk>/mangel/", views.task_defect, name="task_defect"),
+
     path("kalender/", views.calendar_view, name="calendar"),
     path("kalender/neu/", views.calendar_create, name="calendar_create"),
     path("geburtstage/", views.birthdays, name="birthdays"),
@@ -45,6 +50,15 @@ urlpatterns = [
     path("wache/team/", views.team, name="team"),
     path("wache/team/freigeben/", views.team_create, name="team_create"),
     path("wache/team/<int:pk>/", views.membership_update, name="membership_update"),
+    path("wache/aufgabenlisten/", views.task_lists, name="task_lists"),
+    path("wache/aufgabenlisten/neu/", views.task_list_create, name="task_list_create"),
+    path("wache/aufgabenlisten/<int:pk>/", views.task_list_edit, name="task_list_edit"),
+    path("wache/aufgabenlisten/<int:pk>/aktiv/", views.task_list_toggle, name="task_list_toggle"),
+    path("wache/aufgabenlisten/<int:pk>/aufgabe/", views.task_item_create, name="task_item_create"),
+    path(
+        "wache/aufgabenlisten/<int:pk>/aufgabe/<int:item_pk>/",
+        views.task_item_action, name="task_item_action",
+    ),
     path("wache/einstellungen/", views.station_settings, name="station_settings"),
     path("wache/einstellungen/adresse/", views.station_geocode, name="station_geocode"),
     path("wache/wechseln/", views.switch_station, name="switch_station"),

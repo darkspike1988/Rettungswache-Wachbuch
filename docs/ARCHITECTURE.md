@@ -38,10 +38,21 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
 - `Station`, `Membership`: Wachen (Name, Standort, Adresse, Ort, Kreis),
   Modulschalter, Rollen und Freigaben. Eine Person kann mehreren Wachen
   angehoeren; welche gerade aktiv ist, steht in der Session und laesst sich
-  unter `Mehr` wechseln. Alle Abfragen filtern auf die aktive Wache.
+  unter `Wache` wechseln. Alle Abfragen filtern auf die aktive Wache.
 - `HandoverEntry`, `HandoverRevision`: Arbeitsstand, optionaler Tagesbezug (`for_date`)
   und unveraenderte Revisionen
 - `DailyTeamNote`: Team je Tag fuer das Wochenprotokoll, eine Zeile je Wache und Datum
+- `TaskList`, `TaskItem`: wiederkehrende Aufgaben einer Wache. Die Liste sagt
+  nur, *was* wann faellig ist: `rhythm` ist entweder `weekdays` (ISO-Ziffern in
+  `weekdays`, "12345" = Montag bis Freitag) oder `monthly` (`day_of_month`, in
+  kurzen Monaten auf den letzten Tag begrenzt). Punkte werden nie geloescht,
+  sondern ueber `is_active` deaktiviert - `TaskResult.item` ist deshalb
+  `PROTECT`.
+- `TaskRun`, `TaskResult`: was an einem konkreten Tag passiert ist. Der Lauf
+  entsteht erst beim ersten Haken, ein Tag ohne Betrieb erzeugt also nichts.
+  `TaskResult` ist bewusst *aenderbar* - anders als `CoffeeEntry` und
+  `HandoverRevision`, siehe README, Abschnitt "Aufgaben". Ein Ergebnis mit
+  Zustand `defect` verweist ueber `handover` auf die daraus erzeugte Uebergabe.
 - `HandoverAcknowledgement`: Lesebestaetigung je Person und dringendem Eintrag
 - `FeedSource`, `FeedItem`: optionale externe Quellen (RSS, Verkehr-CSV,
   Abfallkalender-ICS); global oder ueber `station` einer einzelnen Wache

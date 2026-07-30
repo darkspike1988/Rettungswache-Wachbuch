@@ -45,14 +45,17 @@ offline-faehig und ohne JavaScript-Abhaengigkeit.
 Die globale Navigation besitzt drei Punkte. Mehr braucht es nicht, und eine
 Sammelschublade namens `Mehr` gibt es ausdruecklich nicht mehr:
 
-- `Woche` (`/`): die laufende Kalenderwoche mit Team je Tag, Allgemeines und
-  einem offenen Hinweisstreifen auf dringende, noch nicht bestaetigte Eintraege.
-  Das ist die Anwendung, nicht ein Reiter darin.
+- `Woche` (`/`): die laufende Kalenderwoche mit Team und Aufgabenstand je Tag,
+  Allgemeines und einem offenen Hinweisstreifen auf dringende, noch nicht
+  bestaetigte Eintraege. Das ist die Anwendung, nicht ein Reiter darin.
+  Die Aufgaben eines Tages (`/aufgaben/<datum>/`) haengen an diesem Tag und
+  bekommen ausdruecklich **keinen** vierten Menuepunkt.
 - `Suchen` (`/suchen/`): Aktiv, Dringend und Archiv mit Volltextsuche. Eine
   Liste mit Filtern dient dem Wiederfinden - also heisst sie so.
 - `Wache` (`/wache/`): Module im Dienst (Kalender, Kaffeekasse, Geburtstage,
   optionale externe Quellen) und darunter, rollenabhaengig, die Verwaltung
-  (Team, Einstellungen, Audit).
+  (Aufgabenlisten, Team, Einstellungen, Audit). Angelegt wird hier, abgehakt
+  wird am Tag - Verwaltung und taegliche Bedienung teilen sich keine Seite.
 
 Persoenliches liegt beim eigenen Namen oben rechts (`/konto/`): Passwort,
 Zwei-Faktor-Anmeldung, freiwillige Geburtstagsangabe. Es gehoert nicht in einen
@@ -130,6 +133,12 @@ Ein Name erscheint einmal pro Seite. Der Wachenname steht mittig im
 Kopfbereich - nicht zusaetzlich neben der Rolle und nicht in der Kontextzeile.
 In Listenzeilen steht der Personenname einmal; Aktionslinks heissen
 `Bearbeiten` und tragen den Namen nur unsichtbar fuer Screenreader nach.
+
+Ein Zustand wird einmal ausgedrueckt. Eine abgehakte Aufgabe traegt die Marke
+`Erledigt` rechts; die Zeile darunter nennt nur noch Person und Uhrzeit, nicht
+noch einmal den Zustand. Ein Wort bezeichnet eine Sache: eine Sammlung heisst
+`Aufgabenliste`, ein Punkt darin `Aufgabe` - nicht abwechselnd Checkliste,
+Vorlage und Punkt.
 
 Ausdruecklich keine Doppelung sind: der Navigationspunkt der aktuellen Seite
 neben deren `h1` (Navigation und Seitentitel sind verschiedene Dinge, beide

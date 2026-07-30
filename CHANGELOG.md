@@ -2,6 +2,59 @@
 
 ## Unreleased
 
+### Aufgaben: die Tagesaufgaben vom Papierbogen
+
+Das Ankreuzfeld unter "Tagesaufgaben" war der letzte Teil des Papierbogens ohne
+digitale Entsprechung - und laut Wettbewerbsvergleich (siehe
+[`docs/ROADMAP.md`](docs/ROADMAP.md)) der Kern jedes Produkts, das sich an
+Wachen richtet. Er fehlt nicht mehr.
+
+- **Aufgabenlisten je Wache** (`Wache` -> `Aufgabenlisten`, nur Admin). Eine
+  Liste hat einen Namen, einen Rhythmus und beliebig viele Punkte in fester
+  Reihenfolge. Rhythmus ist entweder "an bestimmten Wochentagen" oder "einmal
+  im Monat"; faellt der Monatstag in einem kurzen Monat aus, gilt der letzte
+  Tag des Monats. Listen lassen sich pausieren statt loeschen.
+- **Abhaken am Tag** (`/aufgaben/<datum>/`, alle Mitglieder): je Punkt
+  `Erledigt`, `Mangel` oder `Entfaellt`, mit Person und Uhrzeit an der Zeile.
+  Ein Haken laesst sich zuruecknehmen.
+- **Mangel wird zur Uebergabe.** Ein als Mangel gemeldeter Punkt legt
+  automatisch einen versionierten Uebergabe-Eintrag an (Sicherheit/Mangel,
+  Prioritaet Wichtig) mit dem eingegebenen Text und dem Verweis auf Liste und
+  Tag. Damit sieht die naechste Schicht ihn in Woche, Suche und PDF, ohne dass
+  jemand daran denken muss. Wer den Haken spaeter korrigiert, loescht die
+  Uebergabe nicht - sie wurde bereits gelesen.
+- **Wochenansicht zeigt den Stand je Tag** ("Aufgaben 5/9 · 1 Mangel") und
+  verlinkt auf den Tag. Eine Abfrage fuer die ganze Woche, nicht sieben.
+- **PDF-Export** enthaelt die Aufgaben je Tag mit demselben Ankreuzbild wie das
+  Papier: `[x]` erledigt, `[!]` Mangel, `[-]` entfaellt, `[ ]` offen.
+- **Einrichtung** hat einen vierten Schritt: die vorhandenen Punkte einmal
+  untereinander eintippen, fertig ist die erste Liste.
+- Neues Modul `tasks_enabled` (standardmaessig an) und eine eigene Loeschfrist
+  `retention_task_days` fuer abgehakte Aufgabentage. Die Listen und ihre Punkte
+  enthalten keinen Personenbezug und bleiben davon unberuehrt.
+
+Zwei bewusste Entscheidungen:
+
+- **Ein Haken ist aenderbar**, anders als Kassenbuchungen und
+  Uebergaberevisionen. Auf einem Tablet vertippt man sich, und ein Wachbuch, in
+  dem ein Fehlgriff fuer immer stehenbleibt, wird nicht benutzt. Stattdessen
+  schreibt jede Aenderung ein Audit-Ereignis mit altem und neuem Stand.
+- **Ein Punkt wird nie geloescht**, nur deaktiviert (`TaskResult.item` ist
+  `PROTECT`). Sonst waere nicht mehr nachvollziehbar, was an einem vergangenen
+  Tag abgehakt wurde.
+
+Ein Tag ohne einen einzigen Haken erzeugt keine Datensaetze - `TaskRun`
+entsteht erst beim ersten Haken.
+
+Nebenbei behoben und ergaenzt:
+
+- Ankreuzfelder und Auswahl erscheinen jetzt in der Hausfarbe statt im
+  Systemblau.
+- Ueberschriften in Formularkarten haben Abschnittsgroesse; "Aufgabe
+  hinzufuegen" schrie sonst lauter als die Seitenueberschrift.
+- Kein vierter Menuepunkt: die Tagesansicht der Aufgaben faerbt `Woche` als
+  aktiv, weil sie an einem Tag der Woche haengt.
+
 ### Zusammengefuehrt zu einer Anwendung
 
 - **Die Woche ist die Startseite.** Das Dashboard ist ersatzlos entfallen - es

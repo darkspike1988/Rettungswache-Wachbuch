@@ -9,10 +9,15 @@ Dienstplanungs- oder Patientendokumentationssystem.
 
 ## Funktionen
 
+- wiederkehrende Aufgabenlisten: der Wachenrundgang, der Fahrzeugcheck und die
+  Tagesaufgaben vom Papierbogen, taeglich oder monatlich, abgehakt am Tablet
+- ein als Mangel gemeldeter Punkt wird automatisch zur Uebergabe fuer die
+  naechste Schicht
 - versionierte Uebergaben mit Prioritaet, Status und nachvollziehbarer Korrektur
 - Volltextsuche in Titel und Text der Uebergaben
 - Lesebestaetigung fuer dringende Eintraege
-- Wochenprotokoll mit Team je Tag, analog zum Papier-Uebergabebogen, als PDF exportierbar
+- Wochenprotokoll mit Team und Aufgabenstand je Tag, analog zum
+  Papier-Uebergabebogen, als PDF exportierbar
 - einfacher Wachenkalender
 - freiwillige Geburtstagsanzeige ohne Geburtsjahr
 - unveraenderliches Kaffeekassen-Ledger mit Korrekturbuchungen
@@ -45,7 +50,8 @@ automatisch nach der naechsten Synchronisierung. Unter `/kaffeekasse/` legen
 Admins fest, ueber welche gebuehrenfreien Wege eingezahlt werden kann
 (PayPal.me-Link, Wero-Link/-Kontakt und/oder IBAN mit Kontoinhaber fuer
 Echtzeitueberweisungen); alle Mitglieder sehen die hinterlegten Wege direkt auf
-der Kassenseite. Unter `/wache/team/` verwalten Admins Freigaben und Rollen. Zugang wird ueber die
+der Kassenseite. Unter `/wache/aufgabenlisten/` legen Admins fest, was wiederkehrend zu tun ist
+(siehe unten). Unter `/wache/team/` verwalten Admins Freigaben und Rollen. Zugang wird ueber die
 genaue E-Mail-Adresse des bestehenden Kontos freigegeben - Konten anderer
 Wachen werden bewusst nicht aufgelistet. Wer auf mehreren Wachen freigegeben
 ist, wechselt die aktive Wache unter `Wache`.
@@ -198,6 +204,40 @@ der Datenbank gehoert damit zur Sicherheit des zweiten Faktors.
 Im Tailscale-Modus entfaellt die Codeabfrage: dort ist das freigegebene Geraet
 selbst der zweite Faktor.
 
+## Aufgaben
+
+Die Aufgabenlisten sind das digitale Gegenstueck zu den Ankreuzfeldern unter
+"Tagesaufgaben" auf dem Papierbogen.
+
+**Anlegen (nur Admin, unter `Wache` -> `Aufgabenlisten`).** Eine Liste hat einen
+Namen ("Tagesaufgaben", "Fahrzeugcheck RTW 1", "Wachenrundgang"), einen
+Rhythmus und beliebig viele Punkte in fester Reihenfolge. Der Rhythmus ist
+entweder "an bestimmten Wochentagen" (taeglich, nur werktags, nur samstags -
+was die Wache braucht) oder "einmal im Monat" an einem festen Tag; faellt
+dieser Tag in einem kurzen Monat aus, gilt der letzte Tag des Monats. Eine
+Liste laesst sich pausieren, ohne sie zu verlieren.
+
+**Abhaken (alle Mitglieder).** Die Wochenansicht zeigt je Tag den Stand
+("Aufgaben 5/9"). Ein Klick fuehrt auf den Tag, dort steht je Punkt
+`Erledigt`, `Mangel` oder `Entfaellt`. Wer wann was vermerkt hat, steht an der
+Zeile; ein Haken laesst sich zuruecknehmen.
+
+**Mangel wird zur Uebergabe.** Ein als Mangel gemeldeter Punkt legt automatisch
+eine Uebergabe an (Kategorie "Sicherheit/Mangel", Prioritaet "Wichtig", mit dem
+eingegebenen Text und dem Verweis auf Liste und Tag). Damit landet er in der
+Wochenansicht, in der Suche und im PDF - die naechste Schicht sieht ihn, ohne
+dass jemand daran denken muss.
+
+**Was bleibt.** Ein Punkt wird nie geloescht, sondern nur deaktiviert: sonst
+waere nicht mehr nachvollziehbar, was an einem vergangenen Tag abgehakt wurde.
+Anders als Kassenbuchungen und Uebergaberevisionen ist ein Haken selbst
+aenderbar - auf einem Tablet vertippt man sich, und ein Wachbuch, in dem ein
+Fehlgriff fuer immer stehenbleibt, wird nicht benutzt. Jede Aenderung schreibt
+stattdessen ein Audit-Ereignis mit altem und neuem Stand.
+
+Ein Tag ohne einen einzigen Haken erzeugt keine Datensaetze. Das Modul laesst
+sich unter `/wache/einstellungen/` abschalten.
+
 ## Loeschfristen
 
 Unter `/wache/einstellungen/` legt die Wache je Datenart fest, nach wie vielen Tagen
@@ -212,7 +252,9 @@ docker compose run --rm migrate python manage.py purge_expired
 Der Befehl laeuft bewusst im `migrate`-Container: das Anwendungskonto darf
 Audit-Ereignisse und Revisionen auf Datenbankebene nicht loeschen.
 Kassenbuchungen sind wegen ihrer Aufbewahrungspflicht ausgenommen. Die Fristen
-legt die verantwortliche Stelle fest, nicht die Software.
+legt die verantwortliche Stelle fest, nicht die Software. Abgehakte
+Aufgabentage haben eine eigene Frist, weil in ihnen steht, wer wann was
+erledigt hat; die Listen und ihre Punkte selbst bleiben davon unberuehrt.
 
 ## Rechtliches (Impressum, Datenschutz, Barrierefreiheit)
 

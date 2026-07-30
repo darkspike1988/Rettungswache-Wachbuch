@@ -33,47 +33,59 @@
   <div class="tour-track" tabindex="0" role="group" aria-label="Funktionen, horizontal scrollbar">
     <article class="tour-slide" id="tour-1" aria-labelledby="tour-1-title">
       <span class="tour-step" aria-hidden="true">1</span>
-      <h3 id="tour-1-title">Übergaben statt Zettel</h3>
-      <p>Jeder Eintrag hat Kategorie, Priorität und Status. Korrekturen bleiben
-         nachvollziehbar: jede Änderung erzeugt eine unveränderliche Revision.</p>
-      <span class="status-label priority-urgent">Dringend</span>
+      <h3 id="tour-1-title">Tagesaufgaben zum Abhaken</h3>
+      <p>Wachenrundgang, Fahrzeugcheck, Monatsprüfung: einmal angelegt,
+         erscheinen sie an jedem gewählten Tag und werden am Tablet abgehakt -
+         mit Name und Uhrzeit an der Zeile.</p>
+      <span class="status-label success">5/9</span>
     </article>
     <article class="tour-slide" id="tour-2" aria-labelledby="tour-2-title">
       <span class="tour-step" aria-hidden="true">2</span>
-      <h3 id="tour-2-title">Wochenprotokoll wie der Papierbogen</h3>
-      <p>Kalenderwoche mit Team je Tag und einem Abschnitt für Allgemeines -
-         nur eben durchsuchbar. Zum Abheften gibt es den PDF-Export.</p>
-      <span class="status-label neutral">KW 31</span>
+      <h3 id="tour-2-title">Ein Mangel geht nicht verloren</h3>
+      <p>Wer einen Punkt als Mangel meldet, schreibt einen Satz dazu - daraus
+         wird automatisch eine Übergabe. Die nächste Schicht sieht sie, ohne
+         dass jemand daran denken muss.</p>
+      <span class="status-label priority-important">Mangel</span>
     </article>
     <article class="tour-slide" id="tour-3" aria-labelledby="tour-3-title">
       <span class="tour-step" aria-hidden="true">3</span>
-      <h3 id="tour-3-title">Dringendes wird quittiert</h3>
-      <p>Bei dringenden Einträgen bestätigt jede Person einmal, dass sie sie
-         gelesen hat. Ohne Auswertung über Personen hinweg.</p>
-      <span class="status-label success">Gelesen</span>
+      <h3 id="tour-3-title">Übergaben statt Zettel</h3>
+      <p>Jeder Eintrag hat Kategorie, Priorität und Status. Korrekturen bleiben
+         nachvollziehbar: jede Änderung erzeugt eine unveränderliche Revision.
+         Dringendes bestätigt jede Person einmal als gelesen.</p>
+      <span class="status-label priority-urgent">Dringend</span>
     </article>
     <article class="tour-slide" id="tour-4" aria-labelledby="tour-4-title">
       <span class="tour-step" aria-hidden="true">4</span>
-      <h3 id="tour-4-title">Kaffeekasse, die stimmt</h3>
+      <h3 id="tour-4-title">Wochenprotokoll wie der Papierbogen</h3>
+      <p>Kalenderwoche mit Team und Aufgabenstand je Tag und einem Abschnitt
+         für Allgemeines - nur eben durchsuchbar. Zum Abheften gibt es den
+         PDF-Export, mit denselben Ankreuzfeldern wie das Papier.</p>
+      <span class="status-label neutral">KW 31</span>
+    </article>
+    <article class="tour-slide" id="tour-5" aria-labelledby="tour-5-title">
+      <span class="tour-step" aria-hidden="true">5</span>
+      <h3 id="tour-5-title">Kaffeekasse, die stimmt</h3>
       <p>Buchungen lassen sich nicht still ändern, nur durch eine Gegenbuchung
          korrigieren. Einzahlwege wie PayPal oder Echtzeitüberweisung sind
          hinterlegbar.</p>
       <span class="status-label neutral">47,50 €</span>
     </article>
-    <article class="tour-slide" id="tour-5" aria-labelledby="tour-5-title">
-      <span class="tour-step" aria-hidden="true">5</span>
-      <h3 id="tour-5-title">Selbst gehostet, freie Software</h3>
+    <article class="tour-slide" id="tour-6" aria-labelledby="tour-6-title">
+      <span class="tour-step" aria-hidden="true">6</span>
+      <h3 id="tour-6-title">Selbst gehostet, freie Software</h3>
       <p>AGPL-3.0, läuft auf eurem eigenen Server. Keine Lizenzkosten, keine
          Abhängigkeit von einem Anbieter, Löschfristen selbst festlegbar.</p>
       <span class="status-label neutral">AGPL-3.0</span>
     </article>
   </div>
   <nav class="tour-dots" aria-label="Zu einer Funktion springen">
-    <a href="#tour-1"><span aria-hidden="true">1</span><span class="visually-hidden">Übergaben</span></a>
-    <a href="#tour-2"><span aria-hidden="true">2</span><span class="visually-hidden">Wochenprotokoll</span></a>
-    <a href="#tour-3"><span aria-hidden="true">3</span><span class="visually-hidden">Lesebestätigung</span></a>
-    <a href="#tour-4"><span aria-hidden="true">4</span><span class="visually-hidden">Kaffeekasse</span></a>
-    <a href="#tour-5"><span aria-hidden="true">5</span><span class="visually-hidden">Freie Software</span></a>
+    <a href="#tour-1"><span aria-hidden="true">1</span><span class="visually-hidden">Tagesaufgaben</span></a>
+    <a href="#tour-2"><span aria-hidden="true">2</span><span class="visually-hidden">Mangelmeldung</span></a>
+    <a href="#tour-3"><span aria-hidden="true">3</span><span class="visually-hidden">Übergaben</span></a>
+    <a href="#tour-4"><span aria-hidden="true">4</span><span class="visually-hidden">Wochenprotokoll</span></a>
+    <a href="#tour-5"><span aria-hidden="true">5</span><span class="visually-hidden">Kaffeekasse</span></a>
+    <a href="#tour-6"><span aria-hidden="true">6</span><span class="visually-hidden">Freie Software</span></a>
   </nav>
 </section>
 
@@ -130,9 +142,10 @@
     </div>
 
     <section class="section-block day-card demo-day">
-      <header class="day-card-header"><h2>Mittwoch, 30.07.2026</h2><span class="day-team">Team: Dotzki/Huber</span></header>
+      <header class="day-card-header"><h2>Mittwoch, 30.07.2026</h2><span class="day-team">Team: Dotzki/Huber &middot; Aufgaben 5/9</span></header>
       <div class="item-list">
-        <div class="list-row"><span class="status-label success">Erledigt</span><span class="row-content"><strong>Fahrzeugcheck RTW 1</strong><small>Fahrzeugstatus</small></span></div>
+        <div class="list-row"><span class="status-label success">Erledigt</span><span class="row-content"><strong>Wachenrundgang</strong><small>Tagesaufgaben &middot; Jonas, 07:15</small></span></div>
+        <div class="list-row"><span class="status-label priority-important">Mangel</span><span class="row-content"><strong>Sauerstoffvorrat</strong><small>Fahrzeugcheck RTW 1 &middot; Füllstand unter 50 bar</small></span></div>
       </div>
     </section>
 

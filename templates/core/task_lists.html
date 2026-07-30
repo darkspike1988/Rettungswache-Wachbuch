@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Aufgabenlisten | {{ app_name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'station_area' %}">Zurück zur Wache</a>
+<header class="page-heading heading-with-action">
+  <div>
+    <p class="context-line">Administration</p>
+    <h1>Aufgabenlisten</h1>
+    <p class="lead">Was wiederkehrend zu tun ist. Erscheint automatisch an den gewählten Tagen und wird dort abgehakt.</p>
+  </div>
+  <a class="button primary" href="{% url 'task_list_create' %}">Liste anlegen</a>
+</header>
+
+{% if task_lists %}
+  <div class="link-list">
+    {% for item in task_lists %}
+      <div class="task-list-row">
+        <a href="{% url 'task_list_edit' item.pk %}">
+          <strong>{{ item.title }}</strong>
+          <span>{{ item.rhythm_label }} · {% if item.item_count == 1 %}eine Aufgabe{% else %}{{ item.item_count }} Aufgaben{% endif %}</span>
+        </a>
+        <form method="post" action="{% url 'task_list_toggle' item.pk %}">
+          {% csrf_token %}
+          {% if item.is_active %}
+            <button class="task-button" type="submit">Pausieren<span class="visually-hidden">: {{ item.title }}</span></button>
+          {% else %}
+            <span class="status-label neutral">Pausiert</span>
+            <button class="task-button primary" type="submit">Aktivieren<span class="visually-hidden">: {{ item.title }}</span></button>
+          {% endif %}
+        </form>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <section class="section-block narrow">
+    <h2>Noch keine Liste angelegt</h2>
+    <p class="field-hint">
+      Eine Liste bündelt, was regelmäßig zu erledigen ist - zum Beispiel
+      „Tagesaufgaben“ mit den Punkten vom Papierbogen oder „Fahrzeugcheck RTW 1“.
+      Angelegt wird sie einmal; danach steht sie an jedem gewählten Tag bereit.
+    </p>
+    <div class="form-actions"><a class="button primary" href="{% url 'task_list_create' %}">Erste Liste anlegen</a></div>
+  </section>
+{% endif %}
+{% endblock %}

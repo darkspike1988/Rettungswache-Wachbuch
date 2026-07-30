@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{% if task_list %}{{ task_list.title }}{% else %}Liste anlegen{% endif %} | {{ app_name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'task_lists' %}">Zurück zu den Aufgabenlisten</a>
+<header class="page-heading narrow">
+  <p class="context-line">Administration</p>
+  <h1>{% if task_list %}{{ task_list.title }}{% else %}Liste anlegen{% endif %}</h1>
+  {% if not task_list %}
+    <p class="lead">Erst der Name und der Rhythmus, danach die einzelnen Aufgaben.</p>
+  {% endif %}
+</header>
+
+{% comment %}
+Die beiden unteren Felder gelten je nach Rhythmus. Ohne JavaScript laesst sich
+das eine nicht ausblenden, also sagen die Legenden es geradeheraus.
+{% endcomment %}
+<form method="post" class="form-card narrow">
+  {% csrf_token %}
+  {% include "core/form_errors.html" %}
+  <p class="field">{{ form.title.errors }}{{ form.title.label_tag }}{{ form.title }}<span class="helptext">{{ form.title.help_text }}</span></p>
+  <p class="field">{{ form.rhythm.errors }}{{ form.rhythm.label_tag }}{{ form.rhythm }}</p>
+
+  <fieldset class="rhythm-case">
+    <legend>Bei „An bestimmten Wochentagen“</legend>
+    {{ form.weekdays.errors }}
+    {{ form.weekdays }}
+  </fieldset>
+
+  <fieldset class="rhythm-case">
+    <legend>Bei „Einmal im Monat“</legend>
+    {{ form.day_of_month.errors }}
+    {{ form.day_of_month.label_tag }}
+    {{ form.day_of_month }}
+    <span class="helptext">{{ form.day_of_month.help_text }}</span>
+  </fieldset>
+
+  <div class="form-actions">
+    <button class="button primary" type="submit">{% if task_list %}Speichern{% else %}Weiter zu den Aufgaben{% endif %}</button>
+  </div>
+</form>
+
+{% if task_list %}
+<section class="stack narrow section-gap" aria-labelledby="aufgaben">
+  <h2 id="aufgaben">Aufgaben in dieser Liste</h2>
+  {% if items %}
+    <ul class="task-list">
+      {% for item in items %}
+        <li class="task-row">
+          <span class="task-text">
+            <span class="task-title">{{ forloop.counter }}. {{ item.title }}</span>
+            {% if item.note %}<span class="task-note">{{ item.note }}</span>{% endif %}
+          </span>
+          <form method="post" action="{% url 'task_item_action' task_list.pk item.pk %}" class="task-actions">
+            {% csrf_token %}
+            <button class="task-button" type="submit" name="aktion" value="up"{% if forloop.first %} disabled{% endif %}>Hoch<span class="visually-hidden">: {{ item.title }}</span></button>
+            <button class="task-button" type="submit" name="aktion" value="down"{% if forloop.last %} disabled{% endif %}>Runter<span class="visually-hidden">: {{ item.title }}</span></button>
+            <button class="task-button" type="submit" name="aktion" value="remove">Entfernen<span class="visually-hidden">: {{ item.title }}</span></button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state">Noch keine Aufgabe. Die erste steht gleich unten.</p>
+  {% endif %}
+
+  {% if used_count %}
+    <p class="muted-note note-after-list">
+      Entfernte Aufgaben verschwinden nur aus künftigen Tagen. Was bereits
+      abgehakt wurde, bleibt in der Vergangenheit sichtbar - sonst wäre nicht
+      mehr nachvollziehbar, was an einem Tag erledigt war.
+    </p>
+  {% endif %}
+</section>
+
+<form method="post" action="{% url 'task_item_create' task_list.pk %}" class="form-card narrow">
+  {% csrf_token %}
+  <h2>Aufgabe hinzufügen</h2>
+  {{ item_form.as_p }}
+  <div class="form-actions"><button class="button secondary" type="submit">Hinzufügen</button></div>
+</form>
+{% endif %}
+{% endblock %}

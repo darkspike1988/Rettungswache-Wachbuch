@@ -19,8 +19,8 @@
       {% if station.calendar_enabled %}Kalender{% endif %}{% if station.birthdays_enabled %}, Geburtstage{% endif %}{% if station.coffee_enabled %}, Kaffeekasse{% endif %}{% if station.feeds_enabled %}, Externe Meldungen{% endif %}
     </p>
     <p class="field-hint">
-      Adresse, Zahlungswege für die Kaffeekasse und alles andere lassen sich
-      jederzeit unter "Mehr &rarr; Einstellungen" ergänzen oder ändern.
+      Adresse, Aufgabenlisten, Zahlungswege für die Kaffeekasse und alles
+      andere lassen sich jederzeit unter „Wache“ ergänzen oder ändern.
     </p>
   </div>
   <form method="post" class="form-actions narrow">
@@ -31,6 +31,14 @@
   <form method="post" class="form-card narrow">
     {% csrf_token %}
     {% include "core/form_errors.html" %}
+    {% if step == "tasks" %}
+      <p class="field-hint">
+        Diese Punkte erscheinen ab sofort an jedem Tag der Woche und werden
+        dort abgehakt. Rhythmus, Reihenfolge und weitere Listen - etwa je
+        Fahrzeug - kommen danach unter „Wache &rarr; Aufgabenlisten“ dazu.
+        {% if existing_lists %}Es {% if existing_lists == 1 %}gibt bereits eine Liste{% else %}gibt bereits {{ existing_lists }} Listen{% endif %}; was hier steht, kommt zusätzlich dazu.{% endif %}
+      </p>
+    {% endif %}
     {{ form.as_p }}
     <div class="form-actions">
       <button class="button primary" type="submit">Weiter</button>

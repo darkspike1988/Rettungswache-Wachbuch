@@ -96,7 +96,7 @@ sichern, dann die Ursache reproduzierbar ueber Anwendung oder Migration beheben.
 
 ## Loeschfristen ausfuehren
 
-Die Fristen stehen je Wache unter `/einstellungen/`; geloescht wird nur, wenn
+Die Fristen stehen je Wache unter `/wache/einstellungen/`; geloescht wird nur, wenn
 der Betrieb den Befehl anstoesst. Er laeuft im `migrate`-Container, weil das
 Anwendungskonto Audit-Ereignisse und Revisionen auf Datenbankebene nicht
 loeschen darf:
@@ -107,7 +107,10 @@ docker compose run --rm migrate python manage.py purge_expired
 ```
 
 Der Lauf schreibt je Wache ein Audit-Ereignis `retention.purged` mit den
-Stueckzahlen. Kassenbuchungen bleiben ausgenommen.
+Stueckzahlen. Kassenbuchungen bleiben ausgenommen. `retention_task_days`
+entfernt abgehakte Aufgabentage samt Ergebnissen - in ihnen steht, wer wann was
+erledigt hat. Die Aufgabenlisten selbst und ihre Punkte bleiben erhalten, sie
+enthalten keinen Personenbezug.
 
 Im Normalbetrieb uebernimmt das der `maintenance`-Container, der den Befehl
 standardmaessig einmal taeglich ausfuehrt (`MAINTENANCE_INTERVAL_SECONDS` in

@@ -16,6 +16,10 @@ from .models import (
     HandoverRevision,
     Membership,
     Station,
+    TaskItem,
+    TaskList,
+    TaskResult,
+    TaskRun,
     TotpDevice,
 )
 
@@ -44,6 +48,7 @@ class StationAdmin(admin.ModelAdmin):
         "calendar_enabled",
         "birthdays_enabled",
         "coffee_enabled",
+        "tasks_enabled",
         "feeds_enabled",
     )
     list_filter = ("is_active",)
@@ -97,6 +102,33 @@ class BirthdayPreferenceAdmin(ReadOnlyAdmin):
 class CoffeeEntryAdmin(ReadOnlyAdmin):
     list_display = ("member", "amount_cents", "reason", "created_by", "created_at")
     list_filter = ("station",)
+
+
+class TaskItemInline(admin.TabularInline):
+    model = TaskItem
+    extra = 0
+
+
+@admin.register(TaskList)
+class TaskListAdmin(admin.ModelAdmin):
+    """Gepflegt wird im Wachenbereich. Hier steht die Liste nur zur Kontrolle
+    und fuer den Fall, dass eine Wache ohne Admin dasteht."""
+
+    list_display = ("title", "station", "rhythm", "weekdays", "day_of_month", "is_active")
+    list_filter = ("station", "rhythm", "is_active")
+    inlines = [TaskItemInline]
+
+
+@admin.register(TaskRun)
+class TaskRunAdmin(ReadOnlyAdmin):
+    list_display = ("task_list", "station", "date")
+    list_filter = ("station", "task_list")
+
+
+@admin.register(TaskResult)
+class TaskResultAdmin(ReadOnlyAdmin):
+    list_display = ("run", "item", "state", "recorded_by", "recorded_at")
+    list_filter = ("state", "run__station")
 
 
 @admin.register(FeedSource)

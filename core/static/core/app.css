@@ -54,6 +54,8 @@ body { min-height: 100vh; margin: 0; background: var(--bg); font-size: 1rem; lin
 h1, h2, h3 { overflow-wrap: anywhere; }
 a { color: var(--accent-dark); text-underline-offset: .18em; }
 button, input, select, textarea { font: inherit; }
+/* Haekchen und Auswahl in der Hausfarbe statt im Systemblau. */
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent-dark); }
 button, a { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid #f0b429; outline-offset: 3px; }
 
@@ -471,7 +473,8 @@ a.identity strong { text-decoration: underline; text-underline-offset: .2em; }
    Tablets im Querformat - nicht nur fuer schmale Fenster.
    --------------------------------------------------------------------------- */
 .button, .app-nav a, .more-list a, .list-row, .tour-dots a,
-.filter-nav a, .logout-form button, summary, .footer-links a {
+.filter-nav a, .logout-form button, summary, .footer-links a,
+.task-button, .day-tasks {
   /* Nimmt die 300-Millisekunden-Verzoegerung durch Doppeltipp-Zoom. */
   touch-action: manipulation;
 }
@@ -565,12 +568,75 @@ a.identity strong { text-decoration: underline; text-underline-offset: .2em; }
 .entry-title { font-weight: 650; overflow-wrap: anywhere; }
 .entry-meta { color: var(--muted); font-size: .85rem; }
 
+/* Der Stand der Aufgaben steht neben dem Team im Tageskopf - eine Zahl, kein
+   Balken. "5/9" liest sich im Vorbeigehen schneller als ein Fortschrittsring. */
+.day-tasks { min-height: 44px; display: inline-flex; align-items: center; padding: .1rem .5rem; color: var(--muted); background: var(--chip-bg); border-radius: 999px; font-size: .82rem; font-weight: 700; text-decoration: none; }
+.day-tasks-open { color: var(--accent-dark); background: var(--info-soft); }
+
+/* ---------------------------------------------------------------------------
+   Aufgaben. Eine Zeile je Punkt, die Schaltflaechen rechts. Auf dem Tablet
+   rutschen sie unter den Text, damit der Daumen sie erreicht, ohne dass die
+   Zeile zu schmal wird.
+   --------------------------------------------------------------------------- */
+.task-list { margin: .5rem 0 0; padding: 0; list-style: none; }
+.task-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: .6rem 0; }
+.task-row + .task-row { border-top: 1px solid var(--line); }
+.task-row-done .task-title { color: var(--muted); text-decoration: line-through; }
+.task-row-skipped .task-title { color: var(--muted); }
+.task-row-defect { border-left: 3px solid var(--warning); padding-left: .7rem; margin-left: -.7rem; }
+
+.task-text { min-width: 14rem; flex: 1; display: grid; gap: .1rem; }
+.task-title { font-weight: 650; overflow-wrap: anywhere; }
+.task-note, .task-by { color: var(--muted); font-size: .85rem; }
+
+.task-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.task-button { min-height: 44px; min-width: 3.5rem; display: inline-flex; align-items: center; justify-content: center; padding: .4rem .8rem; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); font-family: inherit; font-size: .88rem; font-weight: 700; text-decoration: none; cursor: pointer; }
+.task-button.primary { color: white; background: var(--accent-dark); border-color: var(--accent-dark); }
+.task-button[disabled] { color: var(--muted); cursor: default; opacity: .5; }
+
+.task-list-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; border-bottom: 1px solid var(--line); }
+.task-list-row a { flex: 1; min-width: 12rem; min-height: 3.5rem; display: grid; align-content: center; gap: .1rem; padding: .8rem .25rem; color: var(--text); text-decoration: none; }
+.task-list-row strong { font-weight: 650; }
+.task-list-row span { color: var(--muted); font-size: .85rem; }
+.task-list-row form { display: flex; align-items: center; gap: .5rem; }
+
+/* Ueberschrift innerhalb einer Formularkarte bleibt auf Abschnittsgroesse -
+   sonst schreit "Aufgabe hinzufuegen" lauter als die Seitenueberschrift. */
+.form-card h2 { margin: 0 0 1rem; font-size: 1.05rem; }
+.section-gap { margin-top: 2rem; }
+.note-after-list { margin-top: .75rem; }
+
+/* Felder, die nur bei einem bestimmten Rhythmus gelten. Ohne JavaScript laesst
+   sich das andere nicht ausblenden - also wird es sichtbar eingeordnet. */
+.rhythm-case { margin: 0 0 1.25rem; padding: .85rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); }
+.rhythm-case legend { padding: 0 .4rem; color: var(--muted); font-size: .85rem; font-weight: 700; }
+.rhythm-case ul { margin: 0; padding: 0; list-style: none; }
+.rhythm-case li { min-height: 44px; display: flex; align-items: center; }
+.rhythm-case label { display: inline-flex; align-items: center; gap: .5rem; margin: 0; font-weight: 400; cursor: pointer; }
+.rhythm-case input[type="checkbox"] { width: 1.35rem; height: 1.35rem; }
+
 @media (hover: hover) and (pointer: fine) {
   .link-list a:hover, .entries a:hover { color: var(--accent-dark); }
+  .task-list-row a:hover, .day-tasks:hover { color: var(--accent-dark); }
+  .task-button:not([disabled]):hover { background: var(--hover-surface); }
+  .task-button.primary:hover { background: var(--brand); }
 }
 @media (pointer: coarse) {
   .link-list a { min-height: 4rem; }
   .entries a { min-height: 48px; }
   .week-nav a { min-height: 48px; }
   .team-form input { min-height: 48px; }
+  .task-button { min-height: 48px; padding-inline: 1rem; }
+  .task-row { padding-block: .8rem; }
+  .task-button:active { background: var(--hover-surface); }
+}
+@media (max-width: 48rem) {
+  /* Erst der Text, darunter die Schaltflaechen ueber die volle Breite. */
+  .task-row { flex-direction: column; align-items: stretch; }
+  .task-actions { justify-content: flex-start; }
+  /* Gleich breite Ziele: die drei Schaltflaechen liegen nebeneinander unter
+     dem Daumen, unterschiedliche Breiten laden zum Vergreifen ein. */
+  .task-actions > form, .task-actions > .task-button { flex: 1 1 0; }
+  .task-actions form .task-button { width: 100%; }
+  .rhythm-case li { min-height: 48px; }
 }

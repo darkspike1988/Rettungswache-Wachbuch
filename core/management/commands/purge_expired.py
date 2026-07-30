@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from core.models import AuditEvent, CalendarEvent, HandoverEntry, Station
+from core.models import AuditEvent, CalendarEvent, HandoverEntry, Station, TaskRun
 from core.services import audit
 
 
@@ -41,6 +41,12 @@ class Command(BaseCommand):
                 cutoff = now - timedelta(days=station.retention_calendar_days)
                 plan["Termine"] = CalendarEvent.objects.filter(
                     station=station, ends_at__lt=cutoff,
+                )
+            if station.retention_task_days:
+                cutoff = (now - timedelta(days=station.retention_task_days)).date()
+                # Enthaelt, wer wann was abgehakt hat - also Personenbezug.
+                plan["abgehakte Aufgabentage"] = TaskRun.objects.filter(
+                    station=station, date__lt=cutoff,
                 )
             if station.retention_audit_days:
                 cutoff = now - timedelta(days=station.retention_audit_days)

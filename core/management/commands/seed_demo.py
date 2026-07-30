@@ -15,6 +15,10 @@ from core.models import (
     HandoverRevision,
     Membership,
     Station,
+    TaskItem,
+    TaskList,
+    TaskResult,
+    TaskRun,
 )
 from core.services import handover_snapshot
 
@@ -41,6 +45,34 @@ DEMO_HANDOVERS = [
 ]
 
 DEMO_TEAMS = {0: "Mara / Jonas", -1: "Sena / Mara", 1: "Jonas / Sena"}
+
+# Zwei Listen, wie sie in einer Wache tatsaechlich haengen: der taegliche
+# Rundgang und ein Fahrzeugcheck, der nur werktags gefahren wird.
+DEMO_TASK_LISTS = [
+    ("Tagesaufgaben", TaskList.Rhythm.WEEKDAYS, "1234567", [
+        ("Wachenrundgang", "Aufenthalt, Küche, Umkleide, Garage."),
+        ("Müll und Wäsche", "Restmüll raus, Wäsche in die Maschine."),
+        ("Kaffeemaschine reinigen", ""),
+        ("Funkgeräte laden", "Ladeschalen im Flur prüfen."),
+    ]),
+    ("Fahrzeugcheck RTW 1", TaskList.Rhythm.WEEKDAYS, "12345", [
+        ("Betriebsmittel und Reifendruck", ""),
+        ("Sauerstoffvorrat", "Reserveflasche nicht vergessen."),
+        ("Absaugpumpe und Beatmungsbeutel", ""),
+        ("Fahrzeug innen gereinigt", ""),
+        ("Tragestuhl und Fahrtrage", ""),
+    ]),
+]
+
+# Was am heutigen Tag schon abgehakt ist - inklusive eines Mangels, damit die
+# Schleife "Mangel wird zur Uebergabe" in der Demo sichtbar ist.
+DEMO_TASK_STATES = {
+    ("Tagesaufgaben", "Wachenrundgang"): TaskResult.State.DONE,
+    ("Tagesaufgaben", "Müll und Wäsche"): TaskResult.State.DONE,
+    ("Tagesaufgaben", "Kaffeemaschine reinigen"): TaskResult.State.DONE,
+    ("Fahrzeugcheck RTW 1", "Betriebsmittel und Reifendruck"): TaskResult.State.DONE,
+    ("Fahrzeugcheck RTW 1", "Sauerstoffvorrat"): TaskResult.State.DEFECT,
+}
 
 
 class Command(BaseCommand):
@@ -85,6 +117,7 @@ class Command(BaseCommand):
         people = [self._person(*entry, station=station) for entry in DEMO_PEOPLE]
         visitor = self._visitor(station)
         self._handovers(station, people)
+        self._tasks(station, people[1])
         self._teams(station, people[0])
         self._calendar(station, people[0])
         self._coffee(station, people, visitor)
@@ -98,6 +131,11 @@ class Command(BaseCommand):
         station = Station.objects.filter(slug=slug).first()
         if station is None:
             return
+        # Ergebnisse zuerst: TaskItem ist gegen Loeschen geschuetzt, solange
+        # noch ein Haken daran haengt.
+        TaskResult.objects.filter(run__station=station).delete()
+        TaskRun.objects.filter(station=station).delete()
+        TaskList.objects.filter(station=station).delete()
         HandoverEntry.objects.filter(station=station).delete()
         DailyTeamNote.objects.filter(station=station).delete()
         CalendarEvent.objects.filter(station=station).delete()
@@ -159,6 +197,36 @@ class Command(BaseCommand):
                 handover=entry, version=1,
                 snapshot=handover_snapshot(entry), changed_by=author,
             )
+
+    def _tasks(self, station, author):
+        today = timezone.localdate()
+        for position, (title, rhythm, weekdays, items) in enumerate(DEMO_TASK_LISTS):
+            task_list, _ = TaskList.objects.update_or_create(
+                station=station, title=title,
+                defaults={"rhythm": rhythm, "weekdays": weekdays, "position": position},
+            )
+            for index, (item_title, note) in enumerate(items):
+                TaskItem.objects.update_or_create(
+                    task_list=task_list, title=item_title,
+                    defaults={"note": note, "position": index, "is_active": True},
+                )
+            if not task_list.occurs_on(today):
+                continue
+            run, _ = TaskRun.objects.get_or_create(
+                station=station, task_list=task_list, date=today,
+            )
+            for item in task_list.items.filter(is_active=True):
+                state = DEMO_TASK_STATES.get((title, item.title))
+                if state is None:
+                    continue
+                TaskResult.objects.update_or_create(
+                    run=run, item=item,
+                    defaults={
+                        "state": state,
+                        "note": "Füllstand unter 50 bar." if state == TaskResult.State.DEFECT else "",
+                        "recorded_by": author,
+                    },
+                )
 
     def _teams(self, station, author):
         today = timezone.localdate()

@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -31,6 +31,10 @@ from .models import (
     HandoverRevision,
     Membership,
     Station,
+    TaskItem,
+    TaskList,
+    TaskResult,
+    TaskRun,
     TotpDevice,
 )
 
@@ -86,11 +90,23 @@ class SetupWizardTests(TestCase):
         })
         self.assertRedirects(response, reverse("setup_wizard", args=["modules"]))
         response = self.client.post(reverse("setup_wizard", args=["modules"]), {
-            "calendar_enabled": "on", "coffee_enabled": "on",
+            "calendar_enabled": "on", "coffee_enabled": "on", "tasks_enabled": "on",
+        })
+        self.assertRedirects(response, reverse("setup_wizard", args=["tasks"]))
+        response = self.client.post(reverse("setup_wizard", args=["tasks"]), {
+            "titles": "Wachenrundgang\nFahrzeugcheck\n\n  Müll raus  ",
         })
         self.assertRedirects(response, reverse("setup_wizard", args=["done"]))
         response = self.client.post(reverse("setup_wizard", args=["done"]))
         self.assertRedirects(response, reverse("home"))
+
+        # Leere Zeilen fallen weg, Leerzeichen am Rand werden entfernt.
+        task_list = TaskList.objects.get(station=self.station)
+        self.assertEqual(task_list.title, "Tagesaufgaben")
+        self.assertEqual(
+            list(task_list.items.values_list("title", flat=True)),
+            ["Wachenrundgang", "Fahrzeugcheck", "Müll raus"],
+        )
 
         self.station.refresh_from_db()
         self.assertEqual(self.station.name, "Rettungswache Demo")
@@ -1574,3 +1590,308 @@ class TeamAndAuditTests(PilotTestCase):
         self.assertEqual(response.status_code, 403)
         handover.refresh_from_db()
         self.assertEqual(handover.title, "Nicht direkt aendern")
+
+
+class TaskListRhythmTests(TestCase):
+    """Der Rhythmus entscheidet, an welchem Tag eine Liste ueberhaupt
+    auftaucht. Alles andere haengt daran, deshalb steht er allein im Test."""
+
+    def setUp(self):
+        self.station = Station.objects.create(name="Rhythmus", slug="rhythmus")
+
+    def make(self, **kwargs):
+        return TaskList.objects.create(station=self.station, title="Liste", **kwargs)
+
+    def test_daily_list_occurs_on_every_weekday(self):
+        task_list = self.make(weekdays="1234567")
+        for offset in range(7):
+            self.assertTrue(task_list.occurs_on(date(2026, 7, 27) + timedelta(days=offset)))
+
+    def test_workday_list_skips_the_weekend(self):
+        task_list = self.make(weekdays="12345")
+        self.assertTrue(task_list.occurs_on(date(2026, 7, 31)))   # Freitag
+        self.assertFalse(task_list.occurs_on(date(2026, 8, 1)))   # Samstag
+        self.assertFalse(task_list.occurs_on(date(2026, 8, 2)))   # Sonntag
+
+    def test_monthly_list_occurs_once(self):
+        task_list = self.make(rhythm=TaskList.Rhythm.MONTHLY, day_of_month=15)
+        self.assertTrue(task_list.occurs_on(date(2026, 7, 15)))
+        self.assertFalse(task_list.occurs_on(date(2026, 7, 16)))
+
+    def test_monthly_list_falls_back_to_the_last_day_of_a_short_month(self):
+        # Der 31. existiert im Februar nicht - die Liste darf trotzdem nicht
+        # einen ganzen Monat lang ausfallen.
+        task_list = self.make(rhythm=TaskList.Rhythm.MONTHLY, day_of_month=31)
+        self.assertTrue(task_list.occurs_on(date(2026, 2, 28)))
+        self.assertFalse(task_list.occurs_on(date(2026, 2, 27)))
+
+    def test_paused_list_never_occurs(self):
+        task_list = self.make(is_active=False)
+        self.assertFalse(task_list.occurs_on(date(2026, 7, 30)))
+
+    def test_rhythm_label_is_readable_instead_of_digits(self):
+        self.assertEqual(self.make(weekdays="1234567").rhythm_label, "Täglich")
+        self.assertEqual(self.make(weekdays="12345").rhythm_label, "Montag bis Freitag")
+        self.assertEqual(self.make(weekdays="26").rhythm_label, "Di, Sa")
+        self.assertEqual(
+            self.make(rhythm=TaskList.Rhythm.MONTHLY, day_of_month=3).rhythm_label,
+            "Monatlich am 3.",
+        )
+
+
+class TaskCheckOffTests(PilotTestCase):
+    """Abhaken ist das, was im Alltag hundertmal passiert."""
+
+    def setUp(self):
+        super().setUp()
+        self.today = timezone.localdate()
+        self.task_list = TaskList.objects.create(
+            station=self.station, title="Tagesaufgaben", weekdays="1234567",
+        )
+        self.item = TaskItem.objects.create(
+            task_list=self.task_list, title="Wachenrundgang", position=0,
+        )
+        self.second = TaskItem.objects.create(
+            task_list=self.task_list, title="Müll raus", position=1,
+        )
+
+    def day_url(self, name="tasks_day", *args):
+        return reverse(name, args=[self.today.isoformat(), *args])
+
+    def test_member_sees_the_days_tasks(self):
+        response = self.client.get(self.day_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Wachenrundgang")
+        self.assertContains(response, "Müll raus")
+
+    def test_checking_off_records_who_and_creates_the_run(self):
+        response = self.client.post(
+            self.day_url("task_mark", self.item.pk), {"state": "done"},
+        )
+        self.assertRedirects(response, self.day_url())
+        run = TaskRun.objects.get(station=self.station, task_list=self.task_list, date=self.today)
+        result = TaskResult.objects.get(run=run, item=self.item)
+        self.assertEqual(result.state, TaskResult.State.DONE)
+        self.assertEqual(result.recorded_by, self.user)
+        self.assertTrue(AuditEvent.objects.filter(action="task.result_recorded").exists())
+
+    def test_a_day_without_any_tick_creates_no_rows(self):
+        self.client.get(self.day_url())
+        self.assertFalse(TaskRun.objects.exists())
+
+    def test_a_tick_can_be_taken_back(self):
+        self.client.post(self.day_url("task_mark", self.item.pk), {"state": "done"})
+        self.client.post(self.day_url("task_mark", self.item.pk), {"state": "clear"})
+        self.assertFalse(TaskResult.objects.exists())
+        self.assertTrue(AuditEvent.objects.filter(action="task.result_cleared").exists())
+
+    def test_a_defect_becomes_a_handover_the_next_shift_sees(self):
+        response = self.client.post(
+            self.day_url("task_defect", self.item.pk),
+            {"note": "Notausgang blockiert."},
+        )
+        self.assertRedirects(response, self.day_url())
+        result = TaskResult.objects.get(item=self.item)
+        self.assertEqual(result.state, TaskResult.State.DEFECT)
+        handover = result.handover
+        self.assertIsNotNone(handover)
+        self.assertEqual(handover.station, self.station)
+        self.assertEqual(handover.category, HandoverEntry.Category.SAFETY)
+        self.assertEqual(handover.priority, HandoverEntry.Priority.IMPORTANT)
+        self.assertEqual(handover.for_date, self.today)
+        self.assertIn("Notausgang blockiert.", handover.details)
+        self.assertIn("Wachenrundgang", handover.title)
+        # Auch aus der Liste heraus bleibt die Uebergabe versioniert.
+        self.assertEqual(handover.revisions.count(), 1)
+
+    def test_correcting_a_defect_does_not_delete_the_handover(self):
+        self.client.post(self.day_url("task_defect", self.item.pk), {"note": "Kaputt."})
+        handover_id = TaskResult.objects.get(item=self.item).handover_id
+        self.client.post(self.day_url("task_mark", self.item.pk), {"state": "done"})
+        self.assertTrue(HandoverEntry.objects.filter(pk=handover_id).exists())
+
+    def test_a_second_defect_report_does_not_create_a_second_handover(self):
+        self.client.post(self.day_url("task_defect", self.item.pk), {"note": "Kaputt."})
+        self.client.post(self.day_url("task_defect", self.item.pk), {"note": "Immer noch."})
+        self.assertEqual(HandoverEntry.objects.count(), 1)
+
+    def test_tasks_of_another_station_cannot_be_ticked(self):
+        other = Station.objects.create(name="Fremd", slug="fremd")
+        foreign_list = TaskList.objects.create(station=other, title="Fremd", weekdays="1234567")
+        foreign_item = TaskItem.objects.create(task_list=foreign_list, title="Fremd")
+        response = self.client.post(
+            reverse("task_mark", args=[self.today.isoformat(), foreign_item.pk]),
+            {"state": "done"},
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(TaskResult.objects.exists())
+
+    def test_a_task_cannot_be_ticked_on_a_day_the_list_is_not_due(self):
+        self.task_list.weekdays = str(self.today.isoweekday() % 7 + 1)
+        self.task_list.save(update_fields=["weekdays"])
+        response = self.client.post(
+            self.day_url("task_mark", self.item.pk), {"state": "done"},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_removed_items_disappear_from_new_days_but_stay_in_history(self):
+        self.client.post(
+            self.day_url("task_mark", self.item.pk), {"state": "done"}, follow=True,
+        )
+        self.item.is_active = False
+        self.item.save(update_fields=["is_active"])
+        response = self.client.get(self.day_url())
+        self.assertNotContains(response, ">Wachenrundgang<")
+        self.assertTrue(TaskResult.objects.filter(item=self.item).exists())
+
+    def test_week_view_shows_the_daily_count_and_links_to_the_day(self):
+        self.client.post(self.day_url("task_mark", self.item.pk), {"state": "done"})
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, "Aufgaben 1/2")
+        self.assertContains(response, self.day_url())
+
+    def test_module_can_be_switched_off(self):
+        self.station.tasks_enabled = False
+        self.station.save(update_fields=["tasks_enabled"])
+        self.assertEqual(self.client.get(self.day_url()).status_code, 404)
+        self.assertNotContains(self.client.get(reverse("home")), "Aufgaben 0/2")
+
+    def test_the_day_page_lives_under_the_week_in_the_navigation(self):
+        # Kein vierter Menuepunkt: Aufgaben haengen am Tag, nicht daneben.
+        response = self.client.get(self.day_url())
+        self.assertEqual(response.content.decode().count('class="app-nav"'), 1)
+        self.assertEqual(response.content.decode().count('aria-current="page"'), 1)
+        self.assertContains(response, '>Woche</a>')
+
+
+class TaskAdministrationTests(PilotTestCase):
+    def setUp(self):
+        super().setUp()
+        self.admin = User.objects.create_user("chef@example.org", first_name="Nora")
+        Membership.objects.create(
+            user=self.admin, station=self.station, role=Membership.Role.ADMIN,
+        )
+
+    def test_member_cannot_reach_the_administration(self):
+        self.assertEqual(self.client.get(reverse("task_lists")).status_code, 403)
+
+    def test_admin_creates_a_list_and_adds_tasks_in_order(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(reverse("task_list_create"), {
+            "title": "Fahrzeugcheck RTW 1",
+            "rhythm": TaskList.Rhythm.WEEKDAYS,
+            "weekdays": ["1", "2", "3", "4", "5"],
+            "day_of_month": 1,
+        })
+        task_list = TaskList.objects.get(title="Fahrzeugcheck RTW 1")
+        self.assertRedirects(response, reverse("task_list_edit", args=[task_list.pk]))
+        self.assertEqual(task_list.weekdays, "12345")
+        self.assertEqual(task_list.station, self.station)
+
+        for title in ["Sauerstoff", "Reifendruck"]:
+            self.client.post(
+                reverse("task_item_create", args=[task_list.pk]),
+                {"title": title, "note": ""},
+            )
+        self.assertEqual(
+            list(task_list.items.values_list("title", flat=True)),
+            ["Sauerstoff", "Reifendruck"],
+        )
+
+    def test_items_can_be_reordered(self):
+        self.client.force_login(self.admin)
+        task_list = TaskList.objects.create(station=self.station, title="Liste")
+        first = TaskItem.objects.create(task_list=task_list, title="Eins", position=0)
+        second = TaskItem.objects.create(task_list=task_list, title="Zwei", position=1)
+        self.client.post(
+            reverse("task_item_action", args=[task_list.pk, second.pk]), {"aktion": "up"},
+        )
+        self.assertEqual(
+            list(task_list.items.values_list("title", flat=True)), ["Zwei", "Eins"],
+        )
+        first.refresh_from_db()
+        self.assertEqual(first.position, 1)
+
+    def test_removing_an_item_only_deactivates_it(self):
+        self.client.force_login(self.admin)
+        task_list = TaskList.objects.create(station=self.station, title="Liste")
+        item = TaskItem.objects.create(task_list=task_list, title="Eins")
+        self.client.post(
+            reverse("task_item_action", args=[task_list.pk, item.pk]), {"aktion": "remove"},
+        )
+        item.refresh_from_db()
+        self.assertFalse(item.is_active)
+
+    def test_a_list_of_another_station_is_not_found(self):
+        self.client.force_login(self.admin)
+        other = Station.objects.create(name="Fremd", slug="fremd-2")
+        foreign = TaskList.objects.create(station=other, title="Fremd")
+        self.assertEqual(
+            self.client.get(reverse("task_list_edit", args=[foreign.pk])).status_code, 404,
+        )
+
+    def test_a_list_without_weekdays_is_rejected(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(reverse("task_list_create"), {
+            "title": "Ohne Tag", "rhythm": TaskList.Rhythm.WEEKDAYS, "day_of_month": 1,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(TaskList.objects.filter(title="Ohne Tag").exists())
+
+    def test_a_paused_list_disappears_from_the_day(self):
+        self.client.force_login(self.admin)
+        task_list = TaskList.objects.create(station=self.station, title="Liste")
+        TaskItem.objects.create(task_list=task_list, title="Rolltor prüfen")
+        self.client.post(reverse("task_list_toggle", args=[task_list.pk]), follow=True)
+        task_list.refresh_from_db()
+        self.assertFalse(task_list.is_active)
+        response = self.client.get(
+            reverse("tasks_day", args=[timezone.localdate().isoformat()])
+        )
+        self.assertNotContains(response, "Rolltor prüfen")
+
+
+class TaskRetentionAndExportTests(PilotTestCase):
+    def setUp(self):
+        super().setUp()
+        self.today = timezone.localdate()
+        self.task_list = TaskList.objects.create(
+            station=self.station, title="Tagesaufgaben", weekdays="1234567",
+        )
+        self.item = TaskItem.objects.create(task_list=self.task_list, title="Wachenrundgang")
+
+    def test_ticked_tasks_appear_in_the_week_pdf(self):
+        self.client.post(
+            reverse("task_mark", args=[self.today.isoformat(), self.item.pk]),
+            {"state": "done"},
+        )
+        response = self.client.get(reverse("handover_week_pdf"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        body = b"".join(response.streaming_content)
+        self.assertTrue(body.startswith(b"%PDF-"))
+
+    def test_retention_removes_old_task_days(self):
+        old = self.today - timedelta(days=400)
+        run = TaskRun.objects.create(
+            station=self.station, task_list=self.task_list, date=old,
+        )
+        TaskResult.objects.create(
+            run=run, item=self.item, state=TaskResult.State.DONE, recorded_by=self.user,
+        )
+        self.station.retention_task_days = 365
+        self.station.save(update_fields=["retention_task_days"])
+        call_command("purge_expired")
+        self.assertFalse(TaskRun.objects.filter(pk=run.pk).exists())
+        self.assertFalse(TaskResult.objects.exists())
+        # Der Punkt selbst bleibt - er gehoert zur Liste, nicht zur Person.
+        self.assertTrue(TaskItem.objects.filter(pk=self.item.pk).exists())
+
+    def test_retention_keeps_recent_task_days(self):
+        run = TaskRun.objects.create(
+            station=self.station, task_list=self.task_list, date=self.today,
+        )
+        self.station.retention_task_days = 365
+        self.station.save(update_fields=["retention_task_days"])
+        call_command("purge_expired")
+        self.assertTrue(TaskRun.objects.filter(pk=run.pk).exists())
