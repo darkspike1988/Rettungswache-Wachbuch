@@ -2,7 +2,7 @@
 
 ## Phase 0 - technische Basis
 
-- Docker-Deployment mit lokalem Login oder Tailscale
+- Docker-Deployment mit lokalem Login und Reverse-Proxy
 - Rollen, Uebergaben, Kalender, Geburtstage, Kaffeekasse und Behoerdenfeeds
 - automatisierte Fach- und Zugriffstests
 

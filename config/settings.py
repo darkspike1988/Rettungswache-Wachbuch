@@ -42,7 +42,6 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "core.middleware.TailscaleAuthMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
@@ -138,13 +137,11 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_HSTS_PRELOAD = False
 X_FRAME_OPTIONS = "DENY"
 
-# TLS ends at Tailscale Serve; redirecting the loopback health probe would break it.
+# TLS terminates at an external reverse proxy. Inside the container the health
+# probe and Gunicorn speak plain HTTP on loopback, so Django must not redirect.
 SECURE_SSL_REDIRECT = False
-# The shared tailnet hostname must not impose preload/subdomain policy on other apps.
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
 
-TRUST_TAILSCALE_HEADERS = env_bool("TRUST_TAILSCALE_HEADERS")
-TAILSCALE_ADMIN_LOGIN = os.getenv("TAILSCALE_ADMIN_LOGIN", "").strip().lower()
 DEFAULT_STATION_NAME = os.getenv("DEFAULT_STATION_NAME", "Rettungswache").strip()
 DEFAULT_STATION_SLUG = os.getenv("DEFAULT_STATION_SLUG", "rettungswache").strip()
 APP_NAME = os.getenv("APP_NAME", "Rettungswache-Wachbuch").strip()

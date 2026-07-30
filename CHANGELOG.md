@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased - Audit-Fixes
+## Unreleased - Docker-Login und Audit-Fixes
 
+- Tailscale-Header-Login und zugehoerige Konfiguration vollstaendig entfernt
+- Authentifizierung nur noch ueber lokale Django-Konten hinter Docker/Reverse-Proxy
+- Docker-Image mit Labels, ausfuehrbaren Startskripten und Healthcheck gestrafft
+- Compose-Projektname und Image-Name vereinheitlicht; Stack-Dokumentation bereinigt
 - Geburtstage speichern Tag/Monat nur noch bei aktivem Opt-in und pruefen echte Kalenderdaten
 - Geburtstagsliste blendet inaktive Mitglieder aus
 - erneute Teamfreigabe reaktiviert bestehende Mitgliedschaften statt in einen 500-Fehler zu laufen

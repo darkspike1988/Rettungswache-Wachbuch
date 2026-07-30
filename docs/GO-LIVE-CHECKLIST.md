@@ -8,7 +8,7 @@ betriebliche Freigabe.
 - [ ] CI und Anwendungstests sind gruen
 - [ ] Container-Healthchecks sind gruen
 - [ ] Anwendung ist nur ueber den vorgesehenen TLS-Einstieg erreichbar
-- [ ] Identitaetsheader koennen nicht von Clients gefaelscht werden
+- [ ] Anmeldung erfolgt nur ueber lokale Konten hinter dem vorgesehenen Proxy
 - [ ] Rollenmatrix wurde mit mehreren Testkonten geprueft
 - [ ] Backup wurde in einer isolierten Datenbank wiederhergestellt
 - [ ] Abhaengigkeiten und Container-Images wurden gescannt

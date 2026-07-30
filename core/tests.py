@@ -59,41 +59,28 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 403)
 
-    @override_settings(
-        TRUST_TAILSCALE_HEADERS=True,
-        TAILSCALE_ADMIN_LOGIN="pilot-admin@example.org",
-    )
-    def test_tailscale_header_bootstraps_only_configured_admin(self):
+    def test_unauthenticated_access_page_offers_local_login(self):
         self.client.logout()
-        response = self.client.get(
-            reverse("dashboard"),
-            HTTP_TAILSCALE_USER_LOGIN="pilot-admin@example.org",
-            HTTP_TAILSCALE_USER_NAME="Pilot Admin",
-        )
+        response = self.client.get(reverse("access"))
         self.assertEqual(response.status_code, 200)
-        admin = User.objects.get(username="pilot-admin@example.org")
-        self.assertFalse(admin.is_superuser)
-        membership = admin.station_memberships.get()
-        self.assertEqual(membership.role, Membership.Role.ADMIN)
-        self.assertEqual(membership.station, self.station)
-        self.assertEqual(Station.objects.count(), 1)
+        self.assertContains(response, "Anmeldung erforderlich")
+        self.assertContains(response, reverse("login"))
+        self.assertNotContains(response, "Tailscale")
 
-    @override_settings(TRUST_TAILSCALE_HEADERS=True)
-    def test_missing_tailscale_header_ends_existing_session(self):
-        response = self.client.get(reverse("dashboard"))
-        self.assertRedirects(response, reverse("access"))
-        self.assertNotIn("_auth_user_id", self.client.session)
-
-    @override_settings(TRUST_TAILSCALE_HEADERS=True)
-    def test_inactive_tailscale_user_is_not_logged_in(self):
-        self.client.logout()
-        inactive = User.objects.create_user("inactive@example.org", is_active=False)
-        response = self.client.get(
-            reverse("dashboard"),
-            HTTP_TAILSCALE_USER_LOGIN=inactive.username,
+    def test_password_login_reaches_dashboard(self):
+        User.objects.create_user("login@example.org", password="correct-password-1")
+        Membership.objects.create(
+            user=User.objects.get(username="login@example.org"),
+            station=self.station,
+            role=Membership.Role.MEMBER,
         )
-        self.assertRedirects(response, reverse("access"))
-        self.assertNotIn("_auth_user_id", self.client.session)
+        self.client.logout()
+        response = self.client.post(reverse("login"), {
+            "username": "login@example.org",
+            "password": "correct-password-1",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
 
     def test_authenticated_user_can_log_out_from_interface(self):
         response = self.client.get(reverse("dashboard"))
@@ -568,7 +555,7 @@ class TeamAndAuditTests(PilotTestCase):
         self.membership.role = Membership.Role.ADMIN
         self.membership.save(update_fields=["role"])
 
-    def test_station_admin_assigns_pending_tailscale_user(self):
+    def test_station_admin_assigns_pending_local_user(self):
         pending = User.objects.create_user("pending@example.org", first_name="Pia")
         response = self.client.post(reverse("team_create"), {
             "user": pending.pk,

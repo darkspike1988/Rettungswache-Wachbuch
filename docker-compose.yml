@@ -1,3 +1,5 @@
+name: rettungswache-wachbuch
+
 services:
   db:
     image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
@@ -27,7 +29,7 @@ services:
 
   migrate:
     build: .
-    image: rettungswache-wachbuch-web:local
+    image: rettungswache-wachbuch:local
     command: ["/app/scripts/migrate.sh"]
     restart: "no"
     environment:
@@ -58,7 +60,7 @@ services:
 
   web:
     build: .
-    image: rettungswache-wachbuch-web:local
+    image: rettungswache-wachbuch:local
     restart: unless-stopped
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
@@ -75,8 +77,6 @@ services:
       APP_NAME: ${APP_NAME:-Rettungswache-Wachbuch}
       SOURCE_URL: ${SOURCE_URL:-https://github.com/Darkspike1988/Rettungswache-Wachbuch}
       FEED_ALLOWED_HOSTS: ${FEED_ALLOWED_HOSTS:-}
-      TAILSCALE_ADMIN_LOGIN: ${TAILSCALE_ADMIN_LOGIN:-}
-      TRUST_TAILSCALE_HEADERS: ${TRUST_TAILSCALE_HEADERS:-false}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -100,7 +100,7 @@ services:
       - no-new-privileges:true
 
   feed-worker:
-    image: rettungswache-wachbuch-web:local
+    image: rettungswache-wachbuch:local
     restart: unless-stopped
     command: ["/app/scripts/start-worker.sh"]
     environment:
@@ -112,7 +112,6 @@ services:
       DB_PASSWORD: ${FEED_DB_PASSWORD}
       ALLOWED_HOSTS: localhost
       FEED_ALLOWED_HOSTS: ${FEED_ALLOWED_HOSTS:-}
-      TRUST_TAILSCALE_HEADERS: "false"
     depends_on:
       web:
         condition: service_healthy
@@ -155,13 +154,16 @@ services:
       - no-new-privileges:true
 
 networks:
+  # Internal only: no outbound internet, no host exposure.
   app-db:
     internal: true
   worker-db:
     internal: true
   backup-db:
     internal: true
+  # Published HTTP port for the reverse proxy / local browser.
   web-ingress:
+  # Outbound HTTPS for the feed worker allowlist.
   egress:
 
 volumes:

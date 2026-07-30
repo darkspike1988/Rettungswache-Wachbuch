@@ -6,7 +6,7 @@
   {% if request.user.is_authenticated %}
     <h1>Zugang wartet auf Freigabe</h1><p class="lead">Angemeldet als <strong>{{ request.user.username }}</strong>. Ein Administrator muss das Konto einer Rettungswache zuordnen.</p>
   {% else %}
-    {% if trust_tailscale_headers %}<h1>Keine Tailscale-Identität erkannt</h1><p class="lead">Öffne die Anwendung über den freigegebenen Tailscale-Link.</p>{% else %}<h1>Anmeldung erforderlich</h1><p class="lead">Melde dich mit deinem persönlichen Konto an.</p><p><a class="button primary" href="{% url 'login' %}">Anmelden</a></p>{% endif %}
+    <h1>Anmeldung erforderlich</h1><p class="lead">Melde dich mit deinem persönlichen Konto an.</p><p><a class="button primary" href="{% url 'login' %}">Anmelden</a></p>
   {% endif %}
 </section>
 {% endblock %}

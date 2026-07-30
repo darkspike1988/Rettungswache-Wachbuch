@@ -6,13 +6,13 @@
 - Healthcheck: `/healthz/`
 - Anmeldung: `/anmelden/`
 - Stationsverwaltung: `/einstellungen/`
+- Teamfreigaben: `/team/`
 - technische Verwaltung: `/django-admin/`
 
 Der Standard-Port ist nicht oeffentlich gebunden. `HTTP_BIND_ADDRESS=0.0.0.0`
-sollte nur in einem kontrollierten Netz und nie zusammen mit ungeprueftem
-Vertrauen in Proxy-Identitaetsheader verwendet werden. Fuer jeden TLS-Betrieb
-muss `SECURE_COOKIES=true` gesetzt sein; `false` ist nur fuer lokalen HTTP-Zugriff
-ueber Loopback vorgesehen.
+sollte nur in einem kontrollierten Netz hinter einem Reverse-Proxy verwendet
+werden. Fuer jeden TLS-Betrieb muss `SECURE_COOKIES=true` gesetzt sein; `false`
+ist nur fuer lokalen HTTP-Zugriff ueber Loopback vorgesehen.
 
 ## Standardbefehle
 
@@ -33,24 +33,24 @@ docker compose exec web python manage.py createsuperuser
 docker compose exec web python manage.py grant_station_admin BENUTZERNAME
 ```
 
-Bei Tailscale-Anmeldung wird beim ersten Aufruf ein Konto angelegt. Nur der mit
-`TAILSCALE_ADMIN_LOGIN` konfigurierte Login erhaelt automatisch die
-stationsbezogene Adminrolle, aber keine globalen Django-Superuser-Rechte.
-Andere Konten muessen unter `/team/` freigegeben werden. Gemeinschaftskonten
-sind nicht vorgesehen.
+Weitere persoenliche Konten werden unter `/django-admin/auth/user/` angelegt.
+Stationsadministratoren geben sie anschliessend unter `/team/` frei und setzen
+die Rolle. Gemeinschaftskonten sind nicht vorgesehen.
 
-## Tailscale Serve
+## Reverse-Proxy
 
-Ein Beispiel fuer einen lokalen HTTP-Port 8090:
+Beispiel fuer Caddy vor dem Loopback-Port:
 
-```bash
-tailscale serve --bg --https=18090 http://127.0.0.1:8090
-tailscale serve status
+```caddy
+wache.example.org {
+        reverse_proxy 127.0.0.1:8090
+}
 ```
 
-Hostname und HTTPS-Port muessen in `ALLOWED_HOSTS` und
-`CSRF_TRUSTED_ORIGINS` abgebildet sein. Header-Vertrauen ist nur fuer diesen
-geschuetzten Einstieg zu aktivieren.
+Hostname und HTTPS-Origin muessen in `ALLOWED_HOSTS` und
+`CSRF_TRUSTED_ORIGINS` stehen. Der Proxy sollte `X-Forwarded-Proto` setzen.
+Django wertet `SECURE_PROXY_SSL_HEADER` aus und erzwingt sichere Cookies, wenn
+`SECURE_COOKIES=true` gesetzt ist.
 
 ## Feeds
 

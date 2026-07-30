@@ -12,5 +12,4 @@ def application_metadata(request):
     return {
         "app_name": settings.APP_NAME,
         "source_url": settings.SOURCE_URL,
-        "trust_tailscale_headers": settings.TRUST_TAILSCALE_HEADERS,
     }
