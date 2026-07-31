@@ -38,7 +38,8 @@ Dieses Dokument ist keine Rechtsberatung.
 - separate Datenbank ohne veroeffentlichten Port
 - Abhaengigkeits-, Container- und Anwendungsscan vor Go-live
 - Versionskennung in Footer und `/healthz/`
-- Sicherheitsabnahme gegen OWASP ASVS 5.0 Level 2 als Ziel
+- Sicherheitsabnahme gegen OWASP ASVS 5.0 Level 2 als Ziel; interne Matrix in
+  [`ASVS-L2.md`](ASVS-L2.md)
 
 Ein privates Netz ersetzt weder das Rollenmodell noch eine organisatorische
 Freigabe.
