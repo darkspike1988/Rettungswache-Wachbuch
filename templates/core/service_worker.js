@@ -1,4 +1,4 @@
-/* Rettungswache-Wachbuch service worker – read-only shell cache, no write queue. */
+/* Wachbuch service worker – read-only shell cache, no write queue. */
 const CACHE_VERSION = "{{ sw_version }}";
 const SHELL_CACHE = `rwsth-shell-${CACHE_VERSION}`;
 const PAGE_CACHE = `rwsth-pages-${CACHE_VERSION}`;

@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#17343d">
-  <meta name="application-name" content="Wachbuch">
+  <meta name="application-name" content="{{ app_name }}">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Wachbuch">
+  <meta name="apple-mobile-web-app-title" content="{{ app_name }}">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="description" content="Mobiles Wachbuch für die interne Organisation einer Rettungswache.">
   <link rel="manifest" href="{% url 'web_manifest' %}">
@@ -24,13 +24,16 @@
     <div class="header-inner">
       <a class="brand" href="{% if current_membership %}{% if current_membership.role == 'auditor' %}{% url 'audit_log' %}{% else %}{% url 'dashboard' %}{% endif %}{% else %}{% url 'landing' %}{% endif %}">
         <span class="brand-mark" aria-hidden="true">W</span>
-        <span><strong>Wachbuch</strong><small>Rettungswache</small></span>
+        <span>
+          <strong>{{ app_name }}</strong>
+          {% if current_membership %}<small>{{ current_membership.station.name }}</small>{% endif %}
+        </span>
       </a>
       {% if request.user.is_authenticated %}
         <div class="account">
           <div class="identity">
             <strong>{{ request.user.first_name|default:request.user.username }}</strong>
-            {% if current_membership %}<span>{{ current_membership.station.name }} &middot; {{ current_membership.get_role_display }}</span>{% endif %}
+            {% if current_membership %}<span>{{ current_membership.get_role_display }}</span>{% endif %}
           </div>
           <form class="logout-form" method="post" action="{% url 'logout' %}" data-clear-cache-on-submit>
             {% csrf_token %}
@@ -50,7 +53,7 @@
   {% if current_membership and current_membership.role != 'auditor' %}
     <div class="install-banner" data-install-banner hidden>
       <div>
-        <strong>Wachbuch auf dem Gerät</strong>
+        <strong>{{ app_name }} auf dem Gerät</strong>
         <span>Als App installieren für schnellen Zugriff auf der Wache.</span>
       </div>
       <div class="install-actions">

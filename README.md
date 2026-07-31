@@ -3,9 +3,9 @@
 [![CI](https://github.com/Darkspike1988/Rettungswache-Wachbuch/actions/workflows/ci.yml/badge.svg)](https://github.com/Darkspike1988/Rettungswache-Wachbuch/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License:AGPL_v3-blue.svg)](LICENSE)
 
-Ein selbst gehostetes, mobiles Wachbuch fuer die interne Organisation einer
-Rettungswache. Die Anwendung ist kein Einsatzleit-, Alarmierungs-,
-Dienstplanungs- oder Patientendokumentationssystem.
+Ein selbst gehostetes, mobiles **Wachbuch** fuer die interne Organisation einer
+Rettungswache (Repository: Rettungswache-Wachbuch). Die Anwendung ist kein
+Einsatzleit-, Alarmierungs-, Dienstplanungs- oder Patientendokumentationssystem.
 
 ## Funktionen
 

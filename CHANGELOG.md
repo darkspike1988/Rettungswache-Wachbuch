@@ -6,6 +6,7 @@
 - Datenschutz-/Cookie-Transparenzseite unter `/datenschutz/` ohne Tracking-Banner
 - oeffentliche Startseite unter `/` praesentiert das Projekt; Fachfunktionen erst nach Login
 - Dashboard unter `/uebersicht/`; Logout und unauthentifizierte App-Routen fuehren zu Startseite bzw. Anmeldung
+- sichtbare Produktmarke einheitlich `Wachbuch`; Header-Unterzeile zeigt den Stationsnamen
 - sichtbare SemVer-Version in Footer, `/healthz/` und Image-Label
 - dokumentierter Versions- und Update-/Rollback-Ablauf
 - Tagesaufgaben-Modul nach Wandbogen: gruen taeglich, gelb Wochentag, blau zusaetzlich

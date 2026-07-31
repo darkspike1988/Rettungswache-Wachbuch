@@ -102,8 +102,8 @@ def web_manifest(request):
         },
     ]
     payload = {
-        "name": "Rettungswache-Wachbuch",
-        "short_name": "Wachbuch",
+        "name": settings.APP_NAME,
+        "short_name": settings.APP_NAME,
         "description": "Mobiles Wachbuch für die interne Organisation einer Rettungswache.",
         "lang": "de",
         "start_url": reverse("dashboard"),
@@ -187,7 +187,7 @@ def calendar_event_ics(request, pk):
     body = "\r\n".join([
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//Rettungswache-Wachbuch//DE",
+        "PRODID:-//Wachbuch//DE",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         "BEGIN:VEVENT",

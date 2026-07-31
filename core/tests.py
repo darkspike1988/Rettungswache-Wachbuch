@@ -48,9 +48,18 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["display"], "standalone")
+        self.assertEqual(payload["name"], "Wachbuch")
+        self.assertEqual(payload["short_name"], "Wachbuch")
         self.assertEqual(payload["start_url"], reverse("dashboard"))
         self.assertTrue(payload["icons"])
         self.assertTrue(any(item["name"] == "Tagesaufgaben" for item in payload["shortcuts"]))
+
+    def test_shell_brand_uses_station_subtitle(self):
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, "<strong>Wachbuch</strong>", html=False)
+        self.assertContains(response, self.station.name)
+        self.assertContains(response, 'name="apple-mobile-web-app-title" content="Wachbuch"')
+        self.assertNotContains(response, "<small>Rettungswache</small>")
 
     def test_service_worker_and_offline_page_are_available(self):
         worker = self.client.get(reverse("service_worker"))

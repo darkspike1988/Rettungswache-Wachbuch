@@ -74,7 +74,7 @@ services:
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8090}
       DEFAULT_STATION_NAME: ${DEFAULT_STATION_NAME:-Rettungswache}
       DEFAULT_STATION_SLUG: ${DEFAULT_STATION_SLUG:-rettungswache}
-      APP_NAME: ${APP_NAME:-Rettungswache-Wachbuch}
+      APP_NAME: ${APP_NAME:-Wachbuch}
       SOURCE_URL: ${SOURCE_URL:-https://github.com/Darkspike1988/Rettungswache-Wachbuch}
       FEED_ALLOWED_HOSTS: ${FEED_ALLOWED_HOSTS:-}
     depends_on:

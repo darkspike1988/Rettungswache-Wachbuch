@@ -146,7 +146,7 @@ SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
 
 DEFAULT_STATION_NAME = os.getenv("DEFAULT_STATION_NAME", "Rettungswache").strip()
 DEFAULT_STATION_SLUG = os.getenv("DEFAULT_STATION_SLUG", "rettungswache").strip()
-APP_NAME = os.getenv("APP_NAME", "Rettungswache-Wachbuch").strip()
+APP_NAME = os.getenv("APP_NAME", "Wachbuch").strip() or "Wachbuch"
 SOURCE_URL = os.getenv(
     "SOURCE_URL", "https://github.com/Darkspike1988/Rettungswache-Wachbuch"
 ).strip()

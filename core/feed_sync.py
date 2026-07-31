@@ -55,7 +55,7 @@ def fetch_source(source):
                 target,
                 headers={
                     "Host": parsed_url.hostname,
-                    "User-Agent": "Rettungswache-Wachbuch/1.0",
+                    "User-Agent": "Wachbuch/1.0",
                 },
                 preload_content=False,
                 redirect=False,
