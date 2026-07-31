@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Publiziert clients/wachbuch-mobile in das separate GitHub-Repo wachbuch-Client.
+# Publiziert clients/wachbuch-mobile in das separate GitHub-Repo Wachbuch-Client.
 # Voraussetzung: Repo existiert unter
-#   https://github.com/darkspike1988/wachbuch-Client
+#   https://github.com/darkspike1988/Wachbuch-Client
 # (Cloud-Agent darf Repos nicht anlegen – einmalig manuell auf GitHub erstellen.)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/clients/wachbuch-mobile"
-REMOTE_URL="${MOBILE_REPO_URL:-https://github.com/darkspike1988/wachbuch-Client.git}"
+REMOTE_URL="${MOBILE_REPO_URL:-https://github.com/darkspike1988/Wachbuch-Client.git}"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/wachbuch-client-publish.XXXXXX")"
 
 cleanup() { rm -rf "$WORK"; }
@@ -26,9 +26,9 @@ if ! git ls-remote "$REMOTE_URL" HEAD &>/dev/null && ! git ls-remote "$REMOTE_UR
 Remote ist nicht erreichbar bzw. Repo existiert noch nicht / ist privat ohne Zugriff.
 
 Bitte unter dem Account darkspike1988 anlegen (oder Link prüfen):
-  https://github.com/new?name=wachbuch-Client&owner=darkspike1988&visibility=public
+  https://github.com/new?name=Wachbuch-Client&owner=darkspike1988&visibility=public
 
-  Name: wachbuch-Client
+  Name: Wachbuch-Client
   Owner: darkspike1988
   Visibility: Public (empfohlen)
   Ohne README/License (LICENSE liegt im Client) – oder mit AGPL-3.0
@@ -37,7 +37,7 @@ Danach erneut:
   ./scripts/publish-mobile-client-repo.sh
 
 Oder mit URL:
-  MOBILE_REPO_URL=https://github.com/DEIN-USER/wachbuch-Client.git ./scripts/publish-mobile-client-repo.sh
+  MOBILE_REPO_URL=https://github.com/DEIN-USER/Wachbuch-Client.git ./scripts/publish-mobile-client-repo.sh
 EOF
     exit 2
   fi

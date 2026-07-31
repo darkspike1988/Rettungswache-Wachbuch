@@ -29,7 +29,7 @@ Package-ID: `de.wachbuch.mobile`
 ## Selbst bauen
 
 ```bash
-cd clients/wachbuch-mobile   # bzw. Clone von wachbuch-Client
+cd clients/wachbuch-mobile   # bzw. Clone von Wachbuch-Client
 flutter pub get
 flutter test
 flutter build apk --release
@@ -80,5 +80,5 @@ Person die APK ohne eigenen Release-Key bauen und sideloaden kann. Für den
 
 ## Quellcode
 
-- Client: `clients/wachbuch-mobile/` bzw. https://github.com/darkspike1988/wachbuch-Client
+- Client: `clients/wachbuch-mobile/` bzw. https://github.com/darkspike1988/Wachbuch-Client
 - Server: https://github.com/darkspike1988/Rettungswache-Wachbuch

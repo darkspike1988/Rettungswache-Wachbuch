@@ -7,13 +7,13 @@ Stand: 31. Juli 2026.
 | | |
 | --- | --- |
 | **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch |
-| **Client (Ziel)** | https://github.com/darkspike1988/wachbuch-Client |
+| **Client (Ziel)** | https://github.com/darkspike1988/Wachbuch-Client |
 | **Quellpfad bis zum Split** | `clients/wachbuch-mobile/` im Server-Repo |
 | **Publish** | `./scripts/publish-mobile-client-repo.sh` |
 
 Cloud-Agents dürfen auf GitHub **keine** Repos anlegen. Einmalig manuell:
 
-1. https://github.com/new → Name `wachbuch-Client`, Owner `darkspike1988`, Public
+1. https://github.com/new → Name `Wachbuch-Client`, Owner `darkspike1988`, Public
 2. `./scripts/publish-mobile-client-repo.sh` im Server-Repo ausführen
 3. Issues/PRs für die App danach im Client-Repo
 
