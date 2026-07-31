@@ -10,9 +10,9 @@ Stand: 31. Juli 2026.
 - Profilbild, Passwort und Zwei-Faktor im persoenlichen Bereich
 - E2EE fuer Wachenchat, private Chats und interne Post (Admin sieht keine Klartexte)
 - **API-Fundament** `/api/v1/` mit App-Tokens fuer Mobile-Clients
-- **AGPL Flutter-Client** unter `clients/wachbuch-mobile/` (Ziel-Repo Wachbuch-Client)
+- **AGPL Flutter-Client** https://github.com/darkspike1988/Wachbuch-Client (Spiegel `clients/wachbuch-mobile/`)
 - **Android-APK** sideloadbar (Phone/Tablet-Layout, FOSS-Build)
-- Mobile-Onboarding: Server-Adresse/QR → Login; Play-Richtlinien-Doku
+- Mobile-Onboarding: Server-Adresse/QR → Login; Play-Richtlinien-Doku; Repos aufeinander abgestimmt
 - optionale MFA (TOTP/Passkeys), Web-Push, Wachen-ICS-Abos, Retention, Audit-Diffs
 - gesetzliche Feiertage NRW im fortlaufenden Kalender/ICS (`holidays_enabled`)
 - Compliance- und ASVS-L2-Matrix dokumentiert

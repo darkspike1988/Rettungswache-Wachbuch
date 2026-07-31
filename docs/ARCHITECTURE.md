@@ -25,7 +25,8 @@ online gegen Django.
 
 Native Clients nutzen widerrufbare App-Tokens unter `/api/v1/` (siehe
 [`API.md`](API.md)), nicht die Browser-Session. Der AGPL-Flutter-Client liegt
-unter `clients/wachbuch-mobile/` ([`CLIENT.md`](CLIENT.md)).
+unter [`Wachbuch-Client`](https://github.com/darkspike1988/Wachbuch-Client)
+(Spiegel `clients/wachbuch-mobile/`, [`CLIENT.md`](CLIENT.md)).
 
 ## Container
 

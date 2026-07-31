@@ -1,53 +1,29 @@
-# Wachbuch Mobile (AGPL)
+# Wachbuch Client (AGPL)
 
-Open-Source-Begleit-App für selbst gehostetes **[Wachbuch](https://github.com/darkspike1988/Rettungswache-Wachbuch)** (iOS & Android).
+Open-Source-Begleit-App für selbst gehostetes
+**[Wachbuch](https://github.com/darkspike1988/Rettungswache-Wachbuch)** (iOS & Android).
 
-**Lizenz:** AGPL-3.0-or-later  
-**Geplantes GitHub-Repo:** https://github.com/darkspike1988/Wachbuch-Client  
-**Server-API:** `/api/v1/` (Token-Auth wie Paperless/Nextcloud)
+| | |
+| --- | --- |
+| **Dieses Repo** | https://github.com/darkspike1988/Wachbuch-Client |
+| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch |
+| **Lizenz** | AGPL-3.0-or-later |
+| **API** | `/api/v1/` (Token-Auth, Paperless/Nextcloud-Stil) |
+| **App-Version** | 0.2.0 (passend zu Server ≥ 0.12.0) |
 
-## Status
+## Startflow
 
-Der Quellcode wird derzeit im Server-Monorepo unter `clients/wachbuch-mobile/`
-entwickelt und mit `scripts/publish-mobile-client-repo.sh` in dieses Repo
-gespiegelt, sobald das leere GitHub-Repository angelegt ist.
+1. **Adresse** der Wache eingeben **oder** QR scannen → **Bestätigen**
+2. **Benutzername** und **Passwort** (bei MFA: App-Token aus dem Web)
+
+QR im Server-Web: Mein Konto → App-Tokens.
 
 ## Was die App macht
 
-1. **Server-URL** eingeben (`https://wache.example.org`)
-2. **Login** (Benutzer/Passwort → `POST /api/v1/token/`) **oder** App-Token aus `/konto/api/` einfügen (nötig bei MFA)
-3. Token in der **Keychain / Keystore** speichern
-4. `GET /api/v1/me/` → **eine Wache**, Rolle, Module
-5. `GET /api/v1/handovers/` → aktive Übergaben dieser Wache
-
-Es gibt **keine** Wachenauswahl in der App – die Station kommt aus der Server-Mitgliedschaft.
-
-## Vorbilder (Ideen, kein Code-Copy)
-
-- [Paperless-go](https://github.com/bearyjd/paperless-go) – Flutter + Token + Secure Storage (AGPL)
-- [Paperless-ngx Uploader](https://github.com/gmag11/Paperless_ngx_uploader) – schlanker Self-Host-Client
-- Nextcloud App-Passwords / Login-Flow – Server-URL zuerst
-
-# Android-APK (Smartphone & Tablet)
-
-Installierbare FOSS-APK (Package `de.wachbuch.mobile`, Android 7+):
-
-```bash
-./scripts/build-apk.sh
-# → dist/wachbuch-mobile.apk
-```
-
-Sideload: APK aufs Gerät kopieren, unbekannte Quellen erlauben, installieren.
-Details: [docs/INSTALL-ANDROID.md](docs/INSTALL-ANDROID.md) · Play-Checkliste: [docs/PLAY-STORE.md](docs/PLAY-STORE.md).
-
-### Startflow (Play-/Material-konform)
-
-1. Nur **Adresse** eingeben **oder** Kamera-QR scannen → **Bestätigen**
-2. Danach **Benutzername** und **Passwort**
-
-- **Smartphone:** untere Navigation
-- **Tablet (≥ 720 dp):** NavigationRail + Übergaben-Grid
-- CI baut die APK als Artifact `wachbuch-mobile-apk`
+- Token lokal im Keystore / Keychain
+- `GET /api/v1/me/` → eine Wache (keine Wachenauswahl in der App)
+- `GET /api/v1/handovers/` → aktive Übergaben
+- Phone: Bottom-Navigation · Tablet: NavigationRail + Grid
 
 ## Start
 
@@ -59,21 +35,30 @@ flutter test
 flutter run
 ```
 
-Solange das zweite Repo noch leer/nicht angelegt ist, aus dem Server-Repo:
+### Android-APK
 
 ```bash
-cd Rettungswache-Wachbuch/clients/wachbuch-mobile
-flutter pub get && flutter test && flutter run
-# oder: ./scripts/build-apk.sh
+./scripts/build-apk.sh
+# → dist/wachbuch-mobile.apk
 ```
 
-## Zweites Repo anlegen (Maintainer)
+Siehe [docs/INSTALL-ANDROID.md](docs/INSTALL-ANDROID.md) und [docs/PLAY-STORE.md](docs/PLAY-STORE.md).
 
-1. Auf GitHub **Wachbuch-Client** öffentlich anlegen (ohne initiales README, wenn möglich)
-2. Im Server-Repo: `./scripts/publish-mobile-client-repo.sh`
-3. Danach Entwicklung primär in **Wachbuch-Client**; Server verweist auf den Client
+## Kopplung zum Server
+
+Vertrag und OpenAPI liegen im Server-Repo:
+
+- https://github.com/darkspike1988/Rettungswache-Wachbuch/blob/main/docs/API.md
+- https://github.com/darkspike1988/Rettungswache-Wachbuch/blob/main/docs/CLIENT.md
+
+Spiegel im Server-Monorepo (Entwicklung/CI): `clients/wachbuch-mobile/`  
+Synchronisation: `./scripts/publish-mobile-client-repo.sh` im Server-Repo.
+
+## Vorbilder (Ideen, kein Code-Copy)
+
+- [Paperless-go](https://github.com/bearyjd/paperless-go) – Flutter + Token + Secure Storage
+- Nextcloud – Server-URL zuerst, dann Login
 
 ## Rechtliches
 
-AGPL-3.0-or-later – siehe `LICENSE`. Wer die App verteilt oder als Netzdienst
-anbietet, muss den entsprechenden Quellcode unter AGPL anbieten.
+AGPL-3.0-or-later – siehe `LICENSE`.

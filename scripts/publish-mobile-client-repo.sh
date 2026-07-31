@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
-# Publiziert clients/wachbuch-mobile in das separate GitHub-Repo Wachbuch-Client.
-# Voraussetzung: Repo existiert unter
-#   https://github.com/darkspike1988/Wachbuch-Client
-# (Cloud-Agent darf Repos nicht anlegen – einmalig manuell auf GitHub erstellen.)
+# Publiziert clients/wachbuch-mobile nach https://github.com/darkspike1988/Wachbuch-Client
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/clients/wachbuch-mobile"
 REMOTE_URL="${MOBILE_REPO_URL:-https://github.com/darkspike1988/Wachbuch-Client.git}"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/wachbuch-client-publish.XXXXXX")"
+MSG="${PUBLISH_MESSAGE:-Sync: AGPL Wachbuch Client (Flutter) aligned with server}"
 
 cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT
@@ -19,28 +17,15 @@ if [[ ! -d "$SRC/lib" ]]; then
 fi
 
 echo "Prüfe Remote: $REMOTE_URL"
-if ! git ls-remote "$REMOTE_URL" HEAD &>/dev/null && ! git ls-remote "$REMOTE_URL" refs/heads/main &>/dev/null; then
-  # Empty repos may have no HEAD yet – try listing refs
-  if ! git ls-remote "$REMOTE_URL" &>/dev/null; then
-    cat <<EOF >&2
-Remote ist nicht erreichbar bzw. Repo existiert noch nicht / ist privat ohne Zugriff.
+if ! git ls-remote "$REMOTE_URL" &>/dev/null; then
+  cat <<EOF >&2
+Remote nicht erreichbar: $REMOTE_URL
 
-Bitte unter dem Account darkspike1988 anlegen (oder Link prüfen):
-  https://github.com/new?name=Wachbuch-Client&owner=darkspike1988&visibility=public
-
-  Name: Wachbuch-Client
-  Owner: darkspike1988
-  Visibility: Public (empfohlen)
-  Ohne README/License (LICENSE liegt im Client) – oder mit AGPL-3.0
-
-Danach erneut:
-  ./scripts/publish-mobile-client-repo.sh
-
-Oder mit URL:
-  MOBILE_REPO_URL=https://github.com/DEIN-USER/Wachbuch-Client.git ./scripts/publish-mobile-client-repo.sh
+Repo public? Oder Cursor-App-Zugriff fehlt:
+  https://github.com/settings/installations
+  → Cursor → Configure → Wachbuch-Client hinzufügen
 EOF
-    exit 2
-  fi
+  exit 2
 fi
 
 HAS_COMMITS=0
@@ -56,15 +41,40 @@ cd "$WORK"
 git init -b main
 git add -A
 git -c user.name="Wachbuch Publisher" -c user.email="noreply@users.noreply.github.com" \
-  commit -m "Import: AGPL Wachbuch Client (Flutter iOS/Android)"
+  commit -m "$MSG"
 
 git remote add origin "$REMOTE_URL"
+set +e
 if [[ "$HAS_COMMITS" -eq 1 ]]; then
-  echo "Remote hat bereits Commits – force-with-lease Push auf main…"
+  echo "Remote hat Commits – force-with-lease Push auf main…"
   git push --force-with-lease -u origin main
+  status=$?
+  if [[ $status -ne 0 && "${ALLOW_FORCE:-0}" == "1" ]]; then
+    echo "Lease fehlgeschlagen – ALLOW_FORCE=1 → force push"
+    git push --force -u origin main
+    status=$?
+  fi
 else
   git push -u origin main
+  status=$?
+fi
+set -e
+
+if [[ $status -ne 0 ]]; then
+  cat <<EOF >&2
+
+Push fehlgeschlagen (oft 403): Die GitHub-App darf Wachbuch-Client nicht beschreiben.
+
+Freigabe:
+  1. https://github.com/settings/installations
+  2. Cursor → Configure
+  3. Repository access: Wachbuch-Client hinzufügen (oder All repositories)
+  4. Erneut: ./scripts/publish-mobile-client-repo.sh
+
+Lokal mit eigenem Account:
+  ALLOW_FORCE=1 ./scripts/publish-mobile-client-repo.sh
+EOF
+  exit $status
 fi
 
-echo "Fertig: $REMOTE_URL"
-echo "Repo: ${REMOTE_URL%.git}"
+echo "Fertig: ${REMOTE_URL%.git}"

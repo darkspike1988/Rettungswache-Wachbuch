@@ -4,7 +4,12 @@
 
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
-- Client-Zielrepo auf `Wachbuch-Client` umgestellt; Publish-Skript bereit
+
+## 0.12.1 - 2026-07-31
+
+- Server und Client-Repo aufeinander abgestimmt (`Wachbuch-Client` ↔ `clients/wachbuch-mobile/`)
+- Pull-Skript `scripts/pull-mobile-client-repo.sh`; Publish mit klarer 403-Hilfe (GitHub-App)
+- Client-Doku: Startflow Adresse/QR → Login, Versions-Paarung App 0.2.x / Server ≥ 0.12
 
 ## 0.12.0 - 2026-07-31
 

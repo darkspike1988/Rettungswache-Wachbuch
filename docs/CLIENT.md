@@ -2,34 +2,35 @@
 
 Stand: 31. Juli 2026.
 
-## Zweites Repository
+## Zwei Repositories (aufeinander abgestimmt)
 
 | | |
 | --- | --- |
-| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch |
-| **Client (Ziel)** | https://github.com/darkspike1988/Wachbuch-Client |
-| **Quellpfad bis zum Split** | `clients/wachbuch-mobile/` im Server-Repo |
-| **Publish** | `./scripts/publish-mobile-client-repo.sh` |
+| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch (≥ **0.12.0**) |
+| **Client** | https://github.com/darkspike1988/Wachbuch-Client (App **0.2.x**) |
+| **Spiegel im Server** | `clients/wachbuch-mobile/` |
+| **Push Server → Client** | `./scripts/publish-mobile-client-repo.sh` |
+| **Pull Client → Server** | `./scripts/pull-mobile-client-repo.sh` |
 
-Cloud-Agents dürfen auf GitHub **keine** Repos anlegen. Einmalig manuell:
+Canonical für die App-Entwicklung ist **Wachbuch-Client**. Der Ordner
+`clients/wachbuch-mobile/` bleibt als Spiegel für Docs/CI im Server-Repo.
 
-1. https://github.com/new → Name `Wachbuch-Client`, Owner `darkspike1988`, Public
-2. `./scripts/publish-mobile-client-repo.sh` im Server-Repo ausführen
-3. Issues/PRs für die App danach im Client-Repo
+### Cursor / GitHub-App
 
-Der Client-Quellcode ist bereits **standalone** (eigene `LICENSE`, CI, CONTRIBUTING).
+Schreibzugriff auf `Wachbuch-Client` freigeben:
 
-## Kopplung an den Server
+https://github.com/settings/installations → Cursor → Configure → Repo hinzufügen
+
+## Kopplung
 
 ```text
 App                      Wachbuch-Server
 ─────────────────────    ────────────────────────────
-Server-URL
-   │
-   ├─ GET  /api/v1/              Discovery
-   ├─ POST /api/v1/token/        Login → Token  (oder Token aus /konto/api/)
-   ├─ GET  /api/v1/me/           User + **eine Station** + Module
-   └─ GET  /api/v1/handovers/    Fachdaten der Wache
+1. Adresse oder QR
+   └─ Bestätigen         GET  /api/v1/          Discovery
+2. Login User/Passwort   POST /api/v1/token/    (oder /konto/api/ Token)
+3. Sitzung               GET  /api/v1/me/       User + eine Station
+4. Fachdaten             GET  /api/v1/handovers/
 ```
 
 Header: `Authorization: Token <wb_…>`
@@ -38,32 +39,27 @@ Header: `Authorization: Token <wb_…>`
 
 - Mitgliedschaft nur auf dem Server
 - App liest `membership.station` aus `/me/`
-- Kein Multi-Wachen-Switcher in v0.1
+- Kein Multi-Wachen-Switcher
 
 ## MFA
 
-Bei MFA: App-Token im Web unter `/konto/api/` erzeugen und in der App einfügen.
+App-Token im Web unter `/konto/api/` (QR der Server-Adresse dort ebenfalls).
 
-## Vorbilder auf GitHub (Ideen)
+## Android / Play
 
-| Projekt | Übernehmen | Nicht übernehmen |
-| --- | --- | --- |
-| paperless-go (AGPL, Flutter) | Self-host URL, Token, Secure Storage | Dokument-Scan |
-| Paperless_ngx_uploader (GPL) | schlanker Zweck-Client | Upload-only |
-| Nextcloud App-Passwords | Server zuerst, Token statt Cookie | Files-App-SSO |
+- Package `de.wachbuch.mobile`, minSdk 24, targetSdk 36
+- Start: Adresse/QR → Login
+- [INSTALL-ANDROID.md](../clients/wachbuch-mobile/docs/INSTALL-ANDROID.md)
+- [PLAY-STORE.md](../clients/wachbuch-mobile/docs/PLAY-STORE.md)
+- Client: [SERVER.md](../clients/wachbuch-mobile/docs/SERVER.md)
 
-Kein Fremdcode 1:1 kopiert.
+## Vorbilder (Ideen)
 
-## Android-APK
-
-- Bau: `clients/wachbuch-mobile/scripts/build-apk.sh` → `dist/wachbuch-mobile.apk`
-- Install: [clients/wachbuch-mobile/docs/INSTALL-ANDROID.md](../clients/wachbuch-mobile/docs/INSTALL-ANDROID.md)
-- Play-Vorbereitung: [PLAY-STORE.md](../clients/wachbuch-mobile/docs/PLAY-STORE.md) (Target API 36, Kamera nur QR, kein Cleartext in Release)
-- Startflow: Server-Adresse/QR → Bestätigen → Login (Benutzername/Passwort)
-- Package-ID: `de.wachbuch.mobile` (minSdk 24)
-- Layout: Phone Bottom-Nav, Tablet NavigationRail / Grid
-- Web: QR unter `/konto/api/` für den Scan
+| Projekt | Übernehmen |
+| --- | --- |
+| paperless-go | Self-host URL, Token, Secure Storage |
+| Nextcloud | Server zuerst, dann Login |
 
 ## Lizenz
 
-AGPL-3.0-or-later in Client-`LICENSE` und Server-Root-`LICENSE`.
+AGPL-3.0-or-later in beiden Repos.
