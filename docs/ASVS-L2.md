@@ -82,9 +82,12 @@ Legende: **OK** umgesetzt / **Teil** teilweise / **Offen** geplant / **n/a** nic
 
 | Kontrolle | Status | Hinweis |
 | --- | --- | --- |
-| JSON-Endpunkte CSRF-geschuetzt | OK | Passkey/Push POST |
+| JSON-Endpunkte CSRF-geschuetzt | OK | Passkey/Push Session-POST |
+| Token-API ohne CSRF | OK | `/api/v1/` Bearer/Token, csrf_exempt |
+| App-Tokens hashed + widerrufbar | OK | SHA-256, Klartext einmal, `/konto/api/` |
 | Service Worker ohne Write-Queue | OK | Read-only Cache |
 | Web-Push opt-in | OK | nur bei VAPID + Nutzeraktion |
+| OpenAPI fuer Mobile | Teil | `/api/v1/openapi.yaml` Foundation |
 
 ## V14 Configuration
 

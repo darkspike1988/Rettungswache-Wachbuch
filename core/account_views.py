@@ -16,8 +16,10 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from webauthn.helpers import bytes_to_base64url
 
 from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
+from .api.views import generate_api_token
 from .mfa import mfa_enabled, mfa_required, user_has_confirmed_mfa, user_has_totp
 from .models import (
+    ApiToken,
     CalendarEvent,
     CalendarFeedToken,
     Membership,
@@ -326,3 +328,51 @@ def calendar_feed_manage(request):
         return redirect("calendar_feed_manage")
     tokens = CalendarFeedToken.objects.filter(station=station).select_related("created_by")
     return render(request, "core/calendar_feed.html", {"tokens": tokens})
+
+
+@require_http_methods(["GET", "POST"])
+def api_tokens_manage(request):
+    """Create/revoke app tokens for native clients (Paperless/Nextcloud style)."""
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?next={reverse('api_tokens_manage')}")
+    membership = get_membership(request.user)
+    if membership is None:
+        messages.error(request, "API-Tokens brauchen einen aktiven Wachenzugang.")
+        return redirect("account_home")
+    plaintext = None
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create":
+            raw, token_hash, prefix = generate_api_token()
+            token = ApiToken.objects.create(
+                user=request.user,
+                label=(request.POST.get("label") or "Mobile App")[:120],
+                token_prefix=prefix,
+                token_hash=token_hash,
+                scopes=["read:me", "read:handovers"],
+            )
+            audit(request.user, membership.station, "api.token_created", token, {
+                "fields": ["label", "scopes"],
+                "via": "account",
+            })
+            plaintext = raw
+            messages.success(request, "App-Token erzeugt. Bitte jetzt kopieren – es wird nur einmal angezeigt.")
+        elif action == "revoke":
+            updated = ApiToken.objects.filter(
+                user=request.user,
+                pk=request.POST.get("token_id"),
+                is_active=True,
+            ).update(is_active=False)
+            if updated:
+                audit(request.user, membership.station, "api.token_revoked", request.user, {
+                    "fields": ["is_active"],
+                })
+                messages.success(request, "App-Token wurde widerrufen.")
+        if plaintext is None:
+            return redirect("api_tokens_manage")
+    tokens = ApiToken.objects.filter(user=request.user).order_by("-created_at")
+    return render(request, "core/api_tokens.html", {
+        "tokens": tokens,
+        "plaintext_token": plaintext,
+        "api_root": "/api/v1/",
+    })

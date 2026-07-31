@@ -1,0 +1,68 @@
+openapi: 3.0.3
+info:
+  title: Wachbuch API
+  description: |
+    Versionierte JSON-API für selbst gehostetes Wachbuch.
+    Vorgesehen für spätere Open-Source-Clients (iOS/Android), analog zu
+    Paperless-ngx und Nextcloud (Token-Auth, stabile Ressourcenpfade).
+  version: "1.0.0"
+servers:
+  - url: /api/v1
+    description: Relative to the Wachbuch origin
+paths:
+  /:
+    get:
+      summary: API discovery
+      security: []
+      responses:
+        "200":
+          description: Discovery document
+  /token/:
+    post:
+      summary: Obtain API token (username + password)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+                label: { type: string }
+      responses:
+        "200":
+          description: Token created (shown once)
+        "401":
+          description: Invalid credentials
+        "403":
+          description: No membership or MFA requires UI token
+  /me/:
+    get:
+      summary: Current user, membership and station modules
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Profile payload
+        "401":
+          description: Missing/invalid token
+  /handovers/:
+    get:
+      summary: Active handovers for the token user's station
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Paginated-style list (results array)
+        "403":
+          description: Missing scope or role
+components:
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Format: Token <secret> or Bearer <secret>"

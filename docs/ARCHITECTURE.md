@@ -8,8 +8,9 @@ aber getrennte Container und Datenbankrollen.
 
 ```text
 Installierte PWA / Browser
-  |
-TLS-Reverse-Proxy
+  |                 Native Open-Source-App (spaeter)
+  |                        |
+TLS-Reverse-Proxy ---- /api/v1/ (Token)
   |
 127.0.0.1:8090
   |
@@ -21,6 +22,9 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
 Die PWA bleibt ein serverseitig gerenderter Client. Manifest und Service Worker
 liefern Shell-Assets und einen Lese-Cache; Schreibvorgänge laufen weiterhin nur
 online gegen Django.
+
+Native Clients nutzen widerrufbare App-Tokens unter `/api/v1/` (siehe
+[`API.md`](API.md)), nicht die Browser-Session.
 
 ## Container
 

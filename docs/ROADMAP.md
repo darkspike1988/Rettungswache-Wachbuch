@@ -2,13 +2,14 @@
 
 Stand: 31. Juli 2026.
 
-## Erreicht (Basis bis 0.8.0)
+## Erreicht (Basis bis 0.9.0)
 
 - Docker, lokaler Login, Rollen, Uebergaben, Tagesaufgaben, Geburtstage, Kasse-Ledger
 - PWA, oeffentliche Startseite, persoenlicher Bereich, Wachenchat
 - Master-Admin legt Nutzer an/gibt frei; optionale Selbstregistrierung
 - Profilbild, Passwort und Zwei-Faktor im persoenlichen Bereich
 - E2EE fuer Wachenchat, private Chats und interne Post (Admin sieht keine Klartexte)
+- **API-Fundament** `/api/v1/` mit App-Tokens fuer spaetere iOS-/Android-Clients
 - optionale MFA (TOTP/Passkeys), Web-Push, Wachen-ICS-Abos, Retention, Audit-Diffs
 - gesetzliche Feiertage NRW im fortlaufenden Kalender/ICS (`holidays_enabled`)
 - Compliance- und ASVS-L2-Matrix dokumentiert
@@ -55,10 +56,11 @@ pro Station. Feiertage sind unabhaengig davon nutzbar.
 
 ```text
 1. Kaffeekasse-Zahlungshinweise
-2. Feiertage im fortlaufenden Kalender   (umgesetzt / einschalten)
+2. Feiertage im fortlaufenden Kalender   (umgesetzt)
 3. Muellkalender: manueller ICS-URL-Fallback je Station
 4. Muellkalender: Ort/Strasse-Auswahl Kreis GT + Sync
-5. Feinschliff UX (Dashboard, Kopieren-Buttons)
+5. API v1 ausbauen (Schreiben, weitere Ressourcen) fuer Mobile-Clients
+6. Feinschliff UX (Dashboard, Kopieren-Buttons)
 ```
 ### 4. Bewusst weiterhin ausserhalb
 
@@ -80,6 +82,7 @@ pro Station. Feiertage sind unabhaengig davon nutzbar.
 - Datenschutz-/Mitbestimmung, MFA-Pflicht ggf. aktivieren
 - Audit-Export, Barrierearmut / Wachenterminals
 - Muellkalender-Quelle schriftlich freigeben
+- erste AGPL-Mobile-Clients gegen `/api/v1/` (Lesen, spaeter Schreiben)
 
 ## Phase 3 - Produktion
 

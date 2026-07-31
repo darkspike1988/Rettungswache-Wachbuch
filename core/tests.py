@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.8.0")
+        self.assertEqual(response.json()["version"], "0.9.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.8.0")
+        self.assertContains(response, "Version 0.9.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -377,6 +377,9 @@ class MinimalInterfaceTests(PilotTestCase):
             reverse("task_create"),
             reverse("account_home"),
             reverse("chat"),
+            reverse("crypto_setup"),
+            reverse("private_chat_home"),
+            reverse("secure_mail_inbox"),
         ]
         for url in urls:
             with self.subTest(url=url):
@@ -1330,6 +1333,87 @@ class HolidayCalendarTests(PilotTestCase):
             kind="event",
         )
         self.assertFalse(is_upcoming_agenda_item(past_event, now=noon, today=today))
+
+
+class ApiMobileFoundationTests(PilotTestCase):
+    def _create_token(self):
+        from .api.views import generate_api_token
+        from .models import ApiToken
+
+        raw, token_hash, prefix = generate_api_token()
+        token = ApiToken.objects.create(
+            user=self.user,
+            label="Test App",
+            token_prefix=prefix,
+            token_hash=token_hash,
+            scopes=["read:me", "read:handovers"],
+        )
+        return raw, token
+
+    def test_api_root_and_openapi_are_public(self):
+        root = self.client.get(reverse("api_v1_root"))
+        self.assertEqual(root.status_code, 200)
+        self.assertEqual(root.json()["api_version"], "v1")
+        schema = self.client.get(reverse("api_v1_openapi"))
+        self.assertEqual(schema.status_code, 200)
+        self.assertIn("openapi:", schema.content.decode())
+
+    def test_token_exchange_and_me_endpoint(self):
+        password = "StrongPass-12345"
+        self.user.set_password(password)
+        self.user.save()
+        response = self.client.post(
+            reverse("api_v1_token"),
+            data=json.dumps({"username": self.user.username, "password": password, "label": "CLI"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        token = response.json()["token"]
+        me = self.client.get(
+            reverse("api_v1_me"),
+            HTTP_AUTHORIZATION=f"Token {token}",
+        )
+        self.assertEqual(me.status_code, 200)
+        self.assertEqual(me.json()["user"]["username"], self.user.username)
+        self.assertEqual(me.json()["membership"]["station"]["slug"], self.station.slug)
+
+    def test_handovers_require_token_and_respect_station(self):
+        raw, _token = self._create_token()
+        HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.STATION,
+            priority=HandoverEntry.Priority.NORMAL,
+            title="Material nachlegen",
+            details="Ohne Patientendaten",
+            author=self.user,
+        )
+        denied = self.client.get(reverse("api_v1_handovers"))
+        self.assertEqual(denied.status_code, 401)
+        ok = self.client.get(
+            reverse("api_v1_handovers"),
+            HTTP_AUTHORIZATION=f"Bearer {raw}",
+        )
+        self.assertEqual(ok.status_code, 200)
+        self.assertEqual(ok.json()["count"], 1)
+        self.assertEqual(ok.json()["results"][0]["title"], "Material nachlegen")
+
+    def test_account_ui_creates_revocable_token(self):
+        create = self.client.post(reverse("api_tokens_manage"), {
+            "action": "create",
+            "label": "iOS",
+        })
+        self.assertEqual(create.status_code, 200)
+        self.assertIsNotNone(create.context["plaintext_token"])
+        from .models import ApiToken
+
+        token = ApiToken.objects.get(user=self.user, label="iOS")
+        revoke = self.client.post(reverse("api_tokens_manage"), {
+            "action": "revoke",
+            "token_id": token.pk,
+        })
+        self.assertRedirects(revoke, reverse("api_tokens_manage"))
+        token.refresh_from_db()
+        self.assertFalse(token.is_active)
 
 
 class MigrationDefaultTests(TestCase):

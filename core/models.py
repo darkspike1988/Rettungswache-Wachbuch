@@ -448,6 +448,26 @@ class CalendarFeedToken(models.Model):
         return self.label or f"Kalender-Abo {self.pk}"
 
 
+class ApiToken(models.Model):
+    """Revocable app token for /api/v1/ (Paperless/Nextcloud-style mobile clients)."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="api_tokens")
+    label = models.CharField(max_length=120)
+    token_prefix = models.CharField(max_length=16)
+    token_hash = models.CharField(max_length=64, unique=True)
+    scopes = models.JSONField(default=list, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.label} ({self.token_prefix}…)"
+
+
 class RegistrationRequest(models.Model):
     """Optional self-service signup waiting for Master-Admin approval."""
 

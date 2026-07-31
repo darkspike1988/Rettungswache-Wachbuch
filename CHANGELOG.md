@@ -5,6 +5,12 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.9.0 - 2026-07-31
+
+- API-Fundament `/api/v1/` fuer spaetere Open-Source-iOS-/Android-Clients
+- App-Tokens (Paperless/Nextcloud-Stil) unter `/konto/api/` und `POST /api/v1/token/`
+- Discovery, OpenAPI, `me`, lesende Uebergaben; Doku in `docs/API.md`
+
 ## 0.8.0 - 2026-07-31
 
 - Ende-zu-Ende-Verschluesselung fuer Wachenchat (Ciphertext auf dem Server)

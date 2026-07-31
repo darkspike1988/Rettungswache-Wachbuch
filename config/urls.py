@@ -38,7 +38,9 @@ urlpatterns = [
     path("konto/mfa/passkey/optionen/", account_views.passkey_register_options, name="passkey_register_options"),
     path("konto/mfa/passkey/pruefen/", account_views.passkey_register_verify, name="passkey_register_verify"),
     path("konto/mfa/passkey/<int:pk>/entfernen/", account_views.passkey_delete, name="passkey_delete"),
+    path("konto/api/", account_views.api_tokens_manage, name="api_tokens_manage"),
     path("abmelden/", auth_views.LogoutView.as_view(), name="logout"),
     path("django-admin/", admin.site.urls),
+    path("api/v1/", include("core.api.urls")),
     path("", include("core.urls")),
 ]
