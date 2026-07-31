@@ -58,10 +58,11 @@ docker compose exec web python manage.py createsuperuser
 docker compose exec web python manage.py grant_station_admin BENUTZERNAME
 ```
 
-Danach ist die Anwendung unter `http://127.0.0.1:8090` und die Anmeldung unter
-`/anmelden/` erreichbar. Der Port bindet absichtlich nur an Loopback.
-`SECURE_COOKIES=false` ist ausschliesslich fuer diesen lokalen HTTP-Schnellstart
-vorgesehen.
+Danach ist die oeffentliche Startseite unter `http://127.0.0.1:8090/` und die
+Anmeldung unter `/anmelden/` erreichbar. Die Fachfunktionen (Uebersicht,
+Uebergaben usw.) stehen erst nach Login mit aktiver Mitgliedschaft bereit. Der
+Port bindet absichtlich nur an Loopback. `SECURE_COOKIES=false` ist
+ausschliesslich fuer diesen lokalen HTTP-Schnellstart vorgesehen.
 
 Weitere Teamkonten legst du unter `/django-admin/` an und gibst sie unter
 `/team/` fuer die Wache frei. `createsuperuser` erzeugt einen globalen

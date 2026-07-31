@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ app_name }}{% endblock %}
+{% block body_class %}is-landing{% endblock %}
+{% block content %}
+<section class="landing-hero">
+  <p class="brand-hero">Wachbuch</p>
+  <h1>Organisation der Rettungswache – klar, mobil und selbst gehostet.</h1>
+  <p class="lead">Übergaben, Tagesaufgaben und Teamrollen für den internen Betrieb. Kein Einsatzleit-, Dienstplan- oder Patientensystem.</p>
+  <div class="form-actions landing-cta">
+    <a class="button primary" href="{% url 'login' %}">Anmelden</a>
+    <a class="button secondary" href="{% url 'privacy' %}">Datenschutz</a>
+  </div>
+</section>
+
+<section class="landing-scope" aria-labelledby="landing-scope">
+  <h2 id="landing-scope">Was die App leistet</h2>
+  <ul class="landing-points">
+    <li><strong>Übergaben</strong> – versioniert, priorisiert, stationsbezogen</li>
+    <li><strong>Tagesaufgaben</strong> – Wandbogen digital mit Grün, Gelb und Blau</li>
+    <li><strong>Kalender &amp; Team</strong> – Wachentermine und rollenbasierte Freigaben</li>
+    <li><strong>Audit &amp; Privacy</strong> – nachvollziehbar, ohne Tracking-Cookies</li>
+  </ul>
+</section>
+
+<section class="landing-scope" aria-labelledby="landing-access">
+  <h2 id="landing-access">Zugang nur nach Login</h2>
+  <p class="lead">Alle Fachfunktionen öffnen sich erst mit persönlichem Konto und aktiver Mitgliedschaft.</p>
+  <p><a class="button primary" href="{% url 'login' %}">Zur Anmeldung</a></p>
+</section>
+{% endblock %}

@@ -122,9 +122,9 @@ STORAGES = {
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LOGIN_URL = "access"
-LOGIN_REDIRECT_URL = "access"
-LOGOUT_REDIRECT_URL = "access"
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "landing"
+LOGOUT_REDIRECT_URL = "landing"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_HTTPONLY = True
 SECURE_COOKIES = env_bool("SECURE_COOKIES", default=not DEBUG)

@@ -1,6 +1,6 @@
 import json
 from datetime import date, timedelta
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from django.conf import settings
 from django.contrib import messages
@@ -17,7 +17,7 @@ from django.utils.text import slugify
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .access import CONTENT_ROLES, membership_required, station_module_required
+from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
 
 from .forms import (
     BirthdayForm,
@@ -209,17 +209,32 @@ def calendar_event_ics(request, pk):
     return response
 
 
-def access(request):
-    membership = None
+@require_GET
+def landing(request):
+    """Öffentliche Projektseite — Fachfunktionen erst nach Login und Mitgliedschaft."""
     if request.user.is_authenticated:
-        membership = request.user.station_memberships.filter(
-            is_active=True, station__is_active=True
-        ).select_related("station").first()
+        membership = get_membership(request.user)
         if membership:
             if membership.role == Membership.Role.AUDITOR:
                 return redirect("audit_log")
             return redirect("dashboard")
-    return render(request, "core/access.html", {"membership": membership})
+        return redirect("access")
+    return render(request, "core/landing.html")
+
+
+@require_GET
+def access(request):
+    """Freigabehinweis für angemeldete Nutzer ohne aktive Mitgliedschaft."""
+    if not request.user.is_authenticated:
+        login_url = reverse("login")
+        query = urlencode({"next": request.get_full_path()})
+        return redirect(f"{login_url}?{query}")
+    membership = get_membership(request.user)
+    if membership:
+        if membership.role == Membership.Role.AUDITOR:
+            return redirect("audit_log")
+        return redirect("dashboard")
+    return render(request, "core/access.html")
 
 
 @membership_required(CONTENT_ROLES)

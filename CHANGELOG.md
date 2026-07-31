@@ -4,6 +4,8 @@
 
 - Compliance-Doku zu DSGVO, TDDDG-Cookies, EU AI Act und NRW oeffentlichem Dienst
 - Datenschutz-/Cookie-Transparenzseite unter `/datenschutz/` ohne Tracking-Banner
+- oeffentliche Startseite unter `/` praesentiert das Projekt; Fachfunktionen erst nach Login
+- Dashboard unter `/uebersicht/`; Logout und unauthentifizierte App-Routen fuehren zu Startseite bzw. Anmeldung
 - sichtbare SemVer-Version in Footer, `/healthz/` und Image-Label
 - dokumentierter Versions- und Update-/Rollback-Ablauf
 - Tagesaufgaben-Modul nach Wandbogen: gruen taeglich, gelb Wochentag, blau zusaetzlich

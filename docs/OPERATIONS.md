@@ -2,7 +2,8 @@
 
 ## Endpunkte
 
-- Anwendung: `http://127.0.0.1:${HTTP_PORT:-8090}`
+- Anwendung: `http://127.0.0.1:${HTTP_PORT:-8090}/` (oeffentliche Projektseite)
+- Uebersicht (nach Login): `/uebersicht/`
 - Healthcheck: `/healthz/` (JSON mit `status` und `version`)
 - Datenschutz/Cookies: `/datenschutz/`
 - Anmeldung: `/anmelden/`

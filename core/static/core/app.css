@@ -113,16 +113,75 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .identity { min-width: 0; text-align: right; }
 .identity strong, .identity span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .identity span { color: #c8d5d8; font-size: .8rem; }
-.logout-form button {
-  min-height: 44px;
-  padding: .35rem .25rem;
-  color: white;
+.header-login {
+  color: white !important;
   background: transparent;
-  border: 0;
-  text-decoration: underline;
-  text-underline-offset: .2em;
-  cursor: pointer;
+  border-color: rgba(255, 255, 255, .45);
 }
+.header-login:hover { background: rgba(255, 255, 255, .1); }
+
+.is-landing {
+  background:
+    radial-gradient(900px 520px at 8% -5%, rgba(23, 107, 122, .22), transparent 58%),
+    radial-gradient(700px 380px at 92% 8%, rgba(15, 36, 43, .16), transparent 52%),
+    linear-gradient(180deg, #d5e4e1 0%, var(--bg) 42rem);
+}
+.is-landing .page-shell {
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+.landing-hero {
+  max-width: 42rem;
+  margin: 6vh auto 3rem;
+  padding: 0;
+}
+.brand-hero {
+  margin: 0 0 .85rem;
+  color: var(--brand-deep);
+  font-size: clamp(2.6rem, 9vw, 4.4rem);
+  font-weight: 800;
+  letter-spacing: -.045em;
+  line-height: .95;
+}
+.landing-hero h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(1.45rem, 3.2vw, 2rem);
+  line-height: 1.25;
+  font-weight: 600;
+}
+.landing-hero .lead {
+  max-width: 38rem;
+  font-size: 1.1rem;
+}
+.landing-cta { margin-top: 1.5rem; }
+.landing-scope {
+  max-width: 42rem;
+  margin: 0 auto 2.25rem;
+  padding: 0;
+}
+.landing-scope h2 {
+  margin: 0 0 .75rem;
+  font-size: 1.15rem;
+}
+.landing-points {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: .7rem;
+}
+.landing-points li { max-width: 65ch; }
+@media (prefers-reduced-motion: no-preference) {
+  .is-landing .brand-hero {
+    animation: rise .45s ease both;
+  }
+  .is-landing .landing-hero h1 {
+    animation: rise .5s ease .08s both;
+  }
+  .is-landing .landing-cta {
+    animation: rise .55s ease .16s both;
+  }
+}
+
 
 .connection-chip {
   position: sticky;

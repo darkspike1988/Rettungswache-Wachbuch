@@ -28,6 +28,6 @@
   <h2>Version {{ app_version }}</h2>
   <p>Die laufende Produktversion erscheint im Fußbereich und unter <code>/healthz/</code>. Änderungsprotokoll und Updateablauf stehen in der Betriebsdokumentation.</p>
 
-  <p><a class="button secondary" href="{% url 'access' %}">Zur Anmeldung</a></p>
+  <p><a class="button secondary" href="{% url 'landing' %}">Zur Startseite</a> <a class="button primary" href="{% url 'login' %}">Anmelden</a></p>
 </section>
 {% endblock %}

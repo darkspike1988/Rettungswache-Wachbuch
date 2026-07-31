@@ -4,8 +4,9 @@ from . import views
 
 
 urlpatterns = [
+    path("", views.landing, name="landing"),
     path("zugang/", views.access, name="access"),
-    path("", views.dashboard, name="dashboard"),
+    path("uebersicht/", views.dashboard, name="dashboard"),
     path("uebergaben/", views.handover_list, name="handover_list"),
     path("uebergaben/neu/", views.handover_create, name="handover_create"),
     path("uebergaben/<int:pk>/", views.handover_detail, name="handover_detail"),

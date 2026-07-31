@@ -40,6 +40,8 @@ Capabilities und besitzt einen eingebauten Healthcheck.
 - Docker bindet den Webport standardmaessig nur an Host-Loopback.
 - Authentifizierung erfolgt ausschliesslich ueber lokale Django-Konten mit
   Passwort und Login-Drosselung. Es gibt keinen Header-basierten Auto-Login.
+  Die Startseite `/` ist oeffentlich; Fachrouten verlangen Login und aktive
+  Mitgliedschaft. Die PWA startet auf `/uebersicht/`.
 - Web, Feed-Worker und Backup erreichen PostgreSQL ueber getrennte interne
   Netze. Der Worker hat keinen TCP-Pfad zum Webcontainer.
 - Ein kurzlebiger `migrate`-Container besitzt die Datenbank-Owner-Rechte. Der

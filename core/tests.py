@@ -98,11 +98,35 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "Version 0.3.0")
         self.assertNotContains(response, "Google Analytics")
 
+    def test_landing_presents_project_before_login(self):
+        self.client.logout()
+        response = self.client.get(reverse("landing"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Wachbuch")
+        self.assertContains(response, reverse("login"))
+        self.assertContains(response, "Zugang nur nach Login")
+        self.assertNotContains(response, "Tailscale")
+
+    def test_authenticated_member_is_routed_from_landing_to_dashboard(self):
+        response = self.client.get(reverse("landing"))
+        self.assertRedirects(response, reverse("dashboard"))
+
+    def test_unauthenticated_app_routes_redirect_to_login(self):
+        self.client.logout()
+        response = self.client.get(reverse("dashboard"))
+        self.assertRedirects(
+            response,
+            f"{reverse('login')}?next={reverse('dashboard')}",
+        )
+
     def test_user_without_membership_waits_for_approval(self):
         outsider = User.objects.create_user("outside@example.org")
         self.client.force_login(outsider)
         response = self.client.get(reverse("dashboard"))
         self.assertRedirects(response, reverse("access"))
+        access = self.client.get(reverse("access"))
+        self.assertEqual(access.status_code, 200)
+        self.assertContains(access, "Freigabe")
 
     def test_auditor_cannot_read_station_content(self):
         self.membership.role = Membership.Role.AUDITOR
@@ -110,13 +134,13 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 403)
 
-    def test_unauthenticated_access_page_offers_local_login(self):
+    def test_unauthenticated_access_page_redirects_to_login(self):
         self.client.logout()
         response = self.client.get(reverse("access"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Anmeldung erforderlich")
-        self.assertContains(response, reverse("login"))
-        self.assertNotContains(response, "Tailscale")
+        self.assertRedirects(
+            response,
+            f"{reverse('login')}?next={reverse('access')}",
+        )
 
     def test_password_login_reaches_dashboard(self):
         User.objects.create_user("login@example.org", password="correct-password-1")
@@ -130,14 +154,19 @@ class SecurityAndAccessTests(PilotTestCase):
             "username": "login@example.org",
             "password": "correct-password-1",
         })
-        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(
+            response,
+            reverse("landing"),
+            target_status_code=302,
+            fetch_redirect_response=False,
+        )
         self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
 
     def test_authenticated_user_can_log_out_from_interface(self):
         response = self.client.get(reverse("dashboard"))
         self.assertContains(response, reverse("logout"))
         response = self.client.post(reverse("logout"))
-        self.assertRedirects(response, reverse("access"))
+        self.assertRedirects(response, reverse("landing"))
         self.assertNotIn("_auth_user_id", self.client.session)
 
     @override_settings(AXES_FAILURE_LIMIT=3, AXES_COOLOFF_TIME=1)
