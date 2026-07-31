@@ -53,6 +53,7 @@ from .mfa import (
     mfa_enabled,
     mfa_required,
     provisioning_uri,
+    totp_plaintext,
     user_has_confirmed_mfa,
     verify_totp,
 )
@@ -994,7 +995,7 @@ def mfa_setup(request):
         device = TotpDevice.objects.get(pk=device.pk)
     return render(request, "registration/mfa_setup.html", {
         "form": form,
-        "secret": device.secret,
+        "secret": totp_plaintext(device),
         "provisioning_uri": provisioning_uri(device),
         "webauthn_enabled": webauthn_enabled(),
         "passkeys": passkeys,

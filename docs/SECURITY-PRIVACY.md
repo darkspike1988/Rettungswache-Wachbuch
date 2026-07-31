@@ -34,8 +34,10 @@ Dieses Dokument ist keine Rechtsberatung.
 - lokaler HTTP-Zugriff nur ueber Loopback; sichere Cookies bei jedem TLS-Betrieb
 - persoenliche lokale Konten, Login-Drosselung und keine gemeinsam genutzten Zugaenge
 - optionales Profilbild nur als kleines JPEG in der Datenbank (kein allgemeiner Upload)
-- Chat, Privat und Post Ende-zu-Ende: Server speichert Ciphertext; Master-Admin ohne
-  Teilnahme sieht keine Klartexte
+- Chat, Privat und Post Ende-zu-Ende: **AES-256-GCM** + ECDH P-256 (BSI TR-02102);
+  Server speichert Ciphertext; Master-Admin ohne Teilnahme sieht keine Klartexte
+- Login-Passwoerter mit **Argon2id**; TOTP-Geheimnisse AES-256-GCM at rest
+- Krypto-Zuordnung: [`CRYPTO-BSI.md`](CRYPTO-BSI.md)
 - sichere Session-Cookies, CSRF-Schutz, CSP und restriktive Browser-Header
 - serverseitige Objekt- und Rollenpruefung
 - separate Datenbank ohne veroeffentlichten Port

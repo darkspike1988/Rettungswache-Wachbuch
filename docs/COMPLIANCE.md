@@ -21,7 +21,9 @@ Technisch umgesetzt oder vorbereitet:
 - Zweckbindung: Wachenorganisation, keine Patienten-/Einsatzakte
 - Datenminimierung: Geburtstage ohne Jahr, Audit ohne Fachfreitexte
 - Integritaet: Append-only-Kasse, Revisionshistorie, DB-Rechte
-- Vertraulichkeit: TLS-Proxy, sichere Cookies, CSP, Rollenisolation
+- Vertraulichkeit: TLS-Proxy (TLS 1.3 / BSI TR-02102-2), sichere Cookies, CSP,
+  Rollenisolation, E2EE mit AES-256-GCM (siehe [`CRYPTO-BSI.md`](CRYPTO-BSI.md))
+- Passwoerter: Argon2id; TOTP-Geheimnisse AES-256-GCM at rest
 - Betroffenenrechte: organisatorisch in der Go-live-Checkliste; technisch
   Austrittsbereinigung (Geburtstage), Feed-Retention und optionale Audit-Fristen
   vorbereitet; weitere Fristen nach Freigabe schaerfen

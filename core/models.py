@@ -381,7 +381,7 @@ class TotpDevice(models.Model):
     """Optional TOTP second factor for a local account (RFC 6238)."""
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp_device")
-    secret = models.CharField(max_length=64)
+    secret = models.CharField(max_length=255)
     is_confirmed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)

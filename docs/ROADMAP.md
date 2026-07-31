@@ -9,6 +9,7 @@ Stand: 31. Juli 2026.
 - Master-Admin legt Nutzer an/gibt frei; optionale Selbstregistrierung
 - Profilbild, Passwort und Zwei-Faktor im persoenlichen Bereich
 - E2EE fuer Wachenchat, private Chats und interne Post (Admin sieht keine Klartexte)
+- Krypto an BSI TR-02102 angelehnt (AES-256-GCM, ECDH P-256, Argon2id, TLS 1.3)
 - **API-Fundament** `/api/v1/` mit App-Tokens fuer Mobile-Clients
 - **AGPL Flutter-Client** https://github.com/darkspike1988/Wachbuch-Client (Spiegel `clients/wachbuch-mobile/`)
 - **Android-APK** sideloadbar (Phone/Tablet-Layout, FOSS-Build)

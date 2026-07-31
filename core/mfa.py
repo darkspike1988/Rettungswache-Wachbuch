@@ -2,6 +2,7 @@ import pyotp
 from django.conf import settings
 from django.utils import timezone
 
+from .crypto_at_rest import decrypt_secret, encrypt_secret
 from .models import TotpDevice, WebAuthnCredential
 from .webauthn_auth import user_has_passkey, webauthn_enabled
 
@@ -27,9 +28,14 @@ def user_has_totp(user):
     return TotpDevice.objects.filter(user=user, is_confirmed=True).exists()
 
 
+def totp_plaintext(device):
+    """Return the TOTP shared secret in plaintext (decrypts AES-GCM envelope if needed)."""
+    return decrypt_secret(device.secret)
+
+
 def provisioning_uri(device, issuer=None):
     issuer = issuer or settings.APP_NAME
-    return pyotp.TOTP(device.secret).provisioning_uri(
+    return pyotp.TOTP(totp_plaintext(device)).provisioning_uri(
         name=user_label(device.user),
         issuer_name=issuer,
     )
@@ -44,7 +50,7 @@ def create_pending_device(user):
     device, _ = TotpDevice.objects.update_or_create(
         user=user,
         defaults={
-            "secret": secret,
+            "secret": encrypt_secret(secret),
             "is_confirmed": False,
             "confirmed_at": None,
         },
@@ -56,7 +62,7 @@ def verify_totp(device, token):
     token = (token or "").strip().replace(" ", "")
     if not token.isdigit():
         return False
-    totp = pyotp.TOTP(device.secret)
+    totp = pyotp.TOTP(totp_plaintext(device))
     return totp.verify(token, valid_window=1)
 
 

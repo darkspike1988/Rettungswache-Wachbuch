@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.12.1")
+        self.assertEqual(response.json()["version"], "0.13.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.12.1")
+        self.assertContains(response, "Version 0.13.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -1421,6 +1421,33 @@ class ApiMobileFoundationTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "image/png")
         self.assertGreater(len(response.content), 100)
+
+
+class CryptoAtRestTests(TestCase):
+    def test_aes_gcm_roundtrip_and_legacy_plaintext(self):
+        from django.contrib.auth.hashers import identify_hasher
+
+        from .crypto_at_rest import decrypt_secret, encrypt_secret, is_encrypted
+        from .mfa import create_pending_device, totp_plaintext, verify_totp
+
+        cipher = encrypt_secret("JBSWY3DPEHPK3PXP")
+        self.assertTrue(is_encrypted(cipher))
+        self.assertEqual(decrypt_secret(cipher), "JBSWY3DPEHPK3PXP")
+        self.assertEqual(decrypt_secret("LEGACYPLAIN"), "LEGACYPLAIN")
+
+        user = User.objects.create_user("crypto@example.org", password="correct-password-1")
+        device = create_pending_device(user)
+        self.assertTrue(is_encrypted(device.secret))
+        plain = totp_plaintext(device)
+        self.assertFalse(is_encrypted(plain))
+        import pyotp
+
+        self.assertTrue(verify_totp(device, pyotp.TOTP(plain).now()))
+
+        # Argon2id is preferred hasher for new passwords
+        user.set_password("another-correct-password-1")
+        user.save()
+        self.assertEqual(identify_hasher(user.password).algorithm, "argon2")
 
 
 class MigrationDefaultTests(TestCase):

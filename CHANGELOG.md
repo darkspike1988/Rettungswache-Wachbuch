@@ -5,6 +5,12 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.13.0 - 2026-07-31
+
+- Krypto-Profil an BSI TR-02102 angelehnt (`docs/CRYPTO-BSI.md`): AES-256-GCM, ECDH P-256, TLS 1.3
+- Login-Passwoerter bevorzugt **Argon2id**; TOTP-Geheimnisse AES-256-GCM at rest
+- E2EE Private-Key-Umschlag: PBKDF2-SHA-256 mit 600 000 Iterationen (bestehende Umschlaege weiter lesbar)
+
 ## 0.12.1 - 2026-07-31
 
 - Server und Client-Repo aufeinander abgestimmt (`Wachbuch-Client` ↔ `clients/wachbuch-mobile/`)

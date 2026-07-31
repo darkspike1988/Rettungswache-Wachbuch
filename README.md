@@ -125,6 +125,7 @@ Loeschfristen oder organisatorische Freigabe. Details stehen in
 
 - [Architektur](docs/ARCHITECTURE.md)
 - [API fuer Mobile-/Drittclients](docs/API.md)
+- [Krypto nach BSI TR-02102](docs/CRYPTO-BSI.md)
 - [AGPL-Client iOS/Android](docs/CLIENT.md) → [Wachbuch-Client](https://github.com/darkspike1988/Wachbuch-Client)
 - [Android-APK installieren](clients/wachbuch-mobile/docs/INSTALL-ANDROID.md) (`./clients/wachbuch-mobile/scripts/build-apk.sh`)
 - Sync: `./scripts/publish-mobile-client-repo.sh` / `./scripts/pull-mobile-client-repo.sh`

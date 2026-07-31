@@ -361,7 +361,8 @@
     const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
     const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
     const salt = bytesToB64url(crypto.getRandomValues(new Uint8Array(16)));
-    const iterations = 210000;
+    // BSI TR-02102 / OWASP: PBKDF2-SHA256 with high iteration count (Web Crypto has no Argon2).
+    const iterations = 600000;
     const wrapKey = await deriveWrapKey(passphrase, salt, iterations);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const wrapped = await crypto.subtle.encrypt(
@@ -383,7 +384,7 @@
     if (!ivB64 || !dataB64) {
       throw new Error("Gespeicherter Schlüsselumschlag ist beschädigt.");
     }
-    const wrapKey = await deriveWrapKey(passphrase, bundle.kdf_salt, bundle.kdf_iterations || 210000);
+    const wrapKey = await deriveWrapKey(passphrase, bundle.kdf_salt, bundle.kdf_iterations || 600000);
     const plain = await crypto.subtle.decrypt(
       { name: "AES-GCM", iv: b64urlToBytes(ivB64) },
       wrapKey,

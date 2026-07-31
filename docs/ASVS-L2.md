@@ -75,7 +75,9 @@ Legende: **OK** umgesetzt / **Teil** teilweise / **Offen** geplant / **n/a** nic
 | Kontrolle | Status | Hinweis |
 | --- | --- | --- |
 | Keine allgemeinen User-Uploads | OK | nur Profilavatar (JPEG in DB, max. 2 MB Roh, 192px) |
-| Chat/Post E2EE | OK | Ciphertext + Key-Wraps; Private Key nur passphrase-umschlossen |
+| Chat/Post E2EE | OK | AES-256-GCM + ECDH P-256 (BSI TR-02102); siehe CRYPTO-BSI.md |
+| Passwort-Hash | OK | Argon2id bevorzugt |
+| TOTP at rest | OK | AES-256-GCM (HKDF aus SECRET_KEY) |
 | Feed-SSRF-Haertung | OK | Allowlist, keine Redirects |
 
 ## V13 API / PWA
@@ -103,6 +105,6 @@ Legende: **OK** umgesetzt / **Teil** teilweise / **Offen** geplant / **n/a** nic
 2. Zentrales Monitoring/Alerting und Incident-Runbook-Probe
 3. Passwort-Reset-Prozess organisatorisch festziehen
 4. Audit-Export / Offline-Archiv
-5. Optional: Secrets-Encryption at rest fuer TOTP/VAPID in der DB
+5. Optional: VAPID-Private-Key bleibt in Env (nicht in DB); TOTP at rest seit 0.13 AES-GCM
 
 Siehe auch [`GO-LIVE-CHECKLIST.md`](GO-LIVE-CHECKLIST.md) und [`SECURITY-PRIVACY.md`](SECURITY-PRIVACY.md).

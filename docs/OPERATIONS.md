@@ -48,6 +48,9 @@ VAPID-Schluessel (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`).
 
 ## Reverse-Proxy
 
+TLS nach **BSI TR-02102-2**: bevorzugt TLS 1.3 mit AEAD (z. B. AES-256-GCM).
+Details: [`CRYPTO-BSI.md`](CRYPTO-BSI.md).
+
 Beispiel fuer Caddy vor dem Loopback-Port:
 
 ```caddy
@@ -58,6 +61,7 @@ wache.example.org {
 
 Hostname und HTTPS-Origin muessen in `ALLOWED_HOSTS` und
 `CSRF_TRUSTED_ORIGINS` stehen. Der Proxy sollte `X-Forwarded-Proto` setzen.
+Fuer jeden TLS-Betrieb muss `SECURE_COOKIES=true` gesetzt sein.
 Django wertet `SECURE_PROXY_SSL_HEADER` aus und erzwingt sichere Cookies, wenn
 `SECURE_COOKIES=true` gesetzt ist.
 
