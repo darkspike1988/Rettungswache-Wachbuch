@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Wachenchat | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading narrow">
+  <p class="context-line">Interne Abstimmung</p>
+  <h1>Wachenchat</h1>
+  <p class="lead">Kurze betriebliche Hinweise für die Wache. Keine Patienten-, Einsatz- oder Alarmierungsdaten.</p>
+</header>
+<section class="chat-thread" aria-live="polite">
+  {% for item in thread %}
+    <article class="chat-bubble">
+      <header>
+        <strong>{{ item.author.first_name|default:item.author.username }}</strong>
+        <time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:"d.m.Y H:i" }}</time>
+      </header>
+      <p>{{ item.body|linebreaksbr }}</p>
+      {% if can_moderate %}
+        <form method="post" action="{% url 'chat_hide' item.pk %}">{% csrf_token %}<button class="button secondary" type="submit">Ausblenden</button></form>
+      {% endif %}
+    </article>
+  {% empty %}
+    <p class="empty-state">Noch keine Nachrichten.</p>
+  {% endfor %}
+</section>
+<form method="post" class="form-card narrow chat-compose">
+  {% csrf_token %}
+  {% include "core/form_errors.html" %}
+  {{ form.as_p }}
+  <button class="button primary" type="submit">Senden</button>
+</form>
+{% endblock %}

@@ -18,6 +18,7 @@ class Station(models.Model):
     coffee_enabled = models.BooleanField(default=True, verbose_name="Kaffeekasse aktiviert")
     feeds_enabled = models.BooleanField(default=False, verbose_name="Externe Meldungen aktiviert")
     tasks_enabled = models.BooleanField(default=True, verbose_name="Tagesaufgaben aktiviert")
+    chat_enabled = models.BooleanField(default=True, verbose_name="Wachenchat aktiviert")
 
     class Meta:
         ordering = ["name"]
@@ -444,6 +445,58 @@ class CalendarFeedToken(models.Model):
 
     def __str__(self):
         return self.label or f"Kalender-Abo {self.pk}"
+
+
+class RegistrationRequest(models.Model):
+    """Self-service signup waiting for station admin approval."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Wartend"
+        APPROVED = "approved", "Freigegeben"
+        REJECTED = "rejected", "Abgelehnt"
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="registration_request")
+    preferred_station = models.ForeignKey(
+        Station,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="registration_requests",
+    )
+    note = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_registrations",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Registrierung {self.user_id} ({self.status})"
+
+
+class ChatMessage(models.Model):
+    """Station-scoped operational chat. No uploads, no patient content."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="chat_messages")
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="chat_messages")
+    body = models.TextField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_hidden = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["station", "-created_at"])]
+
+    def __str__(self):
+        return f"Chat {self.pk}"
 
 
 class AuditEvent(models.Model):

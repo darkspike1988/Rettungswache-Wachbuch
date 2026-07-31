@@ -167,8 +167,71 @@ class StationSettingsForm(forms.ModelForm):
             "coffee_enabled",
             "feeds_enabled",
             "tasks_enabled",
+            "chat_enabled",
         ]
         labels = {"name": "Name der Rettungswache"}
+
+
+class RegistrationForm(forms.Form):
+    username = forms.CharField(max_length=150, label="Benutzername (z. B. E-Mail)")
+    first_name = forms.CharField(max_length=150, label="Vorname", required=False)
+    preferred_station = forms.ModelChoiceField(
+        queryset=Station.objects.none(),
+        required=False,
+        label="Gewünschte Wache",
+        empty_label="Noch offen / bitte zuordnen",
+    )
+    note = forms.CharField(
+        max_length=300,
+        required=False,
+        label="Hinweis an die Verwaltung",
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    password1 = forms.CharField(label="Passwort", widget=forms.PasswordInput)
+    password2 = forms.CharField(label="Passwort wiederholen", widget=forms.PasswordInput)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["preferred_station"].queryset = Station.objects.filter(
+            is_active=True
+        ).order_by("name")
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("Dieser Benutzername ist bereits vergeben.")
+        return username
+
+    def clean(self):
+        cleaned = super().clean()
+        password1 = cleaned.get("password1")
+        password2 = cleaned.get("password2")
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("Die Passwörter stimmen nicht überein.")
+        if password1:
+            from django.contrib.auth.password_validation import validate_password
+
+            validate_password(password1)
+        return cleaned
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email"]
+        labels = {
+            "first_name": "Vorname",
+            "last_name": "Nachname",
+            "email": "E-Mail",
+        }
+
+
+class ChatMessageForm(forms.Form):
+    body = forms.CharField(
+        max_length=1000,
+        label="Nachricht",
+        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Kurzer Hinweis für die Wache …"}),
+    )
 
 
 class StationTaskForm(forms.ModelForm):

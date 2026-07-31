@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import account_views, views
+from . import account_views, community_views, views
 
 
 urlpatterns = [
@@ -31,9 +31,12 @@ urlpatterns = [
     path("aufgaben/neu/", views.task_create, name="task_create"),
     path("aufgaben/<int:pk>/bearbeiten/", views.task_edit, name="task_edit"),
     path("aufgaben/<int:pk>/status/", views.task_toggle, name="task_toggle"),
+    path("chat/", community_views.chat, name="chat"),
+    path("chat/<int:pk>/ausblenden/", community_views.chat_hide, name="chat_hide"),
     path("mehr/", views.more, name="more"),
     path("team/", views.team, name="team"),
     path("team/freigeben/", views.team_create, name="team_create"),
+    path("team/registrierung/<int:pk>/ablehnen/", community_views.registration_reject, name="registration_reject"),
     path("team/<int:pk>/", views.membership_update, name="membership_update"),
     path("einstellungen/", views.station_settings, name="station_settings"),
     path("audit/", views.audit_log, name="audit_log"),

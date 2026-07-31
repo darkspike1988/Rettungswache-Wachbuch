@@ -33,6 +33,7 @@
 - erst nach schriftlichem Go-live einen oeffentlichen DNS-Namen anbinden
 
 Die installierbare PWA ist Teil der Basis. Volles CalDAV bleibt optional; ICS-Abo
-und Web-Push decken die haeufigsten Sync-/Hinweisbedarfe. Chat, Patientendaten,
-Dienstplanung und Uploads bleiben ausserhalb des Wachbuchs, solange kein eigener
-freigegebener Zweck besteht.
+und Web-Push decken die haeufigsten Sync-/Hinweisbedarfe. Selbstregistrierung,
+persoenlicher Kontbereich und stationsbezogener Wachenchat sind vorhanden.
+Patientendaten, Dienstplanung und Uploads bleiben ausserhalb des Wachbuchs,
+solange kein eigener freigegebener Zweck besteht.

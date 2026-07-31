@@ -725,9 +725,16 @@ def team(request):
     pending_count = User.objects.filter(is_active=True).exclude(
         station_memberships__is_active=True
     ).count()
+    from .models import RegistrationRequest
+
+    pending_registrations = RegistrationRequest.objects.filter(
+        status=RegistrationRequest.Status.PENDING,
+        user__is_active=True,
+    ).select_related("user", "preferred_station").order_by("created_at")
     return render(request, "core/team.html", {
         "page_obj": page_for(request, members, 25),
         "pending_count": pending_count,
+        "pending_registrations": pending_registrations,
     })
 
 
@@ -767,6 +774,16 @@ def team_create(request):
                     audit(request.user, station, action, membership, {
                         "fields": ["user", "role", "is_active"]
                     })
+                    from .models import RegistrationRequest
+
+                    RegistrationRequest.objects.filter(
+                        user=user,
+                        status=RegistrationRequest.Status.PENDING,
+                    ).update(
+                        status=RegistrationRequest.Status.APPROVED,
+                        reviewed_at=timezone.now(),
+                        reviewed_by=request.user,
+                    )
         except IntegrityError:
             form.add_error("user", "Dieses Konto kann derzeit nicht freigegeben werden.")
             membership = None

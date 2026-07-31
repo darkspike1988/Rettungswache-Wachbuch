@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.5.0")
+        self.assertEqual(response.json()["version"], "0.6.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.5.0")
+        self.assertContains(response, "Version 0.6.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -118,7 +118,8 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Wachbuch")
         self.assertContains(response, reverse("login"))
-        self.assertContains(response, "Zugang nur nach Login")
+        self.assertContains(response, "Zugang nach Login und Freigabe")
+        self.assertContains(response, reverse("register"))
         self.assertNotContains(response, "Tailscale")
 
     def test_authenticated_member_is_routed_from_landing_to_dashboard(self):
@@ -1049,6 +1050,65 @@ class PasskeyPushCalendarTests(PilotTestCase):
             author=self.user,
         )
         self.assertEqual(notify_urgent_handover(handover, self.user), 0)
+
+
+class RegistrationAccountChatTests(PilotTestCase):
+    def test_self_registration_waits_for_admin_approval(self):
+        self.client.logout()
+        response = self.client.post(reverse("register"), {
+            "username": "neu@example.org",
+            "first_name": "Neu",
+            "preferred_station": self.station.pk,
+            "note": "Schicht Team A",
+            "password1": "StrongPass-12345",
+            "password2": "StrongPass-12345",
+        })
+        self.assertRedirects(response, reverse("login"))
+        user = User.objects.get(username="neu@example.org")
+        from .models import RegistrationRequest
+
+        request_row = RegistrationRequest.objects.get(user=user)
+        self.assertEqual(request_row.status, RegistrationRequest.Status.PENDING)
+        self.client.force_login(user)
+        self.assertRedirects(self.client.get(reverse("dashboard")), reverse("access"))
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        self.client.force_login(self.user)
+        approve = self.client.post(reverse("team_create"), {
+            "user": user.pk,
+            "role": Membership.Role.MEMBER,
+        })
+        self.assertRedirects(approve, reverse("team"))
+        request_row.refresh_from_db()
+        self.assertEqual(request_row.status, RegistrationRequest.Status.APPROVED)
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
+
+    def test_account_home_updates_profile(self):
+        response = self.client.post(reverse("account_home"), {
+            "action": "profile",
+            "profile-first_name": "Mara",
+            "profile-last_name": "Muster",
+            "profile-email": "mara@example.org",
+        })
+        self.assertRedirects(response, reverse("account_home"))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.last_name, "Muster")
+
+    def test_chat_message_roundtrip_and_hide(self):
+        response = self.client.post(reverse("chat"), {"body": "Bitte Lager prüfen"})
+        self.assertRedirects(response, reverse("chat"))
+        from .models import ChatMessage
+
+        message = ChatMessage.objects.get()
+        self.assertEqual(message.body, "Bitte Lager prüfen")
+        page = self.client.get(reverse("chat"))
+        self.assertContains(page, "Bitte Lager prüfen")
+        self.membership.role = Membership.Role.SHIFT_LEAD
+        self.membership.save(update_fields=["role"])
+        hide = self.client.post(reverse("chat_hide", args=[message.pk]))
+        self.assertRedirects(hide, reverse("chat"))
+        self.assertFalse(self.client.get(reverse("chat")).context["thread"])
 
 
 class MigrationDefaultTests(TestCase):

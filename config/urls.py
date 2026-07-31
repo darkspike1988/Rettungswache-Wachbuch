@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from core import account_views
+from core import account_views, community_views
 from core.auth_views import PasswordLoginView
 from core.views import (
     healthz,
@@ -23,6 +23,8 @@ urlpatterns = [
     path("offline/", offline, name="offline"),
     path("datenschutz/", privacy_notice, name="privacy"),
     path("anmelden/", PasswordLoginView.as_view(), name="login"),
+    path("registrieren/", community_views.register, name="register"),
+    path("konto/", community_views.account_home, name="account_home"),
     path("anmelden/mfa/", mfa_verify, name="mfa_verify"),
     path("anmelden/passkey/optionen/", account_views.passkey_login_options, name="passkey_login_options"),
     path("anmelden/passkey/pruefen/", account_views.passkey_login_verify, name="passkey_login_verify"),

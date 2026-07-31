@@ -11,6 +11,9 @@
     {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
     <button class="button primary" type="submit">Anmelden</button>
   </form>
+  {% if registration_enabled %}
+  <p><a class="text-action" href="{% url 'register' %}">Neues Konto registrieren</a></p>
+  {% endif %}
   {% if webauthn_enabled %}
   <div class="passkey-login">
     <p class="lead">Oder mit Passkey</p>

@@ -23,6 +23,7 @@ def current_membership(request):
 
 
 def application_metadata(request):
+    from .community_views import registration_enabled
     from .push import web_push_enabled
     from .webauthn_auth import webauthn_enabled
 
@@ -33,4 +34,5 @@ def application_metadata(request):
         "mfa_enabled": bool(getattr(settings, "MFA_ENABLED", True)),
         "webauthn_enabled": webauthn_enabled(),
         "web_push_enabled": web_push_enabled(),
+        "registration_enabled": registration_enabled(),
     }

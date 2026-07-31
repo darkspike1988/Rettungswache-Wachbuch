@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0 - 2026-07-31
+
+- Selbstregistrierung mit Admin-Freigabe und Ablehnung
+- persoenlicher Kontbereich (`/konto/`) fuer Profil und Passwort
+- stationsbezogener Wachenchat (ohne Uploads, moderierbar)
+- Modulschalter `chat_enabled` in den Stationseinstellungen
+
 ## 0.5.0 - 2026-07-31
 
 - Passkeys (WebAuthn) fuer Anmeldung und als zweiter Faktor neben TOTP

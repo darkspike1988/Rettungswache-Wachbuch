@@ -33,7 +33,7 @@
       {% if request.user.is_authenticated %}
         <div class="account">
           <div class="identity">
-            <strong>{{ request.user.first_name|default:request.user.username }}</strong>
+            <strong><a class="account-link" href="{% url 'account_home' %}">{{ request.user.first_name|default:request.user.username }}</a></strong>
             {% if current_membership %}<span>{{ current_membership.get_role_display }}</span>{% endif %}
           </div>
           <form class="logout-form" method="post" action="{% url 'logout' %}" data-clear-cache-on-submit>
@@ -87,7 +87,13 @@
               <span>Kalender</span>
             </a>
           {% endif %}
-          <a href="{% url 'more' %}"{% if request.resolver_match.url_name == 'more' or request.resolver_match.url_name == 'birthdays' or request.resolver_match.url_name == 'birthday_settings' or request.resolver_match.url_name == 'coffee' or request.resolver_match.url_name == 'coffee_create' or request.resolver_match.url_name == 'coffee_correct' or request.resolver_match.url_name == 'feeds' or request.resolver_match.url_name == 'tasks_today' or request.resolver_match.url_name == 'tasks_week' or request.resolver_match.url_name == 'tasks_manage' or request.resolver_match.url_name == 'task_create' or request.resolver_match.url_name == 'task_edit' or request.resolver_match.url_name == 'team' or request.resolver_match.url_name == 'team_create' or request.resolver_match.url_name == 'membership_update' or request.resolver_match.url_name == 'station_settings' or request.resolver_match.url_name == 'audit_log' %} aria-current="page"{% endif %}>
+          {% if current_membership.station.chat_enabled %}
+            <a href="{% url 'chat' %}"{% if request.resolver_match.url_name == 'chat' or request.resolver_match.url_name == 'chat_hide' %} aria-current="page"{% endif %}>
+              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 4h16v12H7l-3 3V4zm3 4v2h10V8H7zm0 4v2h7v-2H7z" fill="currentColor"/></svg></span>
+              <span>Chat</span>
+            </a>
+          {% endif %}
+          <a href="{% url 'more' %}"{% if request.resolver_match.url_name == 'more' or request.resolver_match.url_name == 'account_home' or request.resolver_match.url_name == 'birthdays' or request.resolver_match.url_name == 'birthday_settings' or request.resolver_match.url_name == 'coffee' or request.resolver_match.url_name == 'coffee_create' or request.resolver_match.url_name == 'coffee_correct' or request.resolver_match.url_name == 'feeds' or request.resolver_match.url_name == 'tasks_today' or request.resolver_match.url_name == 'tasks_week' or request.resolver_match.url_name == 'tasks_manage' or request.resolver_match.url_name == 'task_create' or request.resolver_match.url_name == 'task_edit' or request.resolver_match.url_name == 'team' or request.resolver_match.url_name == 'team_create' or request.resolver_match.url_name == 'membership_update' or request.resolver_match.url_name == 'station_settings' or request.resolver_match.url_name == 'audit_log' or request.resolver_match.url_name == 'push_settings' %} aria-current="page"{% endif %}>
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 7h14v2H5V7zm0 4h14v2H5v-2zm0 4h10v2H5v-2z" fill="currentColor"/></svg></span>
             <span>Mehr</span>
           </a>
