@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
+  Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
+
 ## 0.6.0 - 2026-07-31
 
 - Selbstregistrierung mit Admin-Freigabe und Ablehnung
