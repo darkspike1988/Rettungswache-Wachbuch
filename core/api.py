@@ -22,6 +22,7 @@ from django.contrib.auth.models import User
 from django.core import signing
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Sum
 from django.http import JsonResponse
 from django.utils import timezone
@@ -29,8 +30,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from .access import CONTENT_ROLES, get_membership
+from .forms import CoffeeEntryForm, HandoverForm, HandoverStatusForm
 from .models import CalendarEvent, CoffeeEntry, HandoverEntry, Membership
+from .services import audit, change_handover_status, create_handover
 from .views import prioritized_handovers
+
+WRITE_ROLES = {Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN}
+CASHIER_ROLES = {Membership.Role.CASHIER, Membership.Role.ADMIN}
 
 API_VERSION = "1.0"
 TOKEN_SALT = "wachbuch.client.api.v1"
@@ -103,6 +109,48 @@ def api_module_required(field_name):
         return wrapped
 
     return decorator
+
+
+def _bearer_user(request):
+    header = request.headers.get("Authorization", "")
+    if header.startswith("Bearer "):
+        return _user_from_token(header[len("Bearer "):].strip())
+    return None
+
+
+def api_write_view(allowed_roles):
+    """Authenticate a writing API view via bearer token only.
+
+    Writes require a token (never an ambient session cookie), which keeps the
+    endpoints CSRF-safe without a cookie-based CSRF token exchange.
+    """
+
+    def decorator(view_func):
+        @wraps(view_func)
+        @require_POST
+        def wrapped(request, *args, **kwargs):
+            user = _bearer_user(request)
+            if user is None:
+                return _error(401, "Bearer-Token erforderlich.")
+            request.user = user
+            membership = get_membership(user)
+            if membership is None:
+                return _error(403, "Keine aktive Wachenmitgliedschaft.")
+            if allowed_roles is not None and membership.role not in allowed_roles:
+                return _error(403, "Fuer diese Rolle nicht freigegeben.")
+            request.membership = membership
+            return view_func(request, *args, **kwargs)
+
+        return wrapped
+
+    return decorator
+
+
+def _json_body(request):
+    try:
+        return json.loads(request.body or b"{}"), None
+    except (ValueError, TypeError):
+        return None, _error(400, "Ungueltiger JSON-Koerper.")
 
 
 @csrf_exempt
@@ -220,8 +268,18 @@ def overview(request):
     return JsonResponse(payload)
 
 
+@csrf_exempt
+def handovers(request):
+    """Collection endpoint: ``GET`` lists, ``POST`` creates a handover."""
+    if request.method == "GET":
+        return _handover_list(request)
+    if request.method == "POST":
+        return _handover_create(request)
+    return _error(405, "Methode nicht erlaubt.")
+
+
 @api_member_view()
-def handover_list(request):
+def _handover_list(request):
     """Paginated handover list: active (default), ``dringend`` or ``archiv``."""
     station = request.membership.station
     scope = request.GET.get("ansicht", "aktiv")
@@ -249,17 +307,7 @@ def handover_list(request):
     })
 
 
-@api_member_view()
-def handover_detail(request, pk):
-    station = request.membership.station
-    handover = (
-        HandoverEntry.objects.filter(pk=pk, station=station)
-        .select_related("author")
-        .prefetch_related("revisions__changed_by")
-        .first()
-    )
-    if handover is None:
-        return _error(404, "Uebergabe wurde nicht gefunden.")
+def _handover_detail_json(handover):
     data = _handover_summary(handover)
     data.update({
         "details": handover.details,
@@ -278,7 +326,60 @@ def handover_detail(request, pk):
             for revision in handover.revisions.all()
         ],
     })
-    return JsonResponse(data)
+    return data
+
+
+@api_member_view()
+def handover_detail(request, pk):
+    station = request.membership.station
+    handover = (
+        HandoverEntry.objects.filter(pk=pk, station=station)
+        .select_related("author")
+        .prefetch_related("revisions__changed_by")
+        .first()
+    )
+    if handover is None:
+        return _error(404, "Uebergabe wurde nicht gefunden.")
+    return JsonResponse(_handover_detail_json(handover))
+
+
+@csrf_exempt
+@api_write_view(CONTENT_ROLES)
+def _handover_create(request):
+    payload, error = _json_body(request)
+    if error is not None:
+        return error
+    form = HandoverForm(payload)
+    if not form.is_valid():
+        return JsonResponse(
+            {"error": "Eingaben sind ungueltig.", "fields": form.errors},
+            status=422,
+        )
+    handover = create_handover(form, request.membership)
+    return JsonResponse(_handover_detail_json(handover), status=201)
+
+
+@csrf_exempt
+@api_write_view(WRITE_ROLES)
+def handover_set_status(request, pk):
+    handover = HandoverEntry.objects.filter(
+        pk=pk, station=request.membership.station
+    ).first()
+    if handover is None:
+        return _error(404, "Uebergabe wurde nicht gefunden.")
+    payload, error = _json_body(request)
+    if error is not None:
+        return error
+    form = HandoverStatusForm(payload, instance=handover)
+    if not form.is_valid():
+        return JsonResponse(
+            {"error": "Status ist ungueltig.", "fields": form.errors},
+            status=422,
+        )
+    updated = change_handover_status(
+        handover, form.cleaned_data["status"], request.membership
+    )
+    return JsonResponse(_handover_summary(updated))
 
 
 @api_member_view()
@@ -329,9 +430,19 @@ def _coffee_balances(station, membership, user):
     return balances
 
 
+@csrf_exempt
+def coffee(request):
+    """Collection endpoint: ``GET`` lists the ledger, ``POST`` books an entry."""
+    if request.method == "GET":
+        return _coffee_list(request)
+    if request.method == "POST":
+        return _coffee_create(request)
+    return _error(405, "Methode nicht erlaubt.")
+
+
 @api_member_view()
 @api_module_required("coffee_enabled")
-def coffee(request):
+def _coffee_list(request):
     """Coffee ledger: members see only their own entries, cashiers/admins all."""
     station = request.membership.station
     membership = request.membership
@@ -361,3 +472,39 @@ def coffee(request):
             for entry in page.object_list
         ],
     })
+
+
+@csrf_exempt
+@api_write_view(CASHIER_ROLES)
+def _coffee_create(request):
+    station = request.membership.station
+    if not station.coffee_enabled:
+        return _error(404, "Modul ist nicht aktiviert.")
+    payload, error = _json_body(request)
+    if error is not None:
+        return error
+    form = CoffeeEntryForm(payload, station=station)
+    if not form.is_valid():
+        return JsonResponse(
+            {"error": "Buchung ist ungueltig.", "fields": form.errors},
+            status=422,
+        )
+    with transaction.atomic():
+        entry = CoffeeEntry.objects.create(
+            station=station,
+            member=form.cleaned_data["member"],
+            amount_cents=form.amount_cents(),
+            reason=form.cleaned_data["reason"],
+            created_by=request.user,
+        )
+        audit(request.user, station, "coffee.entry_created", entry, {
+            "fields": ["member", "amount_cents", "reason"]
+        })
+    return JsonResponse({
+        "id": entry.pk,
+        "member": _person(entry.member),
+        "amount_euros": entry.amount_euros,
+        "reason": entry.reason,
+        "created_at": entry.created_at.isoformat(),
+        "is_correction": False,
+    }, status=201)

@@ -53,12 +53,13 @@ Kassenbuchungen sowie Datensparsamkeit (nur Tag und Monat bei Geburtstagen).
 - konsequente Rollen- und Modulpruefung je Endpunkt
 - Paginierung und schlanke, cachefreundliche Antworten
 
-### Phase M2 - Authentifizierung fuer native Apps und Schreibpfade
+### Phase M2 - Authentifizierung fuer native Apps und Schreibpfade (teilweise umgesetzt)
 
-- geeignetes Auth-Verfahren fuer Apps festlegen (Token oder OAuth/OIDC ueber den
-  bestehenden Identity-Layer), abgestimmt auf die MFA-/Passkey-Strategie aus
-  Phase 2 des Kernbetriebs
-- Schreibendpunkte nur mit Audit-Ereignis, CSRF-/Replay-Schutz und Rollencheck
+- Token-Anmeldung (`POST /api/v1/anmeldung/`) und Bearer-Auth umgesetzt; ein
+  widerrufbarer Token-Speicher und eine MFA-/Passkey-Abstimmung stehen noch aus
+- Schreibpfade umgesetzt: Uebergabe anlegen, Status aendern und Kaffeekasse buchen
+  jeweils nur per Bearer-Token, mit Rollencheck, Validierung und Audit-Ereignis;
+  Uebergaben werden versioniert. Idempotenz-/Replay-Schutz folgt noch
 - CORS ausschliesslich fuer freigegebene Urspruenge; native Apps benoetigen es
   nicht (nur der Web-Build im Browser unterliegt CORS)
 

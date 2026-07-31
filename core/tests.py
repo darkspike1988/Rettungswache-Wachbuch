@@ -716,6 +716,168 @@ class ClientApiTokenTests(TestCase):
         self.assertEqual(response.status_code, 401)
 
 
+class ClientApiWriteTests(TestCase):
+    def setUp(self):
+        self.station = Station.objects.create(name="Schreibwache", slug="schreibwache")
+        self.user = User.objects.create_user(
+            "writer@example.org", password="pw-strong-12345"
+        )
+        self.membership = Membership.objects.create(
+            user=self.user, station=self.station, role=Membership.Role.ADMIN
+        )
+
+    def token(self, role=None):
+        if role is not None:
+            self.membership.role = role
+            self.membership.save(update_fields=["role"])
+        response = self.client.post(
+            reverse("api:login"),
+            data=json.dumps(
+                {"username": "writer@example.org", "password": "pw-strong-12345"}
+            ),
+            content_type="application/json",
+        )
+        return response.json()["token"]
+
+    def post(self, url, body, token):
+        return self.client.post(
+            url,
+            data=json.dumps(body),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+
+    def make_handover(self):
+        return HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.STATION,
+            priority=HandoverEntry.Priority.NORMAL,
+            title="Bestehend",
+            details="Inhalt",
+            author=self.user,
+        )
+
+    def test_member_creates_versioned_handover_with_audit(self):
+        token = self.token(role=Membership.Role.MEMBER)
+        response = self.post(
+            reverse("api:handover_list"),
+            {
+                "category": HandoverEntry.Category.MATERIAL,
+                "priority": HandoverEntry.Priority.IMPORTANT,
+                "title": "Material nachbestellen",
+                "details": "Verbrauchsmaterial pruefen.",
+            },
+            token,
+        )
+        self.assertEqual(response.status_code, 201)
+        handover = HandoverEntry.objects.get(title="Material nachbestellen")
+        self.assertEqual(handover.station, self.station)
+        self.assertEqual(handover.revisions.count(), 1)
+        self.assertTrue(AuditEvent.objects.filter(action="handover.created").exists())
+
+    def test_create_handover_validates_input(self):
+        token = self.token(role=Membership.Role.MEMBER)
+        response = self.post(
+            reverse("api:handover_list"),
+            {"category": HandoverEntry.Category.TASK, "title": "", "details": ""},
+            token,
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("fields", response.json())
+
+    def test_writes_require_a_bearer_token(self):
+        # A session cookie alone must not authorise writes.
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("api:handover_list"),
+            data=json.dumps({
+                "category": HandoverEntry.Category.TASK,
+                "priority": HandoverEntry.Priority.NORMAL,
+                "title": "Ohne Token",
+                "details": "Sollte scheitern.",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(HandoverEntry.objects.filter(title="Ohne Token").exists())
+
+    def test_status_change_requires_shift_lead_or_admin(self):
+        handover = self.make_handover()
+        member_token = self.token(role=Membership.Role.MEMBER)
+        denied = self.post(
+            reverse("api:handover_status", args=[handover.pk]),
+            {"status": HandoverEntry.Status.DONE},
+            member_token,
+        )
+        self.assertEqual(denied.status_code, 403)
+        handover.refresh_from_db()
+        self.assertEqual(handover.status, HandoverEntry.Status.OPEN)
+
+        admin_token = self.token(role=Membership.Role.ADMIN)
+        allowed = self.post(
+            reverse("api:handover_status", args=[handover.pk]),
+            {"status": HandoverEntry.Status.DONE},
+            admin_token,
+        )
+        self.assertEqual(allowed.status_code, 200)
+        handover.refresh_from_db()
+        self.assertEqual(handover.status, HandoverEntry.Status.DONE)
+        self.assertEqual(handover.version, 2)
+        self.assertIsNotNone(handover.completed_at)
+        self.assertTrue(
+            AuditEvent.objects.filter(action="handover.status_changed").exists()
+        )
+
+    def test_status_change_is_station_scoped(self):
+        other = Station.objects.create(name="Fremd", slug="fremd")
+        foreign = HandoverEntry.objects.create(
+            station=other,
+            category=HandoverEntry.Category.TASK,
+            title="Fremd",
+            details="x",
+            author=self.user,
+        )
+        token = self.token(role=Membership.Role.ADMIN)
+        response = self.post(
+            reverse("api:handover_status", args=[foreign.pk]),
+            {"status": HandoverEntry.Status.DONE},
+            token,
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_coffee_booking_requires_cashier_or_admin(self):
+        member_token = self.token(role=Membership.Role.MEMBER)
+        denied = self.post(
+            reverse("api:coffee"),
+            {
+                "member": self.user.pk,
+                "direction": "credit",
+                "amount_eur": "3.50",
+                "reason": "Einzahlung",
+            },
+            member_token,
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(CoffeeEntry.objects.count(), 0)
+
+        cashier_token = self.token(role=Membership.Role.CASHIER)
+        allowed = self.post(
+            reverse("api:coffee"),
+            {
+                "member": self.user.pk,
+                "direction": "credit",
+                "amount_eur": "3.50",
+                "reason": "Einzahlung",
+            },
+            cashier_token,
+        )
+        self.assertEqual(allowed.status_code, 201)
+        self.assertEqual(CoffeeEntry.objects.get().amount_cents, 350)
+        self.assertTrue(
+            AuditEvent.objects.filter(action="coffee.entry_created").exists()
+        )
+
+
 class TeamAndAuditTests(PilotTestCase):
     def setUp(self):
         super().setUp()

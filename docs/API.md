@@ -132,3 +132,30 @@ Nur bei aktivierter Kaffeekasse (sonst `404`). Enthaelt `balances` (wie oben) un
 paginierte Buchungen. Mitglieder sehen nur ihre eigenen Buchungen, Kassenwart und
 Admin die gesamte Kasse. Buchungen enthalten `member`, `amount_euros`, `reason`,
 `created_at` und `is_correction`.
+
+## Schreibende Endpunkte
+
+Schreibpfade akzeptieren **ausschliesslich** die Bearer-Token-Anmeldung (kein
+Session-Cookie). Da keine Cookie-Autoritaet genutzt wird, sind sie ohne
+CSRF-Token sicher; Session-Nutzer schreiben weiterhin ueber die Weboberflaeche.
+Ungueltige Eingaben antworten mit `422` und `{ "error": ..., "fields": {...} }`.
+Jede Aenderung erzeugt ein Audit-Ereignis; Uebergaben werden versioniert.
+
+### POST /api/v1/uebergaben/
+
+Legt eine Uebergabe an (Inhaltsrollen: Mitglied, Schichtleitung, Kassenwart,
+Admin). Body `{ "category", "priority", "title", "details" }`. Antwort `201` mit
+dem Detailobjekt (inkl. erster Revision).
+
+### POST /api/v1/uebergaben/&lt;id&gt;/status/
+
+Aendert den Status einer Uebergabe der eigenen Wache (nur Schichtleitung oder
+Admin). Body `{ "status": "open" | "in_progress" | "done" }`. Erhoeht die Version
+und schreibt eine Revision. Antwort `200` mit der aktualisierten Zusammenfassung.
+
+### POST /api/v1/kaffeekasse/
+
+Bucht in die Kaffeekasse (nur Kassenwart oder Admin, Modul aktiv). Body
+`{ "member", "direction": "credit"|"debit", "amount_eur", "reason" }`. Antwort
+`201` mit der neuen Buchung. Buchungen sind append-only und unveraenderlich;
+Korrekturen erfolgen als Gegenbuchung ueber die Weboberflaeche.
