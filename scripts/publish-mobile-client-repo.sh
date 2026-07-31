@@ -52,14 +52,6 @@ cp -a "$SRC/." "$WORK/"
 rm -rf "$WORK/.dart_tool" "$WORK/build" "$WORK/dist" \
   "$WORK/.flutter-plugins" "$WORK/.flutter-plugins-dependencies"
 
-# Point README clone URL at this repo
-if [[ -f "$WORK/README.md" ]]; then
-  sed -i \
-    -e 's|https://github.com/darkspike1988/wachbuch-Client|https://github.com/darkspike1988/wachbuch-Client|g' \
-    -e 's|wachbuch-Client|wachbuch-Client|g' \
-    "$WORK/README.md" || true
-fi
-
 cd "$WORK"
 git init -b main
 git add -A
