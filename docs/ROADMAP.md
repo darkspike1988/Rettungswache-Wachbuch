@@ -2,11 +2,12 @@
 
 Stand: 31. Juli 2026.
 
-## Erreicht (Basis bis 0.6.0)
+## Erreicht (Basis bis 0.6.1)
 
 - Docker, lokaler Login, Rollen, Uebergaben, Tagesaufgaben, Geburtstage, Kasse-Ledger
 - PWA, oeffentliche Startseite, Registrierung mit Freigabe, persoenlicher Bereich, Wachenchat
 - optionale MFA (TOTP/Passkeys), Web-Push, Wachen-ICS-Abos, Retention, Audit-Diffs
+- gesetzliche Feiertage NRW im fortlaufenden Kalender/ICS (`holidays_enabled`)
 - Compliance- und ASVS-L2-Matrix dokumentiert
 
 ## Naechste Fachbausteine (Fahrplan)
@@ -29,37 +30,33 @@ ohne Zahlungsabwicklung oder Gebuehrenlogik im Produkt.
 
 **Nicht im Scope:** automatischer Abgleich mit PayPal/Wero, QR-Payment-API, SEPA-Mandate.
 
-### 2. Muellkalender Kreis Guetersloh (Ort/Standort → iCal)
+### 2. Fortlaufender Kalender: Feiertage (NRW) + Muellkalender
 
-**Ziel:** Pro Wache den passenden Abfuhrkalender waehlen und als iCal/Abo nutzbar
-machen (Wachentablet / persoenliche Kalender-Apps).
+**Ziel:** Der Wachenkalender zeigt neben eigenen Terminen gesetzliche Feiertage
+(NRW) und spaeter Abfuhrtermine; alles auch als iCal/Abo.
 
 | Schritt | Inhalt |
 | --- | --- |
-| 2.1 | Recherche/Freigabe der offiziellen Quelle (AbfallNavi / RegioIT-iCal) und erlaubte Hosts |
+| 2.0 | **Feiertage NRW** im fortlaufenden Kalender + ICS (Modul `holidays_enabled`) – erledigt in 0.6.1 |
+| 2.1 | Recherche/Freigabe der offiziellen Muell-Quelle (AbfallNavi / RegioIT-iCal) |
 | 2.2 | Stationsfelder: Gemeinde/Ort, Strasse bzw. Quellen-ID, gewaehlte Fraktionen |
-| 2.3 | Admin-UI: Auswahl Ort → Strasse/Standort (gestaffelte Listen, Cache der Metadaten) |
-| 2.4 | Sync-Job oder On-Demand-Abruf → interne `WasteCollectionEvent` bzw. Spiegel als ICS |
-| 2.5 | Ausgabe: stationsweiter ICS-Feed + optional Token-Abo (analog Wachenkalender) |
-| 2.6 | Dashboard/Mehr: naechste Abfuhren; klare Kennzeichnung „externe Behoerdenquelle“ |
-| 2.7 | Allowlist, SSRF-Haertung, Attribution, Ausfallhinweis wenn Quelle fehlt |
+| 2.3 | Admin-UI: Auswahl Ort → Strasse/Standort |
+| 2.4 | Sync → Abfuhren im selben fortlaufenden Kalender/ICS |
+| 2.5 | Token-Abo analog Wachenkalender |
+| 2.6 | Dashboard: naechste Abfuhren; Kennzeichnung externe Quelle |
 
-**Abhaengigkeit:** rechtliche/organisatorische Freigabe der Datenquelle; kein Scraping
-ohne stabile, freigegebene Schnittstelle. Fallback: manuell hinterlegte ICS-URL
-pro Station, bis die gestaffelte Auswahl steht.
-
-**Nicht im Scope:** Ersatz der offiziellen App, Push fuer jede Tonne, kreisweite
-Haushalte ausserhalb der konfigurierten Wache.
+**Abhaengigkeit Muell:** Freigabe der Datenquelle. Fallback: manuelle ICS-URL
+pro Station. Feiertage sind unabhaengig davon nutzbar.
 
 ### 3. Empfohlene Reihenfolge
 
 ```text
-1. Kaffeekasse-Zahlungshinweise   (klein, sofort nutzbar)
-2. Muellkalender: manueller ICS-URL-Fallback je Station
-3. Muellkalender: Ort/Strasse-Auswahl Kreis GT + Sync
-4. Feinschliff UX (Dashboard-Kachel Abfuhr, Kopieren-Buttons)
+1. Kaffeekasse-Zahlungshinweise
+2. Feiertage im fortlaufenden Kalender   (umgesetzt / einschalten)
+3. Muellkalender: manueller ICS-URL-Fallback je Station
+4. Muellkalender: Ort/Strasse-Auswahl Kreis GT + Sync
+5. Feinschliff UX (Dashboard, Kopieren-Buttons)
 ```
-
 ### 4. Bewusst weiterhin ausserhalb
 
 - Patientendaten, Einsatz-/Alarmierung, Dienstplanung

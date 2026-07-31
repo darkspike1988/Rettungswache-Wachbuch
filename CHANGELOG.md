@@ -5,6 +5,11 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.6.1 - 2026-07-31
+
+- gesetzliche Feiertage NRW im fortlaufenden Wachenkalender und ICS-Feed
+- Modulschalter `holidays_enabled` in den Stationseinstellungen
+
 ## 0.6.0 - 2026-07-31
 
 - Selbstregistrierung mit Admin-Freigabe und Ablehnung

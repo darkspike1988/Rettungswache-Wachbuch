@@ -43,12 +43,13 @@
     </div>
     <div class="agenda compact-agenda">
       {% for event in events %}
-        <article class="agenda-row">
-          <time datetime="{{ event.starts_at|date:'c' }}"><strong>{{ event.starts_at|date:"d.m." }}</strong><span>{{ event.starts_at|date:"H:i" }}</span></time>
+        <article class="agenda-row {% if event.kind == 'holiday' %}agenda-holiday{% endif %}">
+          <time datetime="{{ event.starts_at|date:'c' }}"><strong>{{ event.starts_at|date:"d.m." }}</strong><span>{% if event.all_day %}ganztägig{% else %}{{ event.starts_at|date:"H:i" }}{% endif %}</span></time>
           <div>
             <strong>{{ event.title }}</strong>
+            {% if event.kind == 'holiday' %}<span class="status-label neutral">Feiertag</span>{% endif %}
             {% if event.description %}<p>{{ event.description|truncatechars:90 }}</p>{% endif %}
-            <a class="text-action" href="{% url 'calendar_event_ics' event.pk %}">In Kalender speichern</a>
+            {% if event.kind == 'event' and event.source_pk %}<a class="text-action" href="{% url 'calendar_event_ics' event.source_pk %}">In Kalender speichern</a>{% endif %}
           </div>
         </article>
       {% empty %}<p class="empty-state">Keine anstehenden Termine.</p>{% endfor %}

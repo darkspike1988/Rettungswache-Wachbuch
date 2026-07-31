@@ -19,6 +19,7 @@ class Station(models.Model):
     feeds_enabled = models.BooleanField(default=False, verbose_name="Externe Meldungen aktiviert")
     tasks_enabled = models.BooleanField(default=True, verbose_name="Tagesaufgaben aktiviert")
     chat_enabled = models.BooleanField(default=True, verbose_name="Wachenchat aktiviert")
+    holidays_enabled = models.BooleanField(default=True, verbose_name="Feiertage (NRW) im Kalender")
 
     class Meta:
         ordering = ["name"]

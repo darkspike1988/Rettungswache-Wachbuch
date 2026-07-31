@@ -788,3 +788,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .chat-bubble p { margin: 0; }
 .chat-compose { margin: 0 auto 2rem; }
 .passkey-login { margin-top: 1.5rem; }
+.agenda-holiday {
+  background: linear-gradient(180deg, #f3f7f5, var(--surface));
+}
+.agenda-holiday h2, .agenda-holiday strong { color: var(--brand-deep); }

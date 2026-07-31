@@ -74,6 +74,8 @@ def _ics_datetime(value):
 
 
 def build_station_calendar_ics(station, events):
+    from .holidays import station_agenda
+
     stamp = timezone.now().strftime("%Y%m%dT%H%M%SZ")
     lines = [
         "BEGIN:VCALENDAR",
@@ -83,15 +85,31 @@ def build_station_calendar_ics(station, events):
         "METHOD:PUBLISH",
         f"X-WR-CALNAME:{_ics_escape(station.name)}",
     ]
-    for event in events:
+    agenda = station_agenda(station, events, past_days=30, future_days=400)
+    for item in agenda:
+        if item.kind == "holiday" and item.all_day:
+            day = timezone.localtime(item.starts_at).strftime("%Y%m%d")
+            next_day = timezone.localtime(item.ends_at).strftime("%Y%m%d")
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"UID:wachbuch-holiday-{day}@rettungswache-wachbuch",
+                f"DTSTAMP:{stamp}",
+                f"DTSTART;VALUE=DATE:{day}",
+                f"DTEND;VALUE=DATE:{next_day}",
+                f"SUMMARY:{_ics_escape(item.title)}",
+                f"DESCRIPTION:{_ics_escape(item.description)}",
+                "TRANSP:TRANSPARENT",
+                "END:VEVENT",
+            ])
+            continue
         lines.extend([
             "BEGIN:VEVENT",
-            f"UID:wachbuch-event-{event.pk}@rettungswache-wachbuch",
+            f"UID:wachbuch-event-{item.source_pk}@rettungswache-wachbuch",
             f"DTSTAMP:{stamp}",
-            f"DTSTART:{_ics_datetime(event.starts_at)}",
-            f"DTEND:{_ics_datetime(event.ends_at)}",
-            f"SUMMARY:{_ics_escape(event.title)}",
-            f"DESCRIPTION:{_ics_escape(event.description or '')}",
+            f"DTSTART:{_ics_datetime(item.starts_at)}",
+            f"DTEND:{_ics_datetime(item.ends_at)}",
+            f"SUMMARY:{_ics_escape(item.title)}",
+            f"DESCRIPTION:{_ics_escape(item.description)}",
             "END:VEVENT",
         ])
     lines.extend(["END:VCALENDAR", ""])

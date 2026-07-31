@@ -2,7 +2,7 @@
 {% block title %}Kalender | {{ app_name }}{% endblock %}
 {% block content %}
 <header class="page-heading heading-with-action">
-  <div><p class="context-line">Wachenorganisation</p><h1>Kalender</h1><p class="lead">Termine der Wache, keine Dienstplanung.</p></div>
+  <div><p class="context-line">Wachenorganisation</p><h1>Kalender</h1><p class="lead">Wachentermine{% if holidays_enabled %} und gesetzliche Feiertage (NRW){% endif %} – keine Dienstplanung.</p></div>
   <div class="form-actions">
     {% if can_create %}<a class="button secondary" href="{% url 'calendar_feed_manage' %}">Abo-Links</a><a class="button primary" href="{% url 'calendar_create' %}">Termin anlegen</a>{% endif %}
   </div>
@@ -11,13 +11,17 @@
   <p><a class="text-action" href="{% url 'calendar_feed_ics' %}">Gesamten Kalender als ICS</a></p>
   <div class="agenda">
     {% for event in page_obj %}
-      <article class="agenda-row">
-        <time datetime="{{ event.starts_at|date:'c' }}"><strong>{{ event.starts_at|date:"d.m." }}</strong><span>{{ event.starts_at|date:"H:i" }}</span></time>
+      <article class="agenda-row {% if event.kind == 'holiday' %}agenda-holiday{% endif %}">
+        <time datetime="{{ event.starts_at|date:'c' }}"><strong>{{ event.starts_at|date:"d.m." }}</strong><span>{% if event.all_day %}ganztägig{% else %}{{ event.starts_at|date:"H:i" }}{% endif %}</span></time>
         <div>
-          <h2>{{ event.title }}</h2>
+          <h2>{{ event.title }}{% if event.kind == 'holiday' %} <span class="status-label neutral">Feiertag</span>{% endif %}</h2>
           {% if event.description %}<p>{{ event.description|linebreaksbr }}</p>{% endif %}
-          <small>Bis {{ event.ends_at|date:"d.m.Y H:i" }} &middot; {{ event.created_by.first_name|default:event.created_by.username }}</small>
-          <p><a class="text-action" href="{% url 'calendar_event_ics' event.pk %}">Als ICS speichern</a></p>
+          {% if event.kind == 'event' %}
+            <small>Bis {{ event.ends_at|date:"d.m.Y H:i" }}</small>
+            {% if event.source_pk %}<p><a class="text-action" href="{% url 'calendar_event_ics' event.source_pk %}">Als ICS speichern</a></p>{% endif %}
+          {% else %}
+            <small>Gesetzlicher Feiertag NRW</small>
+          {% endif %}
         </div>
       </article>
     {% empty %}<p class="empty-state">Keine anstehenden Termine.</p>{% endfor %}

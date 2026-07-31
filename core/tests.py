@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.6.0")
+        self.assertEqual(response.json()["version"], "0.6.1")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.6.0")
+        self.assertContains(response, "Version 0.6.1")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -1109,6 +1109,69 @@ class RegistrationAccountChatTests(PilotTestCase):
         hide = self.client.post(reverse("chat_hide", args=[message.pk]))
         self.assertRedirects(hide, reverse("chat"))
         self.assertFalse(self.client.get(reverse("chat")).context["thread"])
+
+
+class HolidayCalendarTests(PilotTestCase):
+    def test_nrw_holidays_for_2026(self):
+        from datetime import date
+
+        from .holidays import nrw_holidays_for_year
+
+        titles = {holiday.title: holiday.day for holiday in nrw_holidays_for_year(2026)}
+        self.assertEqual(titles["Neujahr"], date(2026, 1, 1))
+        self.assertEqual(titles["Karfreitag"], date(2026, 4, 3))
+        self.assertEqual(titles["Ostermontag"], date(2026, 4, 6))
+        self.assertEqual(titles["Christi Himmelfahrt"], date(2026, 5, 14))
+        self.assertEqual(titles["Pfingstmontag"], date(2026, 5, 25))
+        self.assertEqual(titles["Fronleichnam"], date(2026, 6, 4))
+        self.assertEqual(len(titles), 11)
+
+    def test_calendar_lists_nrw_holidays(self):
+        response = self.client.get(reverse("calendar"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "gesetzliche Feiertage (NRW)")
+        self.assertTrue(any(item.kind == "holiday" for item in response.context["page_obj"]))
+        self.assertContains(response, "Feiertag")
+
+    def test_holidays_can_be_disabled(self):
+        self.station.holidays_enabled = False
+        self.station.save(update_fields=["holidays_enabled"])
+        response = self.client.get(reverse("calendar"))
+        self.assertFalse(any(item.kind == "holiday" for item in response.context["page_obj"]))
+        feed = self.client.get(reverse("calendar_feed_ics"))
+        self.assertNotIn("wachbuch-holiday-", feed.content.decode())
+
+    def test_ics_includes_all_day_holidays(self):
+        feed = self.client.get(reverse("calendar_feed_ics"))
+        body = feed.content.decode()
+        self.assertEqual(feed.status_code, 200)
+        self.assertIn("VALUE=DATE:", body)
+        self.assertIn("wachbuch-holiday-", body)
+        self.assertIn("TRANSP:TRANSPARENT", body)
+        self.assertIn("Gesetzlicher Feiertag", body)
+
+    def test_all_day_holiday_counts_as_upcoming_after_noon(self):
+        from datetime import datetime, time
+
+        from .holidays import AgendaEntry, is_upcoming_agenda_item
+
+        today = timezone.localdate()
+        noon = timezone.make_aware(datetime.combine(today, time(15, 0)))
+        holiday = AgendaEntry(
+            starts_at=timezone.make_aware(datetime.combine(today, time.min)),
+            ends_at=timezone.make_aware(datetime.combine(today + timedelta(days=1), time.min)),
+            title="Testfeiertag",
+            kind="holiday",
+            all_day=True,
+        )
+        self.assertTrue(is_upcoming_agenda_item(holiday, now=noon, today=today))
+        past_event = AgendaEntry(
+            starts_at=noon - timedelta(hours=2),
+            ends_at=noon + timedelta(hours=1),
+            title="Laufend",
+            kind="event",
+        )
+        self.assertFalse(is_upcoming_agenda_item(past_event, now=noon, today=today))
 
 
 class MigrationDefaultTests(TestCase):
