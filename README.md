@@ -125,6 +125,7 @@ Loeschfristen oder organisatorische Freigabe. Details stehen in
 
 - [Architektur](docs/ARCHITECTURE.md)
 - [API fuer Mobile-/Drittclients](docs/API.md)
+- [AGPL-Client iOS/Android](docs/CLIENT.md)
 - [Betrieb, Backup und Updates](docs/OPERATIONS.md)
 - [Datenschutz und Sicherheit](docs/SECURITY-PRIVACY.md)
 - [Compliance: DSGVO, Cookies, AI Act, NRW](docs/COMPLIANCE.md)

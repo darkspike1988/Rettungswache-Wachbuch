@@ -24,7 +24,8 @@ liefern Shell-Assets und einen Lese-Cache; Schreibvorgänge laufen weiterhin nur
 online gegen Django.
 
 Native Clients nutzen widerrufbare App-Tokens unter `/api/v1/` (siehe
-[`API.md`](API.md)), nicht die Browser-Session.
+[`API.md`](API.md)), nicht die Browser-Session. Der AGPL-Flutter-Client liegt
+unter `clients/wachbuch-mobile/` ([`CLIENT.md`](CLIENT.md)).
 
 ## Container
 

@@ -16,9 +16,20 @@ docker compose run --rm --no-deps \
   web python manage.py test --settings=config.test_settings
 ```
 
+### Mobile-Client (AGPL)
+
+```bash
+cd clients/wachbuch-mobile
+flutter pub get
+flutter test
+flutter analyze
+```
+
+Der Client spricht nur `/api/v1/` an; siehe [`docs/CLIENT.md`](docs/CLIENT.md).
+
 Pull Requests sollen Zweck, Verhaltensaenderung, Tests und moegliche
 Datenschutz- oder Migrationsfolgen beschreiben. Neue Abhaengigkeiten brauchen
-eine Begruendung und kompatible Lizenz.
+eine Begruendung und kompatible Lizenz (Server und Client: AGPL-kompatibel).
 
 ## Datenschutz
 

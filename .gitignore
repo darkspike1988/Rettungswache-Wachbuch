@@ -11,3 +11,10 @@ staticfiles/
 backups/*
 !backups/.gitkeep
 .DS_Store
+
+# Flutter / Dart client
+clients/**/.dart_tool/
+clients/**/build/
+clients/**/.flutter-plugins
+clients/**/.flutter-plugins-dependencies
+clients/**/.packages

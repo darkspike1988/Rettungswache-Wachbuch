@@ -61,10 +61,13 @@ Scopes der Standard-Tokens: `read:me`, `read:handovers`.
 Analog Nextcloud/Paperless:
 
 1. **Foundation (jetzt):** Token, Discovery, `me`, lesende Übergaben, OpenAPI
-2. **Lesen:** Kalender, Tagesaufgaben, Kassenstand (ohne Zahlungsabwicklung)
-3. **Schreiben:** Übergaben anlegen/Status – mit denselben Rollenregeln wie die Web-UI
-4. **E2EE:** Chat/Privat/Post nur mit Client-seitiger Krypto (Keys bleiben lokal)
-5. **Offizielle AGPL-Apps:** getrennte Repos oder Monorepo-Module; Server bleibt Quelle der Wahrheit
+2. **AGPL-Client (jetzt):** Flutter-App unter `clients/wachbuch-mobile/` – siehe [`CLIENT.md`](CLIENT.md)
+3. **Lesen:** Kalender, Tagesaufgaben, Kassenstand (ohne Zahlungsabwicklung)
+4. **Schreiben:** Übergaben anlegen/Status – mit denselben Rollenregeln wie die Web-UI
+5. **E2EE:** Chat/Privat/Post nur mit Client-seitiger Krypto (Keys bleiben lokal)
+6. **Stores/F-Droid:** Release-Pipelines, sobald die API stabil genug ist
+
+Offizielle AGPL-Apps leben im Monorepo unter `clients/`; der Server bleibt Quelle der Wahrheit.
 
 ## Nicht im API-Scope
 
