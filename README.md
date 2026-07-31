@@ -64,10 +64,12 @@ Uebergaben usw.) stehen erst nach Login mit aktiver Mitgliedschaft bereit. Der
 Port bindet absichtlich nur an Loopback. `SECURE_COOKIES=false` ist
 ausschliesslich fuer diesen lokalen HTTP-Schnellstart vorgesehen.
 
-Weitere Teamkonten legst du unter `/django-admin/` an und gibst sie unter
-`/team/` fuer die Wache frei. `createsuperuser` erzeugt einen globalen
-technischen Administrator; die stationsbezogene Adminrolle allein vergibt keine
-Django-Superuser-Rechte.
+Weitere Teamkonten legt der **Master-Admin** unter `/team/anlegen/` an und gibt sie
+sofort der Wache frei. Optional kann `REGISTRATION_ENABLED=true` eine oeffentliche
+Kontoanfrage erlauben; Freigabe bleibt beim Master-Admin unter `/team/`.
+Technische Systemkonten bleiben unter `/django-admin/`. `createsuperuser` erzeugt
+einen globalen technischen Administrator; die stationsbezogene Master-Admin-Rolle
+allein vergibt keine Django-Superuser-Rechte.
 
 Tests:
 
@@ -91,11 +93,11 @@ Details stehen in [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 ## Administration
 
-Stationsadministratoren koennen unter `/einstellungen/` den Namen der Wache und
-die sichtbaren Module selbst festlegen. Unter `/team/` verwalten sie Freigaben
-und Rollen. Technische Administratoren konfigurieren unter `/django-admin/`
-Systemkonten und externe Quellen. Fachliche Datensaetze sind dort bewusst nur
-lesbar, damit Versionierung und Audit nicht umgangen werden.
+Stations-Master-Admins koennen unter `/einstellungen/` den Namen der Wache und
+die sichtbaren Module selbst festlegen. Unter `/team/` legen sie Nutzer an und
+verwalten Freigaben sowie Rollen. Technische Administratoren konfigurieren unter
+`/django-admin/` Systemkonten und externe Quellen. Fachliche Datensaetze sind
+dort bewusst nur lesbar, damit Versionierung und Audit nicht umgangen werden.
 
 ## Externe Quellen
 

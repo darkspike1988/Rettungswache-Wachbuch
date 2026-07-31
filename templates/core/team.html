@@ -1,7 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Team | {{ app_name }}{% endblock %}
 {% block content %}
-<header class="page-heading heading-with-action"><div><p class="context-line">Administration</p><h1>Team &amp; Rollen</h1><p class="lead">Zugriff bleibt stationsbezogen.</p></div><a class="button primary" href="{% url 'team_create' %}">Zugang freigeben{% if pending_count %} ({{ pending_count }}){% endif %}</a></header>
+<header class="page-heading heading-with-action">
+  <div>
+    <p class="context-line">Master-Admin</p>
+    <h1>Team &amp; Rollen</h1>
+    <p class="lead">Neue Nutzer anlegen und freigeben – Zugang bleibt stationsbezogen.</p>
+  </div>
+  <div class="form-actions">
+    <a class="button primary" href="{% url 'team_user_create' %}">Benutzer anlegen</a>
+    <a class="button secondary" href="{% url 'team_create' %}">Zugang freigeben{% if pending_count %} ({{ pending_count }}){% endif %}</a>
+  </div>
+</header>
 
 {% if pending_registrations %}
 <section class="section-block">

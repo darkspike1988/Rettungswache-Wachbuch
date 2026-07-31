@@ -3,6 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django import forms
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from .models import BirthdayPreference, CalendarEvent, HandoverEntry, Membership, Station, StationTask
@@ -147,6 +148,37 @@ class MembershipAssignmentForm(forms.Form):
         ).order_by("first_name", "username")
 
 
+class MasterAdminCreateUserForm(forms.Form):
+    username = forms.CharField(max_length=150, label="Benutzername (z. B. E-Mail)")
+    first_name = forms.CharField(max_length=150, label="Vorname", required=False)
+    last_name = forms.CharField(max_length=150, label="Nachname", required=False)
+    password1 = forms.CharField(
+        label="Startpasswort",
+        widget=forms.PasswordInput,
+        help_text="Der Nutzer sollte das Passwort danach unter Mein Konto ändern.",
+    )
+    password2 = forms.CharField(label="Startpasswort wiederholen", widget=forms.PasswordInput)
+    role = forms.ChoiceField(choices=Membership.Role.choices, label="Rolle", initial=Membership.Role.MEMBER)
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("Dieser Benutzername ist bereits vergeben.")
+        return username
+
+    def clean(self):
+        cleaned = super().clean()
+        password1 = cleaned.get("password1")
+        password2 = cleaned.get("password2")
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("Die Passwörter stimmen nicht überein.")
+        if password1:
+            from django.contrib.auth.password_validation import validate_password
+
+            validate_password(password1)
+        return cleaned
+
+
 class MembershipEditForm(forms.Form):
     role = forms.ChoiceField(choices=Membership.Role.choices, label="Rolle")
     is_active = forms.BooleanField(required=False, label="Zugang aktiv")
@@ -227,11 +259,43 @@ class ProfileForm(forms.ModelForm):
         }
 
 
+class AvatarForm(forms.Form):
+    avatar = forms.ImageField(
+        required=False,
+        label="Profilbild",
+        help_text="JPEG, PNG oder WebP, max. 2 MB. Wird auf 192×192 verkleinert.",
+    )
+    clear_avatar = forms.BooleanField(required=False, label="Profilbild entfernen")
+
+    def clean(self):
+        cleaned = super().clean()
+        avatar = cleaned.get("avatar")
+        clear = cleaned.get("clear_avatar")
+        if not avatar and not clear:
+            raise forms.ValidationError("Bitte ein Bild wählen oder Entfernen markieren.")
+        if avatar and clear:
+            raise forms.ValidationError("Bild hochladen und entfernen geht nicht gleichzeitig.")
+        if avatar:
+            from .avatars import process_avatar_upload
+
+            try:
+                data, content_type = process_avatar_upload(avatar)
+            except ValidationError as exc:
+                raise forms.ValidationError(exc.messages) from exc
+            cleaned["avatar_bytes"] = data
+            cleaned["avatar_content_type"] = content_type
+        return cleaned
+
+
 class ChatMessageForm(forms.Form):
     body = forms.CharField(
-        max_length=1000,
-        label="Nachricht",
-        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Kurzer Hinweis für die Wache …"}),
+        max_length=500,
+        label="Kurze Nachricht",
+        widget=forms.Textarea(attrs={
+            "rows": 2,
+            "maxlength": 500,
+            "placeholder": "Kurze Nachricht an die Kollegen …",
+        }),
     )
 
 

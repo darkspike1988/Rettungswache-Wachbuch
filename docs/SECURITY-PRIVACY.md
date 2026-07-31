@@ -33,6 +33,7 @@ Dieses Dokument ist keine Rechtsberatung.
 - TLS durch einen kontrollierten Reverse-Proxy vor dem Docker-Port
 - lokaler HTTP-Zugriff nur ueber Loopback; sichere Cookies bei jedem TLS-Betrieb
 - persoenliche lokale Konten, Login-Drosselung und keine gemeinsam genutzten Zugaenge
+- optionales Profilbild nur als kleines JPEG in der Datenbank (kein allgemeiner Upload)
 - sichere Session-Cookies, CSRF-Schutz, CSP und restriktive Browser-Header
 - serverseitige Objekt- und Rollenpruefung
 - separate Datenbank ohne veroeffentlichten Port

@@ -4,16 +4,32 @@
 <header class="page-heading narrow">
   <p class="context-line">Persönlicher Bereich</p>
   <h1>Mein Konto</h1>
-  <p class="lead">Profil, Passwort und Sicherheitsoptionen für <strong>{{ request.user.username }}</strong>.</p>
+  <p class="lead">Profilbild, Passwort und Zwei-Faktor für <strong>{{ request.user.username }}</strong>.</p>
 </header>
 <section class="content-flow narrow">
   {% if membership %}
     <p class="notice">{{ membership.station.name }} · {{ membership.get_role_display }}</p>
   {% elif registration %}
-    <p class="notice">Registrierung: {{ registration.get_status_display }}{% if registration.preferred_station %} · Wunschwache {{ registration.preferred_station.name }}{% endif %}</p>
+    <p class="notice">Registrierung: {{ registration.get_status_display }}{% if registration.preferred_station %} · Wunschwache {{ registration.preferred_station.name }}{% endif %}. Freigabe erfolgt durch den Master-Admin.</p>
   {% else %}
-    <p class="notice">Noch keiner Wache zugeordnet. Ein Admin muss den Zugang freigeben.</p>
+    <p class="notice">Noch keiner Wache zugeordnet. Der Master-Admin muss den Zugang freigeben.</p>
   {% endif %}
+
+  <h2>Profilbild</h2>
+  <div class="avatar-panel">
+    {% if profile.has_avatar %}
+      <img class="avatar-preview" src="{% url 'avatar_image' request.user.pk %}" alt="Dein Profilbild" width="96" height="96">
+    {% else %}
+      <span class="avatar-fallback" aria-hidden="true">{{ initials }}</span>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" class="form-card">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="avatar">
+      {% include "core/form_errors.html" with form=avatar_form %}
+      {{ avatar_form.as_p }}
+      <button class="button primary" type="submit">Profilbild speichern</button>
+    </form>
+  </div>
 
   <h2>Profil</h2>
   <form method="post" class="form-card">
@@ -35,6 +51,7 @@
 
   <nav class="more-list" aria-label="Konto-Links">
     {% if mfa_enabled %}<a href="{% url 'mfa_setup' %}"><strong>Zwei-Faktor / Passkeys</strong><span>Authenticator und Passkeys verwalten</span></a>{% endif %}
+    {% if membership and membership.station.chat_enabled %}<a href="{% url 'chat' %}"><strong>Wachenchat</strong><span>Kurze Nachrichten an die Kollegen</span></a>{% endif %}
     {% if web_push_enabled and membership %}<a href="{% url 'push_settings' %}"><strong>Push-Benachrichtigungen</strong><span>Dringende Übergaben</span></a>{% endif %}
     {% if membership and membership.station.birthdays_enabled %}<a href="{% url 'birthday_settings' %}"><strong>Geburtstag</strong><span>Freiwillige Anzeige</span></a>{% endif %}
   </nav>

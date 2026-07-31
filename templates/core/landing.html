@@ -25,7 +25,7 @@
 
 <section class="landing-scope" aria-labelledby="landing-access">
   <h2 id="landing-access">Zugang nach Login und Freigabe</h2>
-  <p class="lead">Registrierung ist möglich; Fachfunktionen öffnen sich erst mit aktiver Mitgliedschaft.</p>
-  <p><a class="button primary" href="{% url 'login' %}">Zur Anmeldung</a>{% if registration_enabled %} <a class="button secondary" href="{% url 'register' %}">Konto anlegen</a>{% endif %}</p>
+  <p class="lead">Der Master-Admin legt Nutzer an und gibt den Wachenzugang frei. Danach: Passwort, Zwei-Faktor und Profilbild unter Mein Konto; kurze Nachrichten im Wachenchat.</p>
+  <p><a class="button primary" href="{% url 'login' %}">Zur Anmeldung</a>{% if registration_enabled %} <a class="button secondary" href="{% url 'register' %}">Konto anfragen</a>{% endif %}</p>
 </section>
 {% endblock %}

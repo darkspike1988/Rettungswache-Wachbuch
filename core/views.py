@@ -29,6 +29,7 @@ from .forms import (
     HandoverStatusForm,
     MembershipAssignmentForm,
     MembershipEditForm,
+    MasterAdminCreateUserForm,
     StationSettingsForm,
     StationTaskForm,
     TotpConfirmForm,
@@ -748,6 +749,44 @@ def team(request):
 
 @membership_required({Membership.Role.ADMIN})
 @require_http_methods(["GET", "POST"])
+def team_user_create(request):
+    """Master-Admin creates a user account and grants station membership."""
+    form = MasterAdminCreateUserForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        station = request.membership.station
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=form.cleaned_data["username"],
+                    password=form.cleaned_data["password1"],
+                    first_name=form.cleaned_data.get("first_name") or "",
+                    last_name=form.cleaned_data.get("last_name") or "",
+                )
+                from .models import UserProfile
+
+                UserProfile.for_user(user)
+                membership = Membership.objects.create(
+                    user=user,
+                    station=station,
+                    role=form.cleaned_data["role"],
+                )
+                audit(request.user, station, "membership.user_created", membership, {
+                    "fields": ["user", "role", "is_active"],
+                })
+        except IntegrityError:
+            form.add_error("username", "Dieses Konto konnte nicht angelegt werden.")
+        else:
+            messages.success(
+                request,
+                f"Benutzer {user.username} angelegt und freigegeben. "
+                "Bitte Startpasswort persönlich übergeben.",
+            )
+            return redirect("team")
+    return render(request, "core/team_user_create.html", {"form": form})
+
+
+@membership_required({Membership.Role.ADMIN})
+@require_http_methods(["GET", "POST"])
 def team_create(request):
     form = MembershipAssignmentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -817,7 +856,7 @@ def membership_update(request, pk):
             and (new_role != Membership.Role.ADMIN or not new_active)
         )
         if membership.user_id == request.user.id and removes_admin:
-            form.add_error("role", "Die eigene Adminrolle kann hier nicht entzogen werden.")
+            form.add_error("role", "Die eigene Master-Admin-Rolle kann hier nicht entzogen werden.")
         with transaction.atomic():
             if not form.errors:
                 membership = Membership.objects.select_for_update().get(pk=membership.pk)

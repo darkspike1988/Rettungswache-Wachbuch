@@ -4,7 +4,7 @@
 <section class="access-panel">
   <p class="context-line">Geschützter Bereich</p>
   <h1>Zugang wartet auf Freigabe</h1>
-  <p class="lead">Angemeldet als <strong>{{ request.user.username }}</strong>. Ein Administrator muss das Konto einer Rettungswache zuordnen.</p>
+  <p class="lead">Angemeldet als <strong>{{ request.user.username }}</strong>. Der Master-Admin muss das Konto einer Rettungswache zuordnen.</p>
   <p><a class="button secondary" href="{% url 'account_home' %}">Zum persönlichen Bereich</a></p>
 </section>
 {% endblock %}

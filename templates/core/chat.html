@@ -2,24 +2,33 @@
 {% block title %}Wachenchat | {{ app_name }}{% endblock %}
 {% block content %}
 <header class="page-heading narrow">
-  <p class="context-line">Interne Abstimmung</p>
+  <p class="context-line">Kollegen</p>
   <h1>Wachenchat</h1>
-  <p class="lead">Kurze betriebliche Hinweise für die Wache. Keine Patienten-, Einsatz- oder Alarmierungsdaten.</p>
+  <p class="lead">Kurze Nachrichten an die Kollegen – leicht und stationsbezogen. Keine Patienten-, Einsatz- oder Alarmierungsdaten.</p>
 </header>
 <section class="chat-thread" aria-live="polite">
-  {% for item in thread %}
-    <article class="chat-bubble">
-      <header>
-        <strong>{{ item.author.first_name|default:item.author.username }}</strong>
-        <time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:"d.m.Y H:i" }}</time>
-      </header>
-      <p>{{ item.body|linebreaksbr }}</p>
-      {% if can_moderate %}
-        <form method="post" action="{% url 'chat_hide' item.pk %}">{% csrf_token %}<button class="button secondary" type="submit">Ausblenden</button></form>
-      {% endif %}
+  {% for item in feed %}
+    <article class="chat-bubble {% if item.is_own %}is-own{% endif %}">
+      <div class="chat-avatar" aria-hidden="true">
+        {% if item.has_avatar %}
+          <img src="{% url 'avatar_image' item.message.author_id %}" alt="" width="40" height="40">
+        {% else %}
+          <span>{{ item.initials }}</span>
+        {% endif %}
+      </div>
+      <div class="chat-body">
+        <header>
+          <strong>{{ item.message.author.first_name|default:item.message.author.username }}</strong>
+          <time datetime="{{ item.message.created_at|date:'c' }}">{{ item.message.created_at|date:"d.m. H:i" }}</time>
+        </header>
+        <p>{{ item.message.body|linebreaksbr }}</p>
+        {% if can_moderate %}
+          <form method="post" action="{% url 'chat_hide' item.message.pk %}">{% csrf_token %}<button class="button secondary" type="submit">Ausblenden</button></form>
+        {% endif %}
+      </div>
     </article>
   {% empty %}
-    <p class="empty-state">Noch keine Nachrichten.</p>
+    <p class="empty-state">Noch keine Nachrichten. Schreib den Kollegen einen kurzen Hinweis.</p>
   {% endfor %}
 </section>
 <form method="post" class="form-card narrow chat-compose">

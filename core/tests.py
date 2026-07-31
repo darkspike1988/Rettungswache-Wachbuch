@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.6.1")
+        self.assertEqual(response.json()["version"], "0.7.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.6.1")
+        self.assertContains(response, "Version 0.7.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -119,7 +119,8 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "Wachbuch")
         self.assertContains(response, reverse("login"))
         self.assertContains(response, "Zugang nach Login und Freigabe")
-        self.assertContains(response, reverse("register"))
+        self.assertContains(response, "Master-Admin")
+        self.assertNotContains(response, reverse("register"))
         self.assertNotContains(response, "Tailscale")
 
     def test_authenticated_member_is_routed_from_landing_to_dashboard(self):
@@ -367,12 +368,15 @@ class MinimalInterfaceTests(PilotTestCase):
             reverse("tasks_week"),
             reverse("more"),
             reverse("team"),
+            reverse("team_user_create"),
             reverse("team_create"),
             reverse("membership_update", args=[self.membership.pk]),
             reverse("station_settings"),
             reverse("audit_log"),
             reverse("tasks_manage"),
             reverse("task_create"),
+            reverse("account_home"),
+            reverse("chat"),
         ]
         for url in urls:
             with self.subTest(url=url):
@@ -793,7 +797,7 @@ class TeamAndAuditTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         self.membership.refresh_from_db()
         self.assertEqual(self.membership.role, Membership.Role.ADMIN)
-        self.assertContains(response, "eigene Adminrolle")
+        self.assertContains(response, "eigene Master-Admin-Rolle")
 
     def test_django_admin_cannot_bypass_handover_audit(self):
         self.user.is_staff = True
@@ -1053,6 +1057,7 @@ class PasskeyPushCalendarTests(PilotTestCase):
 
 
 class RegistrationAccountChatTests(PilotTestCase):
+    @override_settings(REGISTRATION_ENABLED=True)
     def test_self_registration_waits_for_admin_approval(self):
         self.client.logout()
         response = self.client.post(reverse("register"), {
@@ -1084,6 +1089,26 @@ class RegistrationAccountChatTests(PilotTestCase):
         self.client.force_login(user)
         self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
 
+    def test_master_admin_creates_user_with_membership(self):
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        response = self.client.post(reverse("team_user_create"), {
+            "username": "kollege@example.org",
+            "first_name": "Kim",
+            "last_name": "Kollege",
+            "password1": "StrongPass-12345",
+            "password2": "StrongPass-12345",
+            "role": Membership.Role.MEMBER,
+        })
+        self.assertRedirects(response, reverse("team"))
+        created = User.objects.get(username="kollege@example.org")
+        membership = Membership.objects.get(user=created, station=self.station)
+        self.assertTrue(membership.is_active)
+        self.assertEqual(membership.role, Membership.Role.MEMBER)
+        self.assertTrue(AuditEvent.objects.filter(action="membership.user_created").exists())
+        self.client.force_login(created)
+        self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
+
     def test_account_home_updates_profile(self):
         response = self.client.post(reverse("account_home"), {
             "action": "profile",
@@ -1095,6 +1120,28 @@ class RegistrationAccountChatTests(PilotTestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.last_name, "Muster")
 
+    def test_account_avatar_upload_and_serve(self):
+        from io import BytesIO
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+
+        from .models import UserProfile
+
+        png = BytesIO()
+        Image.new("RGB", (80, 80), color=(30, 90, 50)).save(png, format="PNG")
+        upload = SimpleUploadedFile("avatar.png", png.getvalue(), content_type="image/png")
+        response = self.client.post(reverse("account_home"), {
+            "action": "avatar",
+            "avatar-avatar": upload,
+        })
+        self.assertRedirects(response, reverse("account_home"))
+        profile = UserProfile.objects.get(user=self.user)
+        self.assertTrue(profile.has_avatar)
+        image = self.client.get(reverse("avatar_image", args=[self.user.pk]))
+        self.assertEqual(image.status_code, 200)
+        self.assertEqual(image["Content-Type"], "image/jpeg")
+
     def test_chat_message_roundtrip_and_hide(self):
         response = self.client.post(reverse("chat"), {"body": "Bitte Lager prüfen"})
         self.assertRedirects(response, reverse("chat"))
@@ -1104,11 +1151,12 @@ class RegistrationAccountChatTests(PilotTestCase):
         self.assertEqual(message.body, "Bitte Lager prüfen")
         page = self.client.get(reverse("chat"))
         self.assertContains(page, "Bitte Lager prüfen")
+        self.assertEqual(len(page.context["feed"]), 1)
         self.membership.role = Membership.Role.SHIFT_LEAD
         self.membership.save(update_fields=["role"])
         hide = self.client.post(reverse("chat_hide", args=[message.pk]))
         self.assertRedirects(hide, reverse("chat"))
-        self.assertFalse(self.client.get(reverse("chat")).context["thread"])
+        self.assertFalse(self.client.get(reverse("chat")).context["feed"])
 
 
 class HolidayCalendarTests(PilotTestCase):

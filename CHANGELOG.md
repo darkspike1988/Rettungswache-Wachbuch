@@ -5,6 +5,14 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.7.0 - 2026-07-31
+
+- Master-Admin legt Nutzer an und gibt Wachenzugaenge frei (`/team/anlegen/`)
+- oeffentliche Selbstregistrierung standardmaessig aus (optional per Env)
+- persoenlicher Bereich: Profilbild, Passwort, Zwei-Faktor, Link zum Wachenchat
+- Wachenchat als kurze Kollegennachrichten mit Avatar/Initialen (Facebook light)
+- Rolle `admin` heisst sichtbar **Master-Admin**
+
 ## 0.6.1 - 2026-07-31
 
 - gesetzliche Feiertage NRW im fortlaufenden Wachenkalender und ICS-Feed

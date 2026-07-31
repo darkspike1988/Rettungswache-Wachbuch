@@ -25,6 +25,7 @@ urlpatterns = [
     path("anmelden/", PasswordLoginView.as_view(), name="login"),
     path("registrieren/", community_views.register, name="register"),
     path("konto/", community_views.account_home, name="account_home"),
+    path("konto/avatar/<int:user_id>/", community_views.avatar_image, name="avatar_image"),
     path("anmelden/mfa/", mfa_verify, name="mfa_verify"),
     path("anmelden/passkey/optionen/", account_views.passkey_login_options, name="passkey_login_options"),
     path("anmelden/passkey/pruefen/", account_views.passkey_login_verify, name="passkey_login_verify"),

@@ -45,7 +45,7 @@ class Membership(models.Model):
         MEMBER = "member", "Mitglied"
         SHIFT_LEAD = "shift_lead", "Schichtleitung"
         CASHIER = "cashier", "Kassenwart"
-        ADMIN = "admin", "Admin"
+        ADMIN = "admin", "Master-Admin"
         AUDITOR = "auditor", "Auditor"
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="station_memberships")
@@ -449,7 +449,7 @@ class CalendarFeedToken(models.Model):
 
 
 class RegistrationRequest(models.Model):
-    """Self-service signup waiting for station admin approval."""
+    """Optional self-service signup waiting for Master-Admin approval."""
 
     class Status(models.TextChoices):
         PENDING = "pending", "Wartend"
@@ -483,8 +483,30 @@ class RegistrationRequest(models.Model):
         return f"Registrierung {self.user_id} ({self.status})"
 
 
+class UserProfile(models.Model):
+    """Personal extras for /konto/. Avatar bytes only – no general uploads."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    avatar = models.BinaryField(null=True, blank=True, editable=False)
+    avatar_content_type = models.CharField(max_length=32, blank=True, default="")
+    avatar_updated_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Profil {self.user_id}"
+
+    @property
+    def has_avatar(self):
+        return bool(self.avatar)
+
+    @classmethod
+    def for_user(cls, user):
+        profile, _ = cls.objects.get_or_create(user=user)
+        return profile
+
+
 class ChatMessage(models.Model):
-    """Station-scoped operational chat. No uploads, no patient content."""
+    """Station-scoped short colleague messages. No attachments, no patient content."""
 
     station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="chat_messages")
     author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="chat_messages")

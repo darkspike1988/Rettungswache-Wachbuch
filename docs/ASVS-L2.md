@@ -74,7 +74,7 @@ Legende: **OK** umgesetzt / **Teil** teilweise / **Offen** geplant / **n/a** nic
 
 | Kontrolle | Status | Hinweis |
 | --- | --- | --- |
-| Keine User-Uploads | OK | bewusst ausgeschlossen |
+| Keine allgemeinen User-Uploads | OK | nur Profilavatar (JPEG in DB, max. 2 MB Roh, 192px) |
 | Feed-SSRF-Haertung | OK | Allowlist, keine Redirects |
 
 ## V13 API / PWA

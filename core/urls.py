@@ -35,6 +35,7 @@ urlpatterns = [
     path("chat/<int:pk>/ausblenden/", community_views.chat_hide, name="chat_hide"),
     path("mehr/", views.more, name="more"),
     path("team/", views.team, name="team"),
+    path("team/anlegen/", views.team_user_create, name="team_user_create"),
     path("team/freigeben/", views.team_create, name="team_create"),
     path("team/registrierung/<int:pk>/ablehnen/", community_views.registration_reject, name="registration_reject"),
     path("team/<int:pk>/", views.membership_update, name="membership_update"),

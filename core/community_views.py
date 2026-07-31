@@ -9,20 +9,21 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db import transaction
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
-from .forms import ChatMessageForm, ProfileForm, RegistrationForm
-from .models import ChatMessage, Membership, RegistrationRequest
+from .avatars import initials_for
+from .forms import AvatarForm, ChatMessageForm, ProfileForm, RegistrationForm
+from .models import ChatMessage, Membership, RegistrationRequest, UserProfile
 from .services import audit
 
 
 def registration_enabled():
-    return bool(getattr(settings, "REGISTRATION_ENABLED", True))
+    return bool(getattr(settings, "REGISTRATION_ENABLED", False))
 
 
 def _client_ip(request):
@@ -42,6 +43,18 @@ def _registration_rate_limited(request):
     return False
 
 
+def _can_view_avatar(viewer, target_user):
+    if viewer.id == target_user.id:
+        return True
+    viewer_membership = get_membership(viewer)
+    target_membership = get_membership(target_user)
+    return bool(
+        viewer_membership
+        and target_membership
+        and viewer_membership.station_id == target_membership.station_id
+    )
+
+
 @require_http_methods(["GET", "POST"])
 def register(request):
     if not registration_enabled():
@@ -59,6 +72,7 @@ def register(request):
                 password=form.cleaned_data["password1"],
                 first_name=form.cleaned_data.get("first_name") or "",
             )
+            UserProfile.for_user(user)
             RegistrationRequest.objects.create(
                 user=user,
                 preferred_station=form.cleaned_data.get("preferred_station"),
@@ -69,7 +83,7 @@ def register(request):
             })
         messages.success(
             request,
-            "Konto angelegt. Nach der Anmeldung freigibt ein Administrator den Wachenzugang.",
+            "Konto angelegt. Nach der Anmeldung freigibt der Master-Admin den Wachenzugang.",
         )
         return redirect("login")
     return render(request, "registration/register.html", {"form": form})
@@ -81,7 +95,9 @@ def account_home(request):
         return redirect(f"{reverse('login')}?next={reverse('account_home')}")
     membership = get_membership(request.user)
     registration = RegistrationRequest.objects.filter(user=request.user).first()
+    profile = UserProfile.for_user(request.user)
     action = request.POST.get("action") if request.method == "POST" else None
+    avatar_form = AvatarForm(prefix="avatar")
     if action == "profile":
         profile_form = ProfileForm(request.POST, instance=request.user, prefix="profile")
         password_form = PasswordChangeForm(request.user, prefix="password")
@@ -97,15 +113,57 @@ def account_home(request):
             update_session_auth_hash(request, user)
             messages.success(request, "Passwort wurde geändert.")
             return redirect("account_home")
+    elif action == "avatar":
+        profile_form = ProfileForm(instance=request.user, prefix="profile")
+        password_form = PasswordChangeForm(request.user, prefix="password")
+        avatar_form = AvatarForm(request.POST, request.FILES, prefix="avatar")
+        if avatar_form.is_valid():
+            if avatar_form.cleaned_data.get("clear_avatar"):
+                profile.avatar = None
+                profile.avatar_content_type = ""
+                profile.avatar_updated_at = None
+                profile.save(update_fields=["avatar", "avatar_content_type", "avatar_updated_at", "updated_at"])
+                audit(request.user, membership.station if membership else None, "profile.avatar_cleared", request.user, {
+                    "fields": ["avatar"],
+                })
+                messages.success(request, "Profilbild wurde entfernt.")
+            else:
+                profile.avatar = avatar_form.cleaned_data["avatar_bytes"]
+                profile.avatar_content_type = avatar_form.cleaned_data["avatar_content_type"]
+                profile.avatar_updated_at = timezone.now()
+                profile.save(update_fields=["avatar", "avatar_content_type", "avatar_updated_at", "updated_at"])
+                audit(request.user, membership.station if membership else None, "profile.avatar_updated", request.user, {
+                    "fields": ["avatar"],
+                })
+                messages.success(request, "Profilbild wurde gespeichert.")
+            return redirect("account_home")
     else:
         profile_form = ProfileForm(instance=request.user, prefix="profile")
         password_form = PasswordChangeForm(request.user, prefix="password")
     return render(request, "core/account.html", {
         "profile_form": profile_form,
         "password_form": password_form,
+        "avatar_form": avatar_form,
+        "profile": profile,
+        "initials": initials_for(request.user),
         "membership": membership,
         "registration": registration,
     })
+
+
+@require_GET
+def avatar_image(request, user_id):
+    if not request.user.is_authenticated:
+        raise Http404
+    target = get_object_or_404(User, pk=user_id, is_active=True)
+    if not _can_view_avatar(request.user, target):
+        raise Http404
+    profile = UserProfile.objects.filter(user=target).first()
+    if not profile or not profile.avatar:
+        raise Http404
+    response = HttpResponse(bytes(profile.avatar), content_type=profile.avatar_content_type or "image/jpeg")
+    response["Cache-Control"] = "private, max-age=300"
+    return response
 
 
 @membership_required(CONTENT_ROLES)
@@ -125,12 +183,27 @@ def chat(request):
         })
         messages.success(request, "Nachricht gesendet.")
         return redirect("chat")
-    page = ChatMessage.objects.filter(station=station, is_hidden=False).select_related("author")[:80]
-    # chronological for display
+    page = (
+        ChatMessage.objects.filter(station=station, is_hidden=False)
+        .select_related("author")[:80]
+    )
     thread = list(reversed(list(page)))
+    profile_map = {
+        profile.user_id: profile
+        for profile in UserProfile.objects.filter(user_id__in={item.author_id for item in thread})
+    }
+    feed = []
+    for item in thread:
+        profile = profile_map.get(item.author_id)
+        feed.append({
+            "message": item,
+            "initials": initials_for(item.author),
+            "has_avatar": bool(profile and profile.has_avatar),
+            "is_own": item.author_id == request.user.id,
+        })
     return render(request, "core/chat.html", {
         "form": form,
-        "thread": thread,
+        "feed": feed,
         "can_moderate": request.membership.role in {
             Membership.Role.SHIFT_LEAD,
             Membership.Role.ADMIN,
