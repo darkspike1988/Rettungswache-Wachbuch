@@ -51,9 +51,13 @@ Die globale Navigation besitzt vier Punkte:
 - `Kalender`: chronologische Agenda
 - `Mehr`: aktivierte Zusatzmodule und rollenabhaengige Verwaltung
 
-Kalendertermine, Kassenbuchungen, Geburtstagsfreigaben und Teamfreigaben werden
-jeweils auf einer eigenen Seite erfasst. Region zeigt nie Nachrichten und
-Verkehr gleichzeitig, sondern einen ausgewaehlten Inhaltstyp.
+Kalendertermine, Tagesaufgaben, Kassenbuchungen, Geburtstagsfreigaben und
+Teamfreigaben werden jeweils auf einer eigenen Seite erfasst. Region zeigt nie
+Nachrichten und Verkehr gleichzeitig, sondern einen ausgewaehlten Inhaltstyp.
+
+Tagesaufgaben folgen der Wandtafel: gruene taegliche Routine, gelbe
+Wochentagsrotation, blaue zusaetzliche Punkte. Details in
+[`WALL-BLOCKS.md`](WALL-BLOCKS.md).
 
 ## Installierbare App (PWA)
 
