@@ -1,7 +1,10 @@
+from datetime import timedelta
+
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .models import AuditEvent, HandoverEntry, HandoverRevision
+from .models import AuditEvent, BirthdayPreference, FeedItem, HandoverEntry, HandoverRevision
 
 
 def audit(actor, station, action, obj, metadata=None):
@@ -13,6 +16,16 @@ def audit(actor, station, action, obj, metadata=None):
         object_id=str(obj.pk),
         metadata=metadata or {},
     )
+
+
+def structure_changes(before, after):
+    """Build a safe before/after map for structured fields (no free text)."""
+    changes = {}
+    for key, old in before.items():
+        new = after.get(key)
+        if old != new:
+            changes[key] = {"from": old, "to": new}
+    return changes
 
 
 def handover_snapshot(handover):
@@ -37,9 +50,9 @@ def create_handover(form, membership):
         snapshot=handover_snapshot(handover),
         changed_by=membership.user,
     )
-    audit(membership.user, membership.station, "handover.created", handover, {"fields": [
-        "category", "priority", "title", "details"
-    ]})
+    audit(membership.user, membership.station, "handover.created", handover, {
+        "fields": ["category", "priority", "title", "details"],
+    })
     return handover
 
 
@@ -48,6 +61,7 @@ def change_handover_status(handover, status, membership):
     locked = HandoverEntry.objects.select_for_update().get(pk=handover.pk)
     if locked.status == status:
         return locked
+    before = {"status": locked.status}
     locked.status = status
     locked.version += 1
     locked.completed_at = timezone.now() if status == HandoverEntry.Status.DONE else None
@@ -59,6 +73,108 @@ def change_handover_status(handover, status, membership):
         changed_by=membership.user,
     )
     audit(membership.user, membership.station, "handover.status_changed", locked, {
-        "fields": ["status"], "version": locked.version
+        "fields": ["status"],
+        "version": locked.version,
+        "changes": structure_changes(before, {"status": locked.status}),
     })
     return locked
+
+
+@transaction.atomic
+def update_handover_content(handover, cleaned_data, membership):
+    """Controlled content correction: new revision, audit without free-text copies."""
+    locked = HandoverEntry.objects.select_for_update().get(pk=handover.pk)
+    before = {
+        "category": locked.category,
+        "priority": locked.priority,
+    }
+    field_names = []
+    for field in ("category", "priority", "title", "details"):
+        if field in cleaned_data and getattr(locked, field) != cleaned_data[field]:
+            setattr(locked, field, cleaned_data[field])
+            field_names.append(field)
+    if not field_names:
+        return locked
+    locked.version += 1
+    locked.save(update_fields=[*field_names, "version", "updated_at"])
+    HandoverRevision.objects.create(
+        handover=locked,
+        version=locked.version,
+        snapshot=handover_snapshot(locked),
+        changed_by=membership.user,
+    )
+    after = {
+        "category": locked.category,
+        "priority": locked.priority,
+    }
+    audit(membership.user, membership.station, "handover.content_updated", locked, {
+        "fields": field_names,
+        "version": locked.version,
+        "changes": structure_changes(before, after),
+    })
+    return locked
+
+
+@transaction.atomic
+def clear_birthday_on_exit(user, station, actor):
+    """Withdraw birthday visibility and clear day/month when membership ends."""
+    preferences = list(
+        BirthdayPreference.objects.select_for_update().filter(user=user, station=station)
+    )
+    cleared = 0
+    for preference in preferences:
+        if not preference.is_visible and preference.day is None and preference.month is None:
+            continue
+        before = {
+            "is_visible": preference.is_visible,
+            "had_date": bool(preference.day and preference.month),
+        }
+        preference.is_visible = False
+        preference.day = None
+        preference.month = None
+        preference.consented_at = None
+        preference.withdrawn_at = timezone.now()
+        preference.save(update_fields=[
+            "is_visible", "day", "month", "consented_at", "withdrawn_at", "updated_at",
+        ])
+        audit(actor, station, "birthday.withdrawn_on_exit", preference, {
+            "fields": ["is_visible", "day", "month"],
+            "changes": structure_changes(before, {"is_visible": False, "had_date": False}),
+        })
+        cleared += 1
+    return cleared
+
+
+def apply_feed_retention(now=None):
+    """Delete feed items not seen within RETENTION_FEED_DAYS. Returns deleted count."""
+    days = int(getattr(settings, "RETENTION_FEED_DAYS", 0) or 0)
+    if days <= 0:
+        return 0
+    now = now or timezone.now()
+    cutoff = now - timedelta(days=days)
+    deleted, _ = FeedItem.objects.filter(last_seen_at__lt=cutoff).delete()
+    return deleted
+
+
+def apply_audit_retention(now=None):
+    """
+    Optionally purge old audit rows when RETENTION_AUDIT_DAYS > 0.
+
+    Default is 0 (disabled): AuditEvent.delete() is blocked for normal use;
+    bulk retention must be intentional and run with owner DB rights.
+    """
+    days = int(getattr(settings, "RETENTION_AUDIT_DAYS", 0) or 0)
+    if days <= 0:
+        return 0
+    now = now or timezone.now()
+    cutoff = now - timedelta(days=days)
+    # QuerySet.delete bypasses model.delete(); intended for owner-run retention only.
+    deleted, _ = AuditEvent.objects.filter(created_at__lt=cutoff).delete()
+    return deleted
+
+
+def apply_retention(now=None):
+    return {
+        "feed_items": apply_feed_retention(now=now),
+        "audit_events": apply_audit_retention(now=now),
+    }

@@ -23,6 +23,7 @@ from .models import (
     Station,
     StationTask,
     StationTaskCompletion,
+    TotpDevice,
 )
 
 
@@ -93,7 +94,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.3.0")
+        self.assertEqual(response.json()["version"], "0.4.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
 
@@ -104,7 +105,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.3.0")
+        self.assertContains(response, "Version 0.4.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -807,6 +808,170 @@ class TeamAndAuditTests(PilotTestCase):
         self.assertEqual(response.status_code, 403)
         handover.refresh_from_db()
         self.assertEqual(handover.title, "Nicht direkt aendern")
+
+
+class RetentionAuditExitAndMfaTests(PilotTestCase):
+    def test_deactivating_membership_withdraws_birthday(self):
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        member = User.objects.create_user("leaving@example.org", first_name="Lea")
+        target = Membership.objects.create(
+            user=member,
+            station=self.station,
+            role=Membership.Role.MEMBER,
+        )
+        BirthdayPreference.objects.create(
+            user=member,
+            station=self.station,
+            day=12,
+            month=5,
+            is_visible=True,
+            consented_at=timezone.now(),
+        )
+        response = self.client.post(reverse("membership_update", args=[target.pk]), {
+            "role": Membership.Role.MEMBER,
+        })
+        self.assertRedirects(response, reverse("team"))
+        pref = BirthdayPreference.objects.get(user=member, station=self.station)
+        self.assertFalse(pref.is_visible)
+        self.assertIsNone(pref.day)
+        self.assertTrue(AuditEvent.objects.filter(action="birthday.withdrawn_on_exit").exists())
+        event = AuditEvent.objects.filter(action="membership.updated").latest("created_at")
+        self.assertEqual(event.metadata["changes"]["is_active"]["from"], True)
+        self.assertEqual(event.metadata["changes"]["is_active"]["to"], False)
+
+    def test_handover_content_edit_creates_revision_without_free_text_audit(self):
+        self.membership.role = Membership.Role.SHIFT_LEAD
+        self.membership.save(update_fields=["role"])
+        handover = HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.STATION,
+            title="Alter Titel",
+            details="Alter Text",
+            author=self.user,
+        )
+        HandoverRevision.objects.create(
+            handover=handover,
+            version=1,
+            snapshot={"category": "station", "priority": "normal", "status": "open",
+                      "title": "Alter Titel", "details": "Alter Text"},
+            changed_by=self.user,
+        )
+        response = self.client.post(reverse("handover_edit", args=[handover.pk]), {
+            "category": HandoverEntry.Category.TASK,
+            "priority": HandoverEntry.Priority.IMPORTANT,
+            "title": "Neuer Titel",
+            "details": "Neuer geheimer Freitext",
+        })
+        self.assertRedirects(response, reverse("handover_detail", args=[handover.pk]))
+        handover.refresh_from_db()
+        self.assertEqual(handover.version, 2)
+        self.assertEqual(handover.title, "Neuer Titel")
+        self.assertEqual(handover.revisions.count(), 2)
+        event = AuditEvent.objects.get(action="handover.content_updated")
+        self.assertIn("category", event.metadata["changes"])
+        self.assertNotIn("Neuer geheimer Freitext", str(event.metadata))
+        self.assertNotIn("Alter Text", str(event.metadata))
+
+    @override_settings(RETENTION_FEED_DAYS=14, RETENTION_AUDIT_DAYS=0)
+    def test_feed_retention_removes_stale_items(self):
+        source = FeedSource.objects.create(
+            name="Retention RSS",
+            url="https://example.org/rss.xml",
+            kind=FeedSource.Kind.NEWS_RSS,
+            locality="Test",
+            attribution="Test",
+        )
+        stale = FeedItem.objects.create(
+            source=source,
+            external_id="old",
+            title="Alt",
+            last_seen_at=timezone.now() - timedelta(days=30),
+        )
+        fresh = FeedItem.objects.create(
+            source=source,
+            external_id="new",
+            title="Neu",
+            last_seen_at=timezone.now(),
+        )
+        from django.core.management import call_command
+        from io import StringIO
+
+        out = StringIO()
+        call_command("apply_retention", stdout=out)
+        self.assertFalse(FeedItem.objects.filter(pk=stale.pk).exists())
+        self.assertTrue(FeedItem.objects.filter(pk=fresh.pk).exists())
+
+    def test_feed_upsert_keeps_first_imported_at(self):
+        source = FeedSource.objects.create(
+            name="Upsert RSS",
+            url="https://example.org/news.xml",
+            kind=FeedSource.Kind.NEWS_RSS,
+            locality="Test",
+            attribution="Test",
+        )
+        first = timezone.now() - timedelta(days=2)
+        item = FeedItem.objects.create(
+            source=source,
+            external_id="same",
+            title="Eins",
+            first_imported_at=first,
+            last_seen_at=first,
+        )
+        from .feed_sync import upsert_feed_item
+
+        upsert_feed_item(source, "same", title="Zwei", summary="", url="")
+        item.refresh_from_db()
+        self.assertEqual(item.title, "Zwei")
+        self.assertEqual(item.first_imported_at, first)
+        self.assertGreater(item.last_seen_at, first)
+
+    def test_station_settings_audit_contains_structure_diff(self):
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        response = self.client.post(reverse("station_settings"), {
+            "name": "Wache Diff",
+            "calendar_enabled": "on",
+            "coffee_enabled": "on",
+            "tasks_enabled": "on",
+        })
+        self.assertRedirects(response, reverse("station_settings"))
+        event = AuditEvent.objects.filter(action="station.settings_updated").latest("created_at")
+        self.assertIn("name", event.metadata["changes"])
+        self.assertEqual(event.metadata["changes"]["name"]["to"], "Wache Diff")
+
+    def test_mfa_login_requires_totp_code(self):
+        import pyotp
+
+        password = "correct-password-1"
+        user = User.objects.create_user("mfa@example.org", password=password)
+        Membership.objects.create(
+            user=user,
+            station=self.station,
+            role=Membership.Role.MEMBER,
+        )
+        secret = pyotp.random_base32()
+        TotpDevice.objects.create(
+            user=user,
+            secret=secret,
+            is_confirmed=True,
+            confirmed_at=timezone.now(),
+        )
+        self.client.logout()
+        response = self.client.post(reverse("login"), {
+            "username": "mfa@example.org",
+            "password": password,
+        })
+        self.assertRedirects(response, reverse("mfa_verify"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+        bad = self.client.post(reverse("mfa_verify"), {"token": "000000"})
+        self.assertEqual(bad.status_code, 200)
+        self.assertContains(bad, "ungültig")
+        good = self.client.post(reverse("mfa_verify"), {
+            "token": pyotp.TOTP(secret).now(),
+        })
+        self.assertEqual(good.status_code, 302)
+        self.assertIn("_auth_user_id", self.client.session)
 
 
 class MigrationDefaultTests(TestCase):

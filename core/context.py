@@ -27,4 +27,5 @@ def application_metadata(request):
         "app_name": settings.APP_NAME,
         "source_url": settings.SOURCE_URL,
         "app_version": settings.APP_VERSION,
+        "mfa_enabled": bool(getattr(settings, "MFA_ENABLED", True)),
     }

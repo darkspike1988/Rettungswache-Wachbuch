@@ -5,7 +5,8 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
+from django.utils import timezone
 
 
 class Station(models.Model):
@@ -360,17 +361,32 @@ class FeedItem(models.Model):
     published_at = models.DateTimeField(null=True, blank=True)
     starts_on = models.DateField(null=True, blank=True)
     ends_on = models.DateField(null=True, blank=True)
-    imported_at = models.DateTimeField(auto_now=True)
+    first_imported_at = models.DateTimeField(default=timezone.now)
+    last_seen_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["source", "external_id"], name="unique_feed_item")
         ]
-        ordering = ["-published_at", "-imported_at"]
+        ordering = [F("published_at").desc(nulls_last=True), "-last_seen_at"]
         indexes = [models.Index(fields=["source", "-published_at"])]
 
     def __str__(self):
         return self.title
+
+
+class TotpDevice(models.Model):
+    """Optional TOTP second factor for a local account (RFC 6238)."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp_device")
+    secret = models.CharField(max_length=64)
+    is_confirmed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        state = "aktiv" if self.is_confirmed else "unbestätigt"
+        return f"TOTP {self.user_id} ({state})"
 
 
 class AuditEvent(models.Model):

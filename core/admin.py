@@ -106,7 +106,7 @@ class FeedSourceAdmin(admin.ModelAdmin):
 
 @admin.register(FeedItem)
 class FeedItemAdmin(ReadOnlyAdmin):
-    list_display = ("title", "source", "published_at", "imported_at")
+    list_display = ("title", "source", "published_at", "first_imported_at", "last_seen_at")
     list_filter = ("source",)
 
 

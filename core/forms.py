@@ -19,10 +19,35 @@ class HandoverForm(forms.ModelForm):
         widgets = {"details": forms.Textarea(attrs={"rows": 6})}
 
 
+class HandoverEditForm(forms.ModelForm):
+    class Meta:
+        model = HandoverEntry
+        fields = ["category", "priority", "title", "details"]
+        widgets = {"details": forms.Textarea(attrs={"rows": 6})}
+        labels = {
+            "category": "Kategorie",
+            "priority": "Priorität",
+            "title": "Titel",
+            "details": "Details",
+        }
+
+
 class HandoverStatusForm(forms.ModelForm):
     class Meta:
         model = HandoverEntry
         fields = ["status"]
+
+
+class TotpConfirmForm(forms.Form):
+    token = forms.CharField(
+        max_length=8,
+        label="Einmalcode",
+        widget=forms.TextInput(attrs={
+            "inputmode": "numeric",
+            "autocomplete": "one-time-code",
+            "pattern": "[0-9]*",
+        }),
+    )
 
 
 class CalendarEventForm(forms.ModelForm):

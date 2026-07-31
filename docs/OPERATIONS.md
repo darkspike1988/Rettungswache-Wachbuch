@@ -6,7 +6,7 @@
 - Uebersicht (nach Login): `/uebersicht/`
 - Healthcheck: `/healthz/` (JSON mit `status` und `version`)
 - Datenschutz/Cookies: `/datenschutz/`
-- Anmeldung: `/anmelden/`
+- Anmeldung: `/anmelden/` (optional TOTP unter `/anmelden/mfa/` und `/konto/mfa/`)
 - Stationsverwaltung: `/einstellungen/`
 - Teamfreigaben: `/team/`
 - technische Verwaltung: `/django-admin/`
@@ -23,6 +23,7 @@ docker compose ps
 docker compose logs --since 30m web migrate feed-worker backup
 docker compose up -d --build
 docker compose exec -T web python manage.py test --settings=config.test_settings
+docker compose exec -T web python manage.py apply_retention
 curl -fsS http://127.0.0.1:8090/healthz/
 ```
 
@@ -37,7 +38,10 @@ docker compose exec web python manage.py grant_station_admin BENUTZERNAME
 
 Weitere persoenliche Konten werden unter `/django-admin/auth/user/` angelegt.
 Stationsadministratoren geben sie anschliessend unter `/team/` frei und setzen
-die Rolle. Gemeinschaftskonten sind nicht vorgesehen.
+die Rolle. Gemeinschaftskonten sind nicht vorgesehen. Unter **Mehr → Zwei-Faktor
+(TOTP)** kann jedes Konto eine Authenticator-App einrichten. Mit
+`MFA_REQUIRED=true` wird die Einrichtung nach dem Passwort-Login erzwungen.
+Passkeys/WebAuthn bleiben ein spaeterer Ausbau.
 
 ## Reverse-Proxy
 
@@ -83,6 +87,29 @@ docker compose exec -T backup /bin/sh /backup/restore-test.sh
 
 Der Restore-Test erstellt kurzzeitig `rwsth_restore_test`, spielt den neuesten
 Dump ein, prueft Schluesseltabellen und entfernt die Testdatenbank wieder.
+
+## Aufbewahrung (Retention)
+
+- `RETENTION_FEED_DAYS` (Standard `90`): entfernt Feed-Eintraege, deren
+  `last_seen_at` aelter ist. `0` deaktiviert die Feed-Loeschung.
+- `RETENTION_AUDIT_DAYS` (Standard `0`): Audit-Purge bleibt absichtlich aus, bis
+  organisatorische Fristen freigegeben sind. Nur mit Owner-Rechten und klarer
+  Freigabe setzen.
+- Kommando: `docker compose exec -T web python manage.py apply_retention`
+  (z. B. taeglich per Host-Cron).
+
+## Datenbank-Passwortrotation
+
+App- und Feed-Rollenpasswoerter rotieren (Owner-Passwort bleibt unangetastet):
+
+```bash
+./scripts/rotate-db-passwords.sh
+```
+
+Das Skript setzt neue Zufallswerte in PostgreSQL und `.env`, startet `web` und
+`feed-worker` neu. Anschliessend Healthcheck und Feed-Worker-Logs pruefen. Das
+Owner-Passwort (`POSTGRES_PASSWORD`) nur mit Dump/Restore und Neuinitialisierung
+rotieren.
 
 ## Versionierung und Updates
 

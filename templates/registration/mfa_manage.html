@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}MFA | {{ app_name }}{% endblock %}
+{% block content %}
+<section class="access-panel">
+  <p class="context-line">Konto</p>
+  <h1>Zwei-Faktor aktiv</h1>
+  <p class="lead">Für dieses Konto ist TOTP seit {{ device.confirmed_at|date:"d.m.Y H:i" }} bestätigt.</p>
+  <form method="post" action="{% url 'mfa_disable' %}">
+    {% csrf_token %}
+    <button class="button secondary" type="submit">MFA deaktivieren</button>
+  </form>
+  <p><a class="text-action" href="{% url 'more' %}">Zurück zu Mehr</a></p>
+</section>
+{% endblock %}

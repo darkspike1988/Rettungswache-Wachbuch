@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 - 2026-07-31
+
+- Austritt: Deaktivierung einer Mitgliedschaft zieht Geburtstags-Opt-in zurueck
+- Audit-Diffs fuer Rollen, Modulschalter und Uebergabe-Status (ohne Freitexte)
+- kontrollierte Uebergabe-Korrektur mit neuer Revision (`/uebergaben/<id>/bearbeiten/`)
+- Feed-Felder `first_imported_at` / `last_seen_at` und Null-sichere Sortierung
+- Retention-Kommando `apply_retention` (`RETENTION_FEED_DAYS`, optional Audit)
+- optionale TOTP-Zwei-Faktor-Anmeldung (`MFA_ENABLED` / `MFA_REQUIRED`)
+- Skript und Ablauf zur Rotation der App-/Feed-DB-Passwoerter
+- Touchziele fuer Footer-, Sektions- und Kassen-Aktionslinks nachgezogen
+
 ## 0.3.0 - 2026-07-31
 
 - Compliance-Doku zu DSGVO, TDDDG-Cookies, EU AI Act und NRW oeffentlichem Dienst

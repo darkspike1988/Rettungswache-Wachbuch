@@ -272,6 +272,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
   font-size: .85rem;
 }
 .footer-links { display: flex; flex-wrap: wrap; gap: .35rem 1rem; align-items: center; }
+.footer-links a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
 .app-version { color: var(--muted); }
 .messages { max-width: 48rem; margin-bottom: 1.5rem; }
 .message { padding: .85rem 1rem; color: var(--text); background: #e5f1f4; border-left: 4px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; }
@@ -357,6 +362,27 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .section-block.flush { padding: 0; overflow: hidden; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
 .section-heading h2, .section-block h2 { margin: 0; font-size: 1.25rem; }
+.section-heading a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+}
+.mfa-secret {
+  margin: 0 0 1.25rem;
+  padding: 1rem 0;
+}
+.mfa-key, .mfa-uri {
+  display: block;
+  margin: .5rem 0 1rem;
+  padding: .75rem 1rem;
+  overflow-wrap: anywhere;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: .92rem;
+}
+.hint { margin: 0; color: var(--muted); font-size: .9rem; }
 
 .item-list { display: grid; }
 .list-row {

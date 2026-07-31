@@ -54,5 +54,5 @@
   {% endfor %}
 </div>
 
-{% if can_manage %}<p class="lead"><a href="{% url 'tasks_manage' %}">Aufgaben-Vorlage bearbeiten</a></p>{% endif %}
+{% if can_manage %}<p class="lead"><a class="text-action" href="{% url 'tasks_manage' %}">Aufgaben-Vorlage bearbeiten</a></p>{% endif %}
 {% endblock %}

@@ -9,7 +9,7 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.core.paginator import Paginator
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Case, IntegerField, Sum, Value, When
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -24,12 +24,14 @@ from .forms import (
     CalendarEventForm,
     CoffeeCorrectionForm,
     CoffeeEntryForm,
+    HandoverEditForm,
     HandoverForm,
     HandoverStatusForm,
     MembershipAssignmentForm,
     MembershipEditForm,
     StationSettingsForm,
     StationTaskForm,
+    TotpConfirmForm,
 )
 from .models import (
     AuditEvent,
@@ -41,8 +43,26 @@ from .models import (
     HandoverEntry,
     Membership,
     StationTask,
+    TotpDevice,
 )
-from .services import audit, change_handover_status, create_handover
+from .mfa import (
+    confirm_device,
+    create_pending_device,
+    disable_device,
+    mfa_enabled,
+    mfa_required,
+    provisioning_uri,
+    user_has_confirmed_mfa,
+    verify_totp,
+)
+from .services import (
+    audit,
+    change_handover_status,
+    clear_birthday_on_exit,
+    create_handover,
+    structure_changes,
+    update_handover_content,
+)
 from .task_board import (
     day_board,
     ensure_default_station_tasks,
@@ -363,6 +383,22 @@ def handover_detail(request, pk):
         "handover": handover,
         "status_form": HandoverStatusForm(instance=handover),
         "can_change_status": can_change_status,
+        "can_edit_content": can_change_status,
+    })
+
+
+@membership_required({Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN})
+@require_http_methods(["GET", "POST"])
+def handover_edit(request, pk):
+    handover = get_object_or_404(HandoverEntry, pk=pk, station=request.membership.station)
+    form = HandoverEditForm(request.POST or None, instance=handover)
+    if request.method == "POST" and form.is_valid():
+        update_handover_content(handover, form.cleaned_data, request.membership)
+        messages.success(request, "Übergabe wurde korrigiert (neue Revision).")
+        return redirect("handover_detail", pk=pk)
+    return render(request, "core/handover_edit.html", {
+        "form": form,
+        "handover": handover,
     })
 
 
@@ -769,11 +805,22 @@ def membership_update(request, pk):
                     if len(admin_ids) <= 1:
                         form.add_error("role", "Mindestens ein aktiver Admin muss erhalten bleiben.")
             if not form.errors:
+                before = {
+                    "role": membership.role,
+                    "is_active": membership.is_active,
+                }
+                was_active = membership.is_active
                 membership.role = form.cleaned_data["role"]
                 membership.is_active = form.cleaned_data["is_active"]
                 membership.save(update_fields=["role", "is_active"])
+                if was_active and not membership.is_active:
+                    clear_birthday_on_exit(membership.user, membership.station, request.user)
                 audit(request.user, request.membership.station, "membership.updated", membership, {
-                    "fields": ["role", "is_active"]
+                    "fields": ["role", "is_active"],
+                    "changes": structure_changes(before, {
+                        "role": membership.role,
+                        "is_active": membership.is_active,
+                    }),
                 })
                 messages.success(request, "Mitgliedschaft wurde aktualisiert.")
         if not form.errors:
@@ -794,9 +841,13 @@ def station_settings(request):
             changed_fields = [
                 field for field in form.changed_data if field in form.fields
             ]
+            # form.initial keeps values from before ModelForm._post_clean mutated instance.
+            before = {field: form.initial.get(field) for field in changed_fields}
             saved = form.save()
+            after = {field: getattr(saved, field) for field in changed_fields}
             audit(request.user, station, "station.settings_updated", saved, {
                 "fields": changed_fields,
+                "changes": structure_changes(before, after),
             })
         messages.success(request, "Einstellungen wurden gespeichert.")
         return redirect("station_settings")
@@ -807,3 +858,66 @@ def station_settings(request):
 def audit_log(request):
     events = AuditEvent.objects.filter(station=request.membership.station).select_related("actor")
     return render(request, "core/audit_log.html", {"page_obj": page_for(request, events, 30)})
+
+
+@require_http_methods(["GET", "POST"])
+def mfa_verify(request):
+    if not mfa_enabled():
+        return redirect("login")
+    pending_id = request.session.get("mfa_pending_user_id")
+    if not pending_id:
+        return redirect("login")
+    user = get_object_or_404(User, pk=pending_id, is_active=True)
+    device = TotpDevice.objects.filter(user=user, is_confirmed=True).first()
+    if device is None:
+        request.session.pop("mfa_pending_user_id", None)
+        return redirect("login")
+    form = TotpConfirmForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        if verify_totp(device, form.cleaned_data["token"]):
+            from django.contrib.auth import login
+
+            login(request, user, backend="axes.backends.AxesStandaloneBackend")
+            next_url = request.session.pop("mfa_next", None) or reverse("landing")
+            request.session.pop("mfa_pending_user_id", None)
+            if mfa_required() and not user_has_confirmed_mfa(user):
+                return redirect("mfa_setup")
+            return redirect(next_url)
+        form.add_error("token", "Code ungültig oder abgelaufen.")
+    return render(request, "registration/mfa_verify.html", {"form": form})
+
+
+@require_http_methods(["GET", "POST"])
+def mfa_setup(request):
+    if not mfa_enabled():
+        raise Http404
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?{urlencode({'next': reverse('mfa_setup')})}")
+    existing = TotpDevice.objects.filter(user=request.user, is_confirmed=True).first()
+    if existing and request.method == "GET":
+        return render(request, "registration/mfa_manage.html", {"device": existing})
+    device = create_pending_device(request.user)
+    form = TotpConfirmForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        if confirm_device(device, form.cleaned_data["token"]):
+            messages.success(request, "Zwei-Faktor-Authentifizierung ist aktiv.")
+            return redirect("mfa_setup")
+        form.add_error("token", "Code ungültig. Bitte erneut scannen und prüfen.")
+        device = TotpDevice.objects.get(pk=device.pk)
+    return render(request, "registration/mfa_setup.html", {
+        "form": form,
+        "secret": device.secret,
+        "provisioning_uri": provisioning_uri(device),
+    })
+
+
+@require_POST
+def mfa_disable(request):
+    if not mfa_enabled() or not request.user.is_authenticated:
+        return redirect("login")
+    if mfa_required():
+        messages.error(request, "MFA ist für diese Installation vorgeschrieben.")
+        return redirect("mfa_setup")
+    disable_device(request.user)
+    messages.success(request, "Zwei-Faktor-Authentifizierung wurde deaktiviert.")
+    return redirect("more")

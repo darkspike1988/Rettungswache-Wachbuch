@@ -10,14 +10,16 @@
 
 - reale Arbeitsablaeufe mit Testdaten durchspielen
 - Rollenmatrix und Formulare mit dem Team vereinfachen
-- Loeschfristen technisch umsetzen, sobald sie freigegeben sind
+- Loeschfristen je Datenart organisatorisch freigeben; Feed-Retention und
+  optionale Audit-Fristen sind technisch vorbereitet (`apply_retention`)
 - Backup/Restore, Monitoring, Updates und Incident-Ablauf testen
-- offene technische Befunde aus [`AUDIT-2026-07.md`](AUDIT-2026-07.md) abarbeiten
+- TOTP im Team erproben; Passkeys spaeter nachziehen
+- verbleibende Befunde aus [`AUDIT-2026-07.md`](AUDIT-2026-07.md) abarbeiten
 
 ## Phase 2 - formaler betrieblicher Pilot
 
 - Datenschutz-/Mitbestimmungsunterlagen abschliessen
-- verwaltete Benutzer und MFA-/Passkey-Strategie festlegen
+- MFA-Pflicht (`MFA_REQUIRED`) und Passkey-Strategie festlegen
 - barrierearme Nutzung und gemeinsame Wachenterminals pruefen
 - Audit-Export und automatisierte Restore-Tests ergaenzen
 

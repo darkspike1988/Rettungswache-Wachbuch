@@ -22,8 +22,9 @@ Technisch umgesetzt oder vorbereitet:
 - Datenminimierung: Geburtstage ohne Jahr, Audit ohne Fachfreitexte
 - Integritaet: Append-only-Kasse, Revisionshistorie, DB-Rechte
 - Vertraulichkeit: TLS-Proxy, sichere Cookies, CSP, Rollenisolation
-- Betroffenenrechte: organisatorisch in der Go-live-Checkliste; technisch Loesch-
-  und Redaktionsverfahren noch nach Freigabe umzusetzen
+- Betroffenenrechte: organisatorisch in der Go-live-Checkliste; technisch
+  Austrittsbereinigung (Geburtstage), Feed-Retention und optionale Audit-Fristen
+  vorbereitet; weitere Fristen nach Freigabe schaerfen
 
 Verantwortliche Stelle, Rechtsgrundlagen je Modul, VVT (Art. 30) und ggf. DSFA
 muessen vor Pilotbetrieb freigegeben sein.
