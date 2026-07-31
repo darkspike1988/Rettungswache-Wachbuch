@@ -2,19 +2,22 @@
 
 Stand: 31. Juli 2026.
 
-Der offizielle Begleit-Client liegt unter [`clients/wachbuch-mobile/`](../clients/wachbuch-mobile/)
-(Flutter, **AGPL-3.0-or-later**).
+## Zweites Repository
 
-## Vorbilder auf GitHub (Ideen)
+| | |
+| --- | --- |
+| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch |
+| **Client (Ziel)** | https://github.com/darkspike1988/Wachbuch-Mobile |
+| **Quellpfad bis zum Split** | `clients/wachbuch-mobile/` im Server-Repo |
+| **Publish** | `./scripts/publish-mobile-client-repo.sh` |
 
-| Projekt | Was wir übernehmen | Was wir nicht übernehmen |
-| --- | --- | --- |
-| [paperless-go](https://github.com/bearyjd/paperless-go) (AGPL, Flutter) | Self-host URL, Token, Secure Storage, FOSS-Stores | Dokument-Scan/OCR (fachlich anders) |
-| [Paperless_ngx_uploader](https://github.com/gmag11/Paperless_ngx_uploader) (GPL) | schlanker Zweck-Client, Share-Intent-Idee spaeter | Upload-only Fokus |
-| Nextcloud Login Flow / App-Passwords | Server zuerst, Token statt Session-Cookie | SSO ueber Files-App (optional spaeter) |
-| Verwaiste Paperless-Mobile-Apps | Warnung: Community-Apps brauchen Pflege | proprietäre Clients ohne Quellcode |
+Cloud-Agents dürfen auf GitHub **keine** Repos anlegen. Einmalig manuell:
 
-Kein Fremdcode wurde 1:1 kopiert; nur Architektur- und UX-Muster.
+1. https://github.com/new → Name `Wachbuch-Mobile`, Owner `darkspike1988`, Public
+2. `./scripts/publish-mobile-client-repo.sh` im Server-Repo ausführen
+3. Issues/PRs für die App danach im Client-Repo
+
+Der Client-Quellcode ist bereits **standalone** (eigene `LICENSE`, CI, CONTRIBUTING).
 
 ## Kopplung an den Server
 
@@ -29,32 +32,28 @@ Server-URL
    └─ GET  /api/v1/handovers/    Fachdaten der Wache
 ```
 
-Header nach Login:
-
-```http
-Authorization: Token <wb_…>
-```
+Header: `Authorization: Token <wb_…>`
 
 ## Wachenspezifisch
 
-- Mitgliedschaft liegt **nur** auf dem Server (`unique_active_membership`).
-- Die App liest `membership.station` aus `/me/` und blendet Module ein/aus.
-- Kein Multi-Wachen-Switcher in v0.1; Wechsel = anderes Konto / neue Freigabe.
+- Mitgliedschaft nur auf dem Server
+- App liest `membership.station` aus `/me/`
+- Kein Multi-Wachen-Switcher in v0.1
 
 ## MFA
 
-Wenn das Konto MFA hat, lehnt `/api/v1/token/` ab (`mfa_required`). Die App
-bietet dann **App-Token einfuegen** an (aus dem Web unter `/konto/api/`) – analog
-Nextcloud-App-Passwort.
+Bei MFA: App-Token im Web unter `/konto/api/` erzeugen und in der App einfügen.
 
-## Ausbau-Fahrplan Client
+## Vorbilder auf GitHub (Ideen)
 
-1. Lesen: Kalender, Aufgaben, Kasse (sobald API-Endpunkte wachsen)
-2. Schreiben: Uebergaben anlegen/Status
-3. E2EE: Chat/Privat/Post mit lokalem Schluesselmaterial
-4. Optional: biometrische Entsperrung, F-Droid-Builds
+| Projekt | Übernehmen | Nicht übernehmen |
+| --- | --- | --- |
+| paperless-go (AGPL, Flutter) | Self-host URL, Token, Secure Storage | Dokument-Scan |
+| Paperless_ngx_uploader (GPL) | schlanker Zweck-Client | Upload-only |
+| Nextcloud App-Passwords | Server zuerst, Token statt Cookie | Files-App-SSO |
+
+Kein Fremdcode 1:1 kopiert.
 
 ## Lizenz
 
-AGPL-3.0-or-later. Verteilung der App verpflichtet zur Quellcode-Offenlegung
-unter AGPL. Details: Root-`LICENSE`, Client-`LICENSE`.
+AGPL-3.0-or-later in Client-`LICENSE` und Server-Root-`LICENSE`.

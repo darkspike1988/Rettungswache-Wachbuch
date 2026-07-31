@@ -5,6 +5,11 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.10.1 - 2026-07-31
+
+- Client für separates Repo vorbereitet: `Wachbuch-Mobile` (Publish-Skript, CI, volle AGPL-LICENSE)
+- Doku zum einmaligen Anlegen des zweiten GitHub-Repos und Spiegeln per Skript
+
 ## 0.10.0 - 2026-07-31
 
 - AGPL Flutter-Client unter `clients/wachbuch-mobile/` (iOS/Android)
