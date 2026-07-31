@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
@@ -13,6 +14,7 @@ from .feed_sync import fetch_source, sync_closure_csv, sync_rss
 from .models import (
     AuditEvent,
     BirthdayPreference,
+    CalendarEvent,
     CoffeeEntry,
     FeedItem,
     FeedSource,
@@ -576,6 +578,142 @@ class ClientApiTests(PilotTestCase):
     def test_overview_rejects_non_get_methods(self):
         response = self.client.post(reverse("api:overview"))
         self.assertEqual(response.status_code, 405)
+
+    def test_handover_list_scopes_active_dringend_and_archiv(self):
+        normal = self.create_handover("Normal", HandoverEntry.Priority.NORMAL)
+        urgent = self.create_handover("Dringend", HandoverEntry.Priority.URGENT)
+        done = self.create_handover(
+            "Erledigt", HandoverEntry.Priority.URGENT, HandoverEntry.Status.DONE
+        )
+        active = self.client.get(reverse("api:handover_list")).json()
+        self.assertEqual([item["id"] for item in active["results"]], [urgent.pk, normal.pk])
+        urgent_only = self.client.get(
+            reverse("api:handover_list"), {"ansicht": "dringend"}
+        ).json()
+        self.assertEqual([item["id"] for item in urgent_only["results"]], [urgent.pk])
+        archive = self.client.get(
+            reverse("api:handover_list"), {"ansicht": "archiv"}
+        ).json()
+        self.assertEqual([item["id"] for item in archive["results"]], [done.pk])
+
+    def test_handover_detail_includes_body_and_is_station_scoped(self):
+        handover = self.create_handover("Detail", HandoverEntry.Priority.IMPORTANT)
+        data = self.client.get(
+            reverse("api:handover_detail", args=[handover.pk])
+        ).json()
+        self.assertEqual(data["id"], handover.pk)
+        self.assertEqual(data["details"], "Testinhalt")
+        self.assertIn("revisions", data)
+
+        other = Station.objects.create(name="Andere", slug="andere2")
+        foreign = HandoverEntry.objects.create(
+            station=other,
+            category=HandoverEntry.Category.TASK,
+            title="Fremd",
+            details="x",
+            author=self.user,
+        )
+        response = self.client.get(reverse("api:handover_detail", args=[foreign.pk]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_calendar_endpoint_respects_module_switch(self):
+        CalendarEvent.objects.create(
+            station=self.station,
+            title="Geraetepruefung",
+            starts_at=timezone.now() + timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=1, hours=2),
+            created_by=self.user,
+        )
+        data = self.client.get(reverse("api:calendar")).json()
+        self.assertEqual(data["count"], 1)
+        self.assertEqual(data["results"][0]["title"], "Geraetepruefung")
+
+        self.station.calendar_enabled = False
+        self.station.save(update_fields=["calendar_enabled"])
+        response = self.client.get(reverse("api:calendar"))
+        self.assertEqual(response.status_code, 404)
+
+    def test_coffee_endpoint_scopes_entries_by_role(self):
+        other = User.objects.create_user("colleague2@example.org")
+        CoffeeEntry.objects.create(
+            station=self.station, member=self.user, amount_cents=500,
+            reason="Eigen", created_by=self.user,
+        )
+        CoffeeEntry.objects.create(
+            station=self.station, member=other, amount_cents=300,
+            reason="Fremd", created_by=self.user,
+        )
+        member_view = self.client.get(reverse("api:coffee")).json()
+        self.assertEqual(member_view["count"], 1)
+        self.assertEqual(member_view["balances"]["own_balance_euros"], 5.0)
+        self.assertFalse(member_view["balances"]["can_book"])
+
+        self.membership.role = Membership.Role.CASHIER
+        self.membership.save(update_fields=["role"])
+        cashier_view = self.client.get(reverse("api:coffee")).json()
+        self.assertEqual(cashier_view["count"], 2)
+        self.assertEqual(cashier_view["balances"]["total_balance_euros"], 8.0)
+
+
+class ClientApiTokenTests(TestCase):
+    def setUp(self):
+        self.station = Station.objects.create(name="Tokenwache", slug="tokenwache")
+        self.user = User.objects.create_user(
+            "token@example.org", password="a-strong-test-password"
+        )
+        Membership.objects.create(
+            user=self.user, station=self.station, role=Membership.Role.MEMBER
+        )
+
+    def login(self, password="a-strong-test-password"):
+        return self.client.post(
+            reverse("api:login"),
+            data=json.dumps({"username": "token@example.org", "password": password}),
+            content_type="application/json",
+        )
+
+    def test_valid_credentials_return_a_bearer_token(self):
+        response = self.login()
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("token", body)
+        self.assertTrue(body["has_membership"])
+        self.assertEqual(body["station"], "Tokenwache")
+
+    def test_invalid_credentials_are_rejected(self):
+        response = self.login(password="wrong")
+        self.assertEqual(response.status_code, 401)
+        self.assertNotIn("token", response.json())
+
+    def test_missing_fields_return_bad_request(self):
+        response = self.client.post(
+            reverse("api:login"),
+            data=json.dumps({"username": "token@example.org"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_bearer_token_authenticates_protected_endpoint(self):
+        token = self.login().json()["token"]
+        response = self.client.get(
+            reverse("api:overview"), HTTP_AUTHORIZATION=f"Bearer {token}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["station"]["slug"], "tokenwache")
+
+    def test_status_reports_authentication_via_token(self):
+        token = self.login().json()["token"]
+        data = self.client.get(
+            reverse("api:status"), HTTP_AUTHORIZATION=f"Bearer {token}"
+        ).json()
+        self.assertTrue(data["authenticated"])
+        self.assertEqual(data["role"], Membership.Role.MEMBER)
+
+    def test_tampered_token_is_rejected(self):
+        response = self.client.get(
+            reverse("api:overview"), HTTP_AUTHORIZATION="Bearer not-a-valid-token"
+        )
+        self.assertEqual(response.status_code, 401)
 
 
 class TeamAndAuditTests(PilotTestCase):

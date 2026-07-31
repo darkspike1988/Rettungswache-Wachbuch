@@ -6,16 +6,36 @@ Weboberflaeche und gibt nur Daten zurueck, die die angemeldete Person ohnehin im
 Interface sehen darf. Es gibt keine Schreibpfade und keine Patienten-,
 Gesundheits- oder Einsatzdaten.
 
-Basis-Pfad: `/api/v1/`. Authentifizierung ueber die bestehende Django-Session
-(Login unter `/anmelden/`). Alle Endpunkte akzeptieren nur `GET`.
+Basis-Pfad: `/api/v1/`. Authentifizierung wahlweise ueber die bestehende
+Django-Session (Login unter `/anmelden/`) oder ueber einen Bearer-Token aus
+`POST /api/v1/anmeldung/`. Bis auf den Login akzeptieren alle Endpunkte nur `GET`.
+
+## Authentifizierung fuer native Apps
+
+`POST /api/v1/anmeldung/` mit JSON `{ "username": "...", "password": "..." }`
+liefert bei gueltigen Zugangsdaten einen zeitlich begrenzten, signierten Token
+(kein serverseitiger Speicher noetig). Fehlversuche sind ueber django-axes
+begrenzt (`429` bei Sperre).
+
+```json
+{ "token": "…", "expires_in": 43200, "has_membership": true,
+  "station": "Rettungswache", "role": "member" }
+```
+
+Folgeaufrufe senden `Authorization: Bearer <token>`. Native Apps benoetigen so
+weder Cookies noch CSRF. Einzelne Tokens sind vor Ablauf nicht widerrufbar; ein
+echter Token-Speicher folgt in Roadmap-Phase M2.
 
 ## Fehlerformat
 
 Fehler antworten mit passendem HTTP-Status und `{ "error": "..." }`:
 
-- `401` - nicht angemeldet
+- `400` - fehlerhafter Koerper (nur Login)
+- `401` - nicht angemeldet oder Anmeldung fehlgeschlagen
 - `403` - keine aktive Wachenmitgliedschaft oder Rolle nicht freigegeben
-- `405` - Methode nicht erlaubt (nur `GET`)
+- `404` - Objekt nicht gefunden oder Modul nicht aktiviert
+- `405` - Methode nicht erlaubt
+- `429` - zu viele Fehlversuche (Login)
 
 ## GET /api/v1/status/
 
@@ -78,3 +98,37 @@ Hinweise:
   ausschliesslich fuer buchungsberechtigte Rollen (Kassenwart, Admin) ergaenzt;
   Mitglieder sehen nur ihren eigenen Stand.
 - Alle Werte sind auf die Wache der aufrufenden Mitgliedschaft beschraenkt.
+
+## GET /api/v1/uebergaben/
+
+Paginierte Uebergabeliste. Query `ansicht=aktiv` (Standard, nach Dringlichkeit
+sortiert), `dringend` oder `archiv`; Seite ueber `seite`.
+
+```json
+{
+  "scope": "aktiv",
+  "count": 2,
+  "page": 1,
+  "num_pages": 1,
+  "results": [ { "id": 12, "title": "Tor pruefen", "priority": "urgent",
+                 "priority_label": "Dringend", "status": "open", ... } ]
+}
+```
+
+## GET /api/v1/uebergaben/&lt;id&gt;/
+
+Detail einer Uebergabe der eigenen Wache (`404` bei fremder Wache). Enthaelt
+zusaetzlich `details`, `author`, `version`, Zeitstempel und die
+Revisionsuebersicht (`version`, `changed_by`, `created_at`).
+
+## GET /api/v1/kalender/
+
+Nur bei aktiviertem Kalendermodul (sonst `404`). Paginierte kommende Termine mit
+`title`, `description`, `starts_at`, `ends_at`, `created_by`.
+
+## GET /api/v1/kaffeekasse/
+
+Nur bei aktivierter Kaffeekasse (sonst `404`). Enthaelt `balances` (wie oben) und
+paginierte Buchungen. Mitglieder sehen nur ihre eigenen Buchungen, Kassenwart und
+Admin die gesamte Kasse. Buchungen enthalten `member`, `amount_euros`, `reason`,
+`created_at` und `is_correction`.
