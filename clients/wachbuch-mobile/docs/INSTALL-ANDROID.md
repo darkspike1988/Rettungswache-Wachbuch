@@ -2,7 +2,7 @@
 
 Stand: 31. Juli 2026.
 
-Die Wachbuch-Mobile-App ist **AGPL** und wird als selbst gebaute bzw. CI-APK
+Die wachbuch-Client-App ist **AGPL** und wird als selbst gebaute bzw. CI-APK
 auf Smartphone und Tablet installiert. Für einen späteren Play-Store-Release siehe
 [PLAY-STORE.md](PLAY-STORE.md).
 
@@ -29,7 +29,7 @@ Package-ID: `de.wachbuch.mobile`
 ## Selbst bauen
 
 ```bash
-cd clients/wachbuch-mobile   # bzw. Clone von Wachbuch-Mobile
+cd clients/wachbuch-mobile   # bzw. Clone von wachbuch-Client
 flutter pub get
 flutter test
 flutter build apk --release
@@ -80,5 +80,5 @@ Person die APK ohne eigenen Release-Key bauen und sideloaden kann. Für den
 
 ## Quellcode
 
-- Client: `clients/wachbuch-mobile/` bzw. https://github.com/darkspike1988/Wachbuch-Mobile
+- Client: `clients/wachbuch-mobile/` bzw. https://github.com/darkspike1988/wachbuch-Client
 - Server: https://github.com/darkspike1988/Rettungswache-Wachbuch

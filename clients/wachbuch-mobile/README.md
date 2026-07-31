@@ -3,7 +3,7 @@
 Open-Source-Begleit-App für selbst gehostetes **[Wachbuch](https://github.com/darkspike1988/Rettungswache-Wachbuch)** (iOS & Android).
 
 **Lizenz:** AGPL-3.0-or-later  
-**Geplantes GitHub-Repo:** https://github.com/darkspike1988/Wachbuch-Mobile  
+**Geplantes GitHub-Repo:** https://github.com/darkspike1988/wachbuch-Client  
 **Server-API:** `/api/v1/` (Token-Auth wie Paperless/Nextcloud)
 
 ## Status
@@ -52,8 +52,8 @@ Details: [docs/INSTALL-ANDROID.md](docs/INSTALL-ANDROID.md) · Play-Checkliste: 
 ## Start
 
 ```bash
-git clone https://github.com/darkspike1988/Wachbuch-Mobile.git
-cd Wachbuch-Mobile
+git clone https://github.com/darkspike1988/wachbuch-Client.git
+cd wachbuch-Client
 flutter pub get
 flutter test
 flutter run
@@ -69,9 +69,9 @@ flutter pub get && flutter test && flutter run
 
 ## Zweites Repo anlegen (Maintainer)
 
-1. Auf GitHub **Wachbuch-Mobile** öffentlich anlegen (ohne initiales README, wenn möglich)
+1. Auf GitHub **wachbuch-Client** öffentlich anlegen (ohne initiales README, wenn möglich)
 2. Im Server-Repo: `./scripts/publish-mobile-client-repo.sh`
-3. Danach Entwicklung primär in **Wachbuch-Mobile**; Server verweist auf den Client
+3. Danach Entwicklung primär in **wachbuch-Client**; Server verweist auf den Client
 
 ## Rechtliches
 

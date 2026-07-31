@@ -21,7 +21,7 @@
 
 ## 0.10.1 - 2026-07-31
 
-- Client für separates Repo vorbereitet: `Wachbuch-Mobile` (Publish-Skript, CI, volle AGPL-LICENSE)
+- Client für separates Repo vorbereitet: `wachbuch-Client` (Publish-Skript, CI, volle AGPL-LICENSE)
 - Doku zum einmaligen Anlegen des zweiten GitHub-Repos und Spiegeln per Skript
 
 ## 0.10.0 - 2026-07-31
