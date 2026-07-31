@@ -16,7 +16,7 @@
 <nav class="quick-actions" aria-label="Schnellzugriff">
   <a href="{% url 'handover_create' %}"><strong>Neue Übergabe</strong><span>Für die nächste Schicht festhalten</span></a>
   <a href="{% url 'handover_list' %}?ansicht=dringend"><strong>Dringendes öffnen</strong><span>{{ urgent_count }} offene Punkte</span></a>
-  {% if calendar_enabled %}<a href="{% url 'calendar' %}"><strong>Kalender</strong><span>Nächste Wachentermine</span></a>{% endif %}
+  {% if tasks_enabled and task_progress %}<a href="{% url 'tasks_today' %}"><strong>Tagesaufgaben</strong><span>{{ task_progress.done_count }}/{{ task_progress.total }} erledigt · Wandtafel</span></a>{% elif calendar_enabled %}<a href="{% url 'calendar' %}"><strong>Kalender</strong><span>Nächste Wachentermine</span></a>{% endif %}
 </nav>
 
 <div class="overview-layout">

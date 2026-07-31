@@ -16,6 +16,7 @@ class Station(models.Model):
     birthdays_enabled = models.BooleanField(default=True, verbose_name="Geburtstage aktiviert")
     coffee_enabled = models.BooleanField(default=True, verbose_name="Kaffeekasse aktiviert")
     feeds_enabled = models.BooleanField(default=False, verbose_name="Externe Meldungen aktiviert")
+    tasks_enabled = models.BooleanField(default=True, verbose_name="Tagesaufgaben aktiviert")
 
     class Meta:
         ordering = ["name"]
@@ -220,6 +221,99 @@ class CoffeeEntry(models.Model):
     @property
     def amount_euros(self):
         return self.amount_cents / 100
+
+
+class StationTask(models.Model):
+    """Wachaufgaben analog zur Wandtafel: gruen taeglich, gelb Wochentag, blau zusaetzlich."""
+
+    class Band(models.TextChoices):
+        DAILY = "daily", "Taeglich"
+        WEEKDAY = "weekday", "Wochentag"
+        EXTRA = "extra", "Zusaetzlich"
+
+    WEEKDAY_LABELS = (
+        (0, "Montag"),
+        (1, "Dienstag"),
+        (2, "Mittwoch"),
+        (3, "Donnerstag"),
+        (4, "Freitag"),
+        (5, "Samstag"),
+        (6, "Sonntag"),
+    )
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="station_tasks")
+    title = models.CharField(max_length=160)
+    band = models.CharField(max_length=20, choices=Band.choices, default=Band.DAILY)
+    weekday = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        choices=WEEKDAY_LABELS,
+        help_text="Nur fuer Wochentagsaufgaben noetig (0=Montag).",
+    )
+    notes = models.CharField(max_length=240, blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["band", "weekday", "sort_order", "title"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (Q(band="weekday") & Q(weekday__isnull=False))
+                    | (~Q(band="weekday") & Q(weekday__isnull=True))
+                ),
+                name="station_task_weekday_matches_band",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    def clean(self):
+        if self.band == self.Band.WEEKDAY:
+            if self.weekday is None or not 0 <= self.weekday <= 6:
+                raise ValidationError({"weekday": "Wochentagsaufgaben brauchen einen Wochentag."})
+        elif self.weekday is not None:
+            raise ValidationError({"weekday": "Nur Wochentagsaufgaben duerfen einen Wochentag haben."})
+
+    def applies_to_date(self, work_date):
+        if not self.is_active:
+            return False
+        if self.band == self.Band.DAILY:
+            return True
+        if self.band == self.Band.WEEKDAY:
+            return self.weekday == work_date.weekday()
+        return True
+
+    @property
+    def band_css(self):
+        return {
+            self.Band.DAILY: "band-daily",
+            self.Band.WEEKDAY: "band-weekday",
+            self.Band.EXTRA: "band-extra",
+        }.get(self.band, "band-extra")
+
+
+class StationTaskCompletion(models.Model):
+    task = models.ForeignKey(StationTask, on_delete=models.CASCADE, related_name="completions")
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="task_completions")
+    work_date = models.DateField()
+    completed_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="station_task_completions"
+    )
+    completed_at = models.DateTimeField(auto_now_add=True)
+    note = models.CharField(max_length=160, blank=True)
+
+    class Meta:
+        ordering = ["-work_date", "-completed_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["task", "work_date"], name="unique_task_completion_day"),
+        ]
+
+    def __str__(self):
+        return f"{self.task_id} @ {self.work_date}"
 
 
 class FeedSource(models.Model):

@@ -28,6 +28,7 @@ from .forms import (
     MembershipAssignmentForm,
     MembershipEditForm,
     StationSettingsForm,
+    StationTaskForm,
 )
 from .models import (
     AuditEvent,
@@ -38,8 +39,15 @@ from .models import (
     FeedSource,
     HandoverEntry,
     Membership,
+    StationTask,
 )
 from .services import audit, change_handover_status, create_handover
+from .task_board import (
+    day_board,
+    ensure_default_station_tasks,
+    toggle_task_completion,
+    week_board,
+)
 
 
 def healthz(request):
@@ -87,8 +95,8 @@ def web_manifest(request):
             "icons": [{"src": _static_url("core/icons/icon-192.png"), "sizes": "192x192"}],
         },
         {
-            "name": "Dringend",
-            "url": f"{reverse('handover_list')}?ansicht=dringend",
+            "name": "Tagesaufgaben",
+            "url": reverse("tasks_today"),
             "icons": [{"src": _static_url("core/icons/icon-192.png"), "sizes": "192x192"}],
         },
     ]
@@ -214,12 +222,18 @@ def dashboard(request):
         events = CalendarEvent.objects.filter(
             station=station, ends_at__gte=now
         ).order_by("starts_at")[:3]
+    task_progress = None
+    if station.tasks_enabled:
+        ensure_default_station_tasks(station)
+        task_progress = day_board(station, timezone.localdate())
     context = {
         "open_handovers": active[:5],
         "open_count": active.count(),
         "urgent_count": active.filter(priority=HandoverEntry.Priority.URGENT).count(),
         "events": events,
         "calendar_enabled": station.calendar_enabled,
+        "tasks_enabled": station.tasks_enabled,
+        "task_progress": task_progress,
     }
     return render(request, "core/dashboard.html", context)
 
@@ -504,6 +518,137 @@ def feeds(request):
         "page_obj": page_for(request, items, 25),
         "feed_type": feed_type,
         "sources": FeedSource.objects.filter(is_enabled=True, kind=kind),
+    })
+
+
+def _parse_work_date(raw_value):
+    if not raw_value:
+        return timezone.localdate()
+    try:
+        return date.fromisoformat(raw_value)
+    except ValueError:
+        return timezone.localdate()
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("tasks_enabled")
+def tasks_today(request):
+    station = request.membership.station
+    ensure_default_station_tasks(station)
+    work_date = _parse_work_date(request.GET.get("tag"))
+    board = day_board(station, work_date)
+    can_manage = request.membership.role in {
+        Membership.Role.SHIFT_LEAD,
+        Membership.Role.ADMIN,
+    }
+    return render(request, "core/tasks_today.html", {
+        "board": board,
+        "can_manage": can_manage,
+        "prev_date": work_date - timedelta(days=1),
+        "next_date": work_date + timedelta(days=1),
+        "is_today": work_date == timezone.localdate(),
+    })
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("tasks_enabled")
+def tasks_week(request):
+    station = request.membership.station
+    ensure_default_station_tasks(station)
+    pivot = _parse_work_date(request.GET.get("woche"))
+    board = week_board(station, pivot)
+    can_manage = request.membership.role in {
+        Membership.Role.SHIFT_LEAD,
+        Membership.Role.ADMIN,
+    }
+    return render(request, "core/tasks_week.html", {
+        "board": board,
+        "can_manage": can_manage,
+        "prev_week": board["monday"] - timedelta(days=7),
+        "next_week": board["monday"] + timedelta(days=7),
+    })
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("tasks_enabled")
+@require_POST
+def task_toggle(request, pk):
+    station = request.membership.station
+    task = get_object_or_404(StationTask, pk=pk, station=station, is_active=True)
+    work_date = _parse_work_date(request.POST.get("tag"))
+    mark_done = request.POST.get("erledigt") == "1"
+    if not task.applies_to_date(work_date):
+        messages.error(request, "Diese Aufgabe gilt nicht fuer den gewaehlten Tag.")
+    else:
+        toggle_task_completion(
+            task=task,
+            membership=request.membership,
+            work_date=work_date,
+            mark_done=mark_done,
+        )
+        if mark_done:
+            messages.success(request, "Aufgabe wurde als erledigt markiert.")
+        else:
+            messages.success(request, "Aufgabe wurde wieder geoeffnet.")
+    next_url = request.POST.get("next") or reverse("tasks_today")
+    if next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect("tasks_today")
+
+
+@membership_required({Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN})
+@station_module_required("tasks_enabled")
+def tasks_manage(request):
+    station = request.membership.station
+    ensure_default_station_tasks(station)
+    tasks = StationTask.objects.filter(station=station)
+    return render(request, "core/tasks_manage.html", {
+        "page_obj": page_for(request, tasks, 40),
+    })
+
+
+@membership_required({Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN})
+@station_module_required("tasks_enabled")
+@require_http_methods(["GET", "POST"])
+def task_create(request):
+    form = StationTaskForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            task = form.save(commit=False)
+            task.station = request.membership.station
+            task.full_clean()
+            task.save()
+            audit(request.user, request.membership.station, "station_task.created", task, {
+                "fields": ["title", "band", "weekday", "notes", "is_active"],
+            })
+        messages.success(request, "Aufgabe wurde angelegt.")
+        return redirect("tasks_manage")
+    return render(request, "core/task_form.html", {
+        "form": form,
+        "page_title": "Aufgabe anlegen",
+    })
+
+
+@membership_required({Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN})
+@station_module_required("tasks_enabled")
+@require_http_methods(["GET", "POST"])
+def task_edit(request, pk):
+    task = get_object_or_404(StationTask, pk=pk, station=request.membership.station)
+    form = StationTaskForm(request.POST or None, instance=task)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            saved = form.save(commit=False)
+            saved.full_clean()
+            saved.save()
+            audit(request.user, request.membership.station, "station_task.updated", saved, {
+                "fields": form.changed_data,
+            })
+        messages.success(request, "Aufgabe wurde gespeichert.")
+        return redirect("tasks_manage")
+    return render(request, "core/task_form.html", {
+        "form": form,
+        "page_title": "Aufgabe bearbeiten",
+        "task": task,
     })
 
 

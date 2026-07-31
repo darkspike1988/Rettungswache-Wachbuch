@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Wochenbogen | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading heading-with-action">
+  <div>
+    <p class="context-line">{{ current_membership.station.name }} &middot; {{ board.week_label }}</p>
+    <h1>Wochenbogen</h1>
+    <p class="lead">Wie der laminierte Wandbogen: sieben Tage, farbige Aufgabenbereiche, Fortschritt auf einen Blick.</p>
+  </div>
+  <a class="button primary" href="{% url 'tasks_today' %}">Heutige Liste</a>
+</header>
+
+<nav class="filter-nav" aria-label="Aufgabenansicht">
+  <a href="{% url 'tasks_today' %}">Heute / Tag</a>
+  <a href="{% url 'tasks_week' %}?woche={{ board.monday|date:'Y-m-d' }}" aria-current="page">Wochenbogen</a>
+</nav>
+
+<nav class="day-switcher" aria-label="Kalenderwoche wählen">
+  <a class="button secondary" href="?woche={{ prev_week|date:'Y-m-d' }}">Vorherige Woche</a>
+  <strong>{{ board.week_label }} · ab {{ board.monday|date:"d.m.Y" }}</strong>
+  <a class="button secondary" href="?woche={{ next_week|date:'Y-m-d' }}">Nächste Woche</a>
+</nav>
+
+<div class="task-legend" aria-label="Farblegende">
+  <span class="legend-chip band-daily">Täglich</span>
+  <span class="legend-chip band-weekday">Wochentag</span>
+  <span class="legend-chip band-extra">Zusätzlich</span>
+</div>
+
+<div class="week-board" role="list">
+  {% for column in board.columns %}
+    <section class="week-day{% if column.is_today %} is-today{% endif %}" role="listitem" aria-label="{{ column.date|date:'l' }}">
+      <header>
+        <strong>{{ column.date|date:"D" }}</strong>
+        <span>{{ column.date|date:"d.m." }}</span>
+        <small>{{ column.done_count }}/{{ column.total }} erledigt</small>
+      </header>
+      <div class="week-day-tasks">
+        {% for item in column.tasks %}
+          <form method="post" action="{% url 'task_toggle' item.task.pk %}" class="week-task {{ item.task.band_css }}{% if item.completion %} is-done{% endif %}">
+            {% csrf_token %}
+            <input type="hidden" name="tag" value="{{ column.date|date:'Y-m-d' }}">
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="erledigt" value="{% if item.completion %}0{% else %}1{% endif %}">
+            <button type="submit">
+              <span class="status-label {% if item.completion %}success{% else %}neutral{% endif %}">{% if item.completion %}Erledigt{% else %}Offen{% endif %}</span>
+              <strong>{{ item.task.title }}</strong>
+            </button>
+          </form>
+        {% empty %}<p class="empty-state">Keine Aufgaben.</p>{% endfor %}
+      </div>
+      <a class="text-action" href="{% url 'tasks_today' %}?tag={{ column.date|date:'Y-m-d' }}">Tag öffnen</a>
+    </section>
+  {% endfor %}
+</div>
+
+{% if can_manage %}<p class="lead"><a href="{% url 'tasks_manage' %}">Aufgaben-Vorlage bearbeiten</a></p>{% endif %}
+{% endblock %}

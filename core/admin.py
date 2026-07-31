@@ -11,6 +11,8 @@ from .models import (
     HandoverRevision,
     Membership,
     Station,
+    StationTask,
+    StationTaskCompletion,
 )
 
 
@@ -38,6 +40,7 @@ class StationAdmin(admin.ModelAdmin):
         "birthdays_enabled",
         "coffee_enabled",
         "feeds_enabled",
+        "tasks_enabled",
     )
     list_filter = ("is_active",)
 
@@ -79,6 +82,19 @@ class BirthdayPreferenceAdmin(ReadOnlyAdmin):
 class CoffeeEntryAdmin(ReadOnlyAdmin):
     list_display = ("member", "amount_cents", "reason", "created_by", "created_at")
     list_filter = ("station",)
+
+
+@admin.register(StationTask)
+class StationTaskAdmin(admin.ModelAdmin):
+    list_display = ("title", "station", "band", "weekday", "is_active", "sort_order")
+    list_filter = ("station", "band", "is_active")
+    search_fields = ("title", "notes")
+
+
+@admin.register(StationTaskCompletion)
+class StationTaskCompletionAdmin(ReadOnlyAdmin):
+    list_display = ("task", "station", "work_date", "completed_by", "completed_at")
+    list_filter = ("station", "work_date")
 
 
 @admin.register(FeedSource)

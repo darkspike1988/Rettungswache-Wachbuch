@@ -5,7 +5,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from .models import BirthdayPreference, CalendarEvent, HandoverEntry, Membership, Station
+from .models import BirthdayPreference, CalendarEvent, HandoverEntry, Membership, Station, StationTask
 
 
 class DateTimeLocalInput(forms.DateTimeInput):
@@ -141,5 +141,34 @@ class StationSettingsForm(forms.ModelForm):
             "birthdays_enabled",
             "coffee_enabled",
             "feeds_enabled",
+            "tasks_enabled",
         ]
         labels = {"name": "Name der Rettungswache"}
+
+
+class StationTaskForm(forms.ModelForm):
+    class Meta:
+        model = StationTask
+        fields = ["title", "band", "weekday", "notes", "sort_order", "is_active"]
+        labels = {
+            "title": "Aufgabe",
+            "band": "Farbe / Bereich",
+            "weekday": "Wochentag",
+            "notes": "Hinweis",
+            "sort_order": "Reihenfolge",
+            "is_active": "Aktiv",
+        }
+        help_texts = {
+            "band": "Grün = täglich, Gelb = Wochentag, Blau = zusätzlich.",
+            "weekday": "Nur bei gelben Wochentagsaufgaben setzen.",
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        band = cleaned.get("band")
+        weekday = cleaned.get("weekday")
+        if band == StationTask.Band.WEEKDAY and weekday is None:
+            self.add_error("weekday", "Bitte einen Wochentag wählen.")
+        if band != StationTask.Band.WEEKDAY:
+            cleaned["weekday"] = None
+        return cleaned

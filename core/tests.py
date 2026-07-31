@@ -21,6 +21,8 @@ from .models import (
     HandoverRevision,
     Membership,
     Station,
+    StationTask,
+    StationTaskCompletion,
 )
 
 
@@ -48,7 +50,7 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertEqual(payload["display"], "standalone")
         self.assertEqual(payload["start_url"], reverse("dashboard"))
         self.assertTrue(payload["icons"])
-        self.assertTrue(any(item["name"] == "Dringend" for item in payload["shortcuts"]))
+        self.assertTrue(any(item["name"] == "Tagesaufgaben" for item in payload["shortcuts"]))
 
     def test_service_worker_and_offline_page_are_available(self):
         worker = self.client.get(reverse("service_worker"))
@@ -271,6 +273,7 @@ class MinimalInterfaceTests(PilotTestCase):
 
     def test_more_page_holds_secondary_modules(self):
         response = self.client.get(reverse("more"))
+        self.assertContains(response, "Tagesaufgaben")
         self.assertContains(response, "Geburtstage")
         self.assertContains(response, "Kaffeekasse")
         self.assertContains(response, "Meldungen &amp; Verkehr", html=True)
@@ -305,18 +308,60 @@ class MinimalInterfaceTests(PilotTestCase):
             reverse("coffee_create"),
             reverse("coffee_correct", args=[coffee.pk]),
             reverse("feeds"),
+            reverse("tasks_today"),
+            reverse("tasks_week"),
             reverse("more"),
             reverse("team"),
             reverse("team_create"),
             reverse("membership_update", args=[self.membership.pk]),
             reverse("station_settings"),
             reverse("audit_log"),
+            reverse("tasks_manage"),
+            reverse("task_create"),
         ]
         for url in urls:
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.content.count(b"<h1"), 1)
+
+
+class StationTaskBoardTests(PilotTestCase):
+    def test_default_template_and_completion_toggle(self):
+        response = self.client.get(reverse("tasks_today"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Tägliche Routine")
+        self.assertContains(response, "Fahrzeugcheck")
+        self.assertContains(response, "Wochentagsaufgabe")
+        task = StationTask.objects.get(station=self.station, title="Fahrzeugcheck")
+        done = self.client.post(reverse("task_toggle", args=[task.pk]), {
+            "tag": timezone.localdate().isoformat(),
+            "erledigt": "1",
+            "next": reverse("tasks_today"),
+        })
+        self.assertRedirects(done, reverse("tasks_today"))
+        self.assertTrue(
+            StationTaskCompletion.objects.filter(task=task, work_date=timezone.localdate()).exists()
+        )
+        self.assertTrue(AuditEvent.objects.filter(action="station_task.completed").exists())
+
+    def test_week_board_and_manage_permissions(self):
+        self.client.get(reverse("tasks_today"))
+        week = self.client.get(reverse("tasks_week"))
+        self.assertEqual(week.status_code, 200)
+        self.assertContains(week, "Wochenbogen")
+        self.assertEqual(self.client.get(reverse("tasks_manage")).status_code, 403)
+        self.membership.role = Membership.Role.SHIFT_LEAD
+        self.membership.save(update_fields=["role"])
+        manage = self.client.get(reverse("tasks_manage"))
+        self.assertEqual(manage.status_code, 200)
+        self.assertContains(manage, "Aufgaben-Vorlage")
+
+    def test_disabled_tasks_module_is_hidden(self):
+        self.station.tasks_enabled = False
+        self.station.save(update_fields=["tasks_enabled"])
+        self.assertEqual(self.client.get(reverse("tasks_today")).status_code, 404)
+        self.assertNotContains(self.client.get(reverse("more")), "Tagesaufgaben")
 
 
 class BirthdayAndCoffeeTests(PilotTestCase):

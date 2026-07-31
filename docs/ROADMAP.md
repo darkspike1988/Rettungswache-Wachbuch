@@ -3,7 +3,7 @@
 ## Phase 0 - technische Basis
 
 - Docker-Deployment mit lokalem Login und Reverse-Proxy
-- Rollen, Uebergaben, Kalender, Geburtstage, Kaffeekasse und Behoerdenfeeds
+- Rollen, Uebergaben, Kalender, Tagesaufgaben, Geburtstage, Kaffeekasse und Behoerdenfeeds
 - automatisierte Fach- und Zugriffstests
 
 ## Phase 1 - geschlossener Test

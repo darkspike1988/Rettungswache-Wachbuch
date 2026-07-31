@@ -7,6 +7,7 @@
   <p class="lead">Zusatzmodule und Verwaltung. Die App bleibt auch auf dem Startbildschirm erreichbar.</p>
 </header>
 <nav class="more-list" aria-label="Weitere Bereiche">
+  {% if current_membership.station.tasks_enabled %}<a href="{% url 'tasks_today' %}"><strong>Tagesaufgaben</strong><span>Grüne Routine, gelbe Wochentage, blaue Zusatzpunkte</span></a>{% endif %}
   {% if current_membership.station.birthdays_enabled %}<a href="{% url 'birthdays' %}"><strong>Geburtstage</strong><span>Freiwillige Teamtermine</span></a>{% endif %}
   {% if current_membership.station.coffee_enabled %}<a href="{% url 'coffee' %}"><strong>Kaffeekasse</strong><span>Saldo und Buchungen</span></a>{% endif %}
   {% if current_membership.station.feeds_enabled %}<a href="{% url 'feeds' %}"><strong>Meldungen &amp; Verkehr</strong><span>Konfigurierte offizielle Quellen</span></a>{% endif %}

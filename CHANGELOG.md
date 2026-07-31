@@ -2,6 +2,8 @@
 
 ## Unreleased - PWA-App und Docker-Login
 
+- Tagesaufgaben-Modul nach Wandbogen: gruen taeglich, gelb Wochentag, blau zusaetzlich
+- Heute-Liste, Wochenbogen, Vorlagenverwaltung und Audit fuer Erledigungen
 - installierbare PWA mit Manifest, Service Worker, Icons und Offline-Hinweis
 - App-Shell mit Safe Areas, Installationshinweis, Dringend-Badge und Schnellzugriff
 - ICS-Export fuer einzelne Wachentermine

@@ -126,6 +126,7 @@ Loeschfristen oder organisatorische Freigabe. Details stehen in
 - [Test- und Go-live-Checkliste](docs/GO-LIVE-CHECKLIST.md)
 - [Recherche und Quellen](docs/RESEARCH.md)
 - [Audit und Folgeplan](docs/AUDIT-2026-07.md)
+- [Wandbausteine Tagesaufgaben](docs/WALL-BLOCKS.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Designregeln](docs/DESIGN-SYSTEM.md)
 
