@@ -3,9 +3,12 @@
 {% block content %}
 <header class="page-heading heading-with-action">
   <div><p class="context-line">Wachenorganisation</p><h1>Kalender</h1><p class="lead">Termine der Wache, keine Dienstplanung.</p></div>
-  {% if can_create %}<a class="button primary" href="{% url 'calendar_create' %}">Termin anlegen</a>{% endif %}
+  <div class="form-actions">
+    {% if can_create %}<a class="button secondary" href="{% url 'calendar_feed_manage' %}">Abo-Links</a><a class="button primary" href="{% url 'calendar_create' %}">Termin anlegen</a>{% endif %}
+  </div>
 </header>
 <section class="section-block flush">
+  <p><a class="text-action" href="{% url 'calendar_feed_ics' %}">Gesamten Kalender als ICS</a></p>
   <div class="agenda">
     {% for event in page_obj %}
       <article class="agenda-row">

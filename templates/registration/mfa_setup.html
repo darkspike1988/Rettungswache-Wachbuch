@@ -15,7 +15,15 @@
     {% csrf_token %}
     {% include "core/form_errors.html" %}
     {{ form.as_p }}
-    <button class="button primary" type="submit">Aktivieren</button>
+    <button class="button primary" type="submit">TOTP aktivieren</button>
   </form>
+  {% if webauthn_enabled %}
+  <div class="passkey-login">
+    <h2>Passkey</h2>
+    <p class="lead">Alternativ oder zusätzlich einen Passkey dieses Geräts registrieren.</p>
+    <button type="button" class="button secondary" data-passkey-register>Passkey hinzufügen</button>
+    <p class="hint" data-passkey-register-status hidden></p>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

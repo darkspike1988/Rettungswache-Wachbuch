@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
+from core import account_views
 from core.auth_views import PasswordLoginView
 from core.views import (
     healthz,
@@ -23,8 +24,15 @@ urlpatterns = [
     path("datenschutz/", privacy_notice, name="privacy"),
     path("anmelden/", PasswordLoginView.as_view(), name="login"),
     path("anmelden/mfa/", mfa_verify, name="mfa_verify"),
+    path("anmelden/passkey/optionen/", account_views.passkey_login_options, name="passkey_login_options"),
+    path("anmelden/passkey/pruefen/", account_views.passkey_login_verify, name="passkey_login_verify"),
+    path("anmelden/mfa/passkey/optionen/", account_views.passkey_mfa_options, name="passkey_mfa_options"),
+    path("anmelden/mfa/passkey/pruefen/", account_views.passkey_mfa_verify, name="passkey_mfa_verify"),
     path("konto/mfa/", mfa_setup, name="mfa_setup"),
     path("konto/mfa/deaktivieren/", mfa_disable, name="mfa_disable"),
+    path("konto/mfa/passkey/optionen/", account_views.passkey_register_options, name="passkey_register_options"),
+    path("konto/mfa/passkey/pruefen/", account_views.passkey_register_verify, name="passkey_register_verify"),
+    path("konto/mfa/passkey/<int:pk>/entfernen/", account_views.passkey_delete, name="passkey_delete"),
     path("abmelden/", auth_views.LogoutView.as_view(), name="logout"),
     path("django-admin/", admin.site.urls),
     path("", include("core.urls")),

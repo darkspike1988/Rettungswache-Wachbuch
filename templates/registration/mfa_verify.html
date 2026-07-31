@@ -3,7 +3,8 @@
 {% block content %}
 <section class="access-panel">
   <p class="context-line">Zwei-Faktor-Authentifizierung</p>
-  <h1>Einmalcode eingeben</h1>
+  <h1>Anmeldung bestätigen</h1>
+  {% if has_totp %}
   <p class="lead">Öffne die Authenticator-App und gib den aktuellen Code ein.</p>
   <form method="post" class="form-card">
     {% csrf_token %}
@@ -11,5 +12,13 @@
     {{ form.as_p }}
     <button class="button primary" type="submit">Bestätigen</button>
   </form>
+  {% endif %}
+  {% if has_passkey %}
+  <div class="passkey-login">
+    <p class="lead">{% if has_totp %}Oder mit Passkey bestätigen{% else %}Mit Passkey bestätigen{% endif %}</p>
+    <button type="button" class="button secondary" data-passkey-mfa>Passkey verwenden</button>
+    <p class="hint" data-passkey-mfa-status hidden></p>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

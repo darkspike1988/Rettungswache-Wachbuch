@@ -23,9 +23,14 @@ def current_membership(request):
 
 
 def application_metadata(request):
+    from .push import web_push_enabled
+    from .webauthn_auth import webauthn_enabled
+
     return {
         "app_name": settings.APP_NAME,
         "source_url": settings.SOURCE_URL,
         "app_version": settings.APP_VERSION,
         "mfa_enabled": bool(getattr(settings, "MFA_ENABLED", True)),
+        "webauthn_enabled": webauthn_enabled(),
+        "web_push_enabled": web_push_enabled(),
     }

@@ -12,6 +12,7 @@
   <meta name="apple-mobile-web-app-title" content="{{ app_name }}">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="description" content="Mobiles Wachbuch für die interne Organisation einer Rettungswache.">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <link rel="manifest" href="{% url 'web_manifest' %}">
   <link rel="icon" href="{% static 'core/icons/icon-192.png' %}" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="{% static 'core/icons/icon-192.png' %}">

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 - 2026-07-31
+
+- Passkeys (WebAuthn) fuer Anmeldung und als zweiter Faktor neben TOTP
+- Web-Push fuer dringende Uebergaben (opt-in, VAPID)
+- Stationsweiter ICS-Feed und widerrufbare Kalender-Abo-Links
+- ASVS-L2-Abdeckungsmatrix und Permissions-Policy fuer WebAuthn
+- MFA-Fehlversuche begrenzt; CSP `connect-src` fuer Push-Dienste
+
 ## 0.4.0 - 2026-07-31
 
 - Austritt: Deaktivierung einer Mitgliedschaft zieht Geburtstags-Opt-in zurueck

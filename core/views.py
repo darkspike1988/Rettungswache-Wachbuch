@@ -44,11 +44,11 @@ from .models import (
     Membership,
     StationTask,
     TotpDevice,
+    WebAuthnCredential,
 )
 from .mfa import (
     confirm_device,
     create_pending_device,
-    disable_device,
     mfa_enabled,
     mfa_required,
     provisioning_uri,
@@ -868,23 +868,40 @@ def mfa_verify(request):
     if not pending_id:
         return redirect("login")
     user = get_object_or_404(User, pk=pending_id, is_active=True)
-    device = TotpDevice.objects.filter(user=user, is_confirmed=True).first()
-    if device is None:
+    from .mfa import user_has_totp
+    from .webauthn_auth import user_has_passkey, webauthn_enabled
+
+    has_totp = user_has_totp(user)
+    has_passkey = webauthn_enabled() and user_has_passkey(user)
+    if not has_totp and not has_passkey:
         request.session.pop("mfa_pending_user_id", None)
         return redirect("login")
-    form = TotpConfirmForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        if verify_totp(device, form.cleaned_data["token"]):
+    form = TotpConfirmForm(request.POST or None) if has_totp else None
+    if has_totp and request.method == "POST" and form.is_valid():
+        device = TotpDevice.objects.filter(user=user, is_confirmed=True).first()
+        failures = int(request.session.get("mfa_failures", 0))
+        if device and verify_totp(device, form.cleaned_data["token"]):
             from django.contrib.auth import login
 
             login(request, user, backend="axes.backends.AxesStandaloneBackend")
             next_url = request.session.pop("mfa_next", None) or reverse("landing")
             request.session.pop("mfa_pending_user_id", None)
-            if mfa_required() and not user_has_confirmed_mfa(user):
-                return redirect("mfa_setup")
+            request.session.pop("mfa_failures", None)
             return redirect(next_url)
+        failures += 1
+        request.session["mfa_failures"] = failures
+        if failures >= 8:
+            request.session.pop("mfa_pending_user_id", None)
+            request.session.pop("mfa_next", None)
+            request.session.pop("mfa_failures", None)
+            messages.error(request, "Zu viele Fehlversuche. Bitte erneut anmelden.")
+            return redirect("login")
         form.add_error("token", "Code ungültig oder abgelaufen.")
-    return render(request, "registration/mfa_verify.html", {"form": form})
+    return render(request, "registration/mfa_verify.html", {
+        "form": form,
+        "has_totp": has_totp,
+        "has_passkey": has_passkey,
+    })
 
 
 @require_http_methods(["GET", "POST"])
@@ -893,9 +910,16 @@ def mfa_setup(request):
         raise Http404
     if not request.user.is_authenticated:
         return redirect(f"{reverse('login')}?{urlencode({'next': reverse('mfa_setup')})}")
+    from .webauthn_auth import user_has_passkey, webauthn_enabled
+
     existing = TotpDevice.objects.filter(user=request.user, is_confirmed=True).first()
-    if existing and request.method == "GET":
-        return render(request, "registration/mfa_manage.html", {"device": existing})
+    passkeys = list(WebAuthnCredential.objects.filter(user=request.user)) if webauthn_enabled() else []
+    if request.method == "GET" and (existing or passkeys):
+        return render(request, "registration/mfa_manage.html", {
+            "device": existing,
+            "passkeys": passkeys,
+            "webauthn_enabled": webauthn_enabled(),
+        })
     device = create_pending_device(request.user)
     form = TotpConfirmForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -908,6 +932,8 @@ def mfa_setup(request):
         "form": form,
         "secret": device.secret,
         "provisioning_uri": provisioning_uri(device),
+        "webauthn_enabled": webauthn_enabled(),
+        "passkeys": passkeys,
     })
 
 
@@ -918,6 +944,8 @@ def mfa_disable(request):
     if mfa_required():
         messages.error(request, "MFA ist für diese Installation vorgeschrieben.")
         return redirect("mfa_setup")
-    disable_device(request.user)
+    from .mfa import disable_all_mfa
+
+    disable_all_mfa(request.user)
     messages.success(request, "Zwei-Faktor-Authentifizierung wurde deaktiviert.")
     return redirect("more")

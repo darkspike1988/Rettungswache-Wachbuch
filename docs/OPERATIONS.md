@@ -39,9 +39,12 @@ docker compose exec web python manage.py grant_station_admin BENUTZERNAME
 Weitere persoenliche Konten werden unter `/django-admin/auth/user/` angelegt.
 Stationsadministratoren geben sie anschliessend unter `/team/` frei und setzen
 die Rolle. Gemeinschaftskonten sind nicht vorgesehen. Unter **Mehr → Zwei-Faktor
-(TOTP)** kann jedes Konto eine Authenticator-App einrichten. Mit
+/ Passkeys** koennen TOTP und Passkeys eingerichtet werden. Mit
 `MFA_REQUIRED=true` wird die Einrichtung nach dem Passwort-Login erzwungen.
-Passkeys/WebAuthn bleiben ein spaeterer Ausbau.
+
+Passkeys brauchen `WEBAUTHN_RP_ID` (Hostname) und `WEBAUTHN_ORIGIN` (z. B.
+`https://wache.example`). Web-Push braucht `WEB_PUSH_ENABLED=true` sowie
+VAPID-Schluessel (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`).
 
 ## Reverse-Proxy
 

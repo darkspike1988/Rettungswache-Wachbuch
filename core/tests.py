@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
+import json
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -14,12 +15,14 @@ from .models import (
     AuditEvent,
     BirthdayPreference,
     CalendarEvent,
+    CalendarFeedToken,
     CoffeeEntry,
     FeedItem,
     FeedSource,
     HandoverEntry,
     HandoverRevision,
     Membership,
+    PushSubscription,
     Station,
     StationTask,
     StationTaskCompletion,
@@ -94,9 +97,10 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.4.0")
+        self.assertEqual(response.json()["version"], "0.5.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
 
     def test_privacy_page_lists_essential_cookies_only(self):
         response = self.client.get(reverse("privacy"))
@@ -105,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.4.0")
+        self.assertContains(response, "Version 0.5.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -972,6 +976,79 @@ class RetentionAuditExitAndMfaTests(PilotTestCase):
         })
         self.assertEqual(good.status_code, 302)
         self.assertIn("_auth_user_id", self.client.session)
+
+
+class PasskeyPushCalendarTests(PilotTestCase):
+    def test_passkey_endpoints_unavailable_without_rp_config(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(reverse("passkey_login_options")).status_code, 404)
+
+    @override_settings(WEBAUTHN_ENABLED=True, WEBAUTHN_RP_ID="localhost", WEBAUTHN_ORIGIN="http://localhost")
+    def test_passkey_login_options_available_when_configured(self):
+        self.client.logout()
+        response = self.client.get(reverse("passkey_login_options"))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("challenge", payload)
+
+    def test_station_calendar_feed_and_token(self):
+        CalendarEvent.objects.create(
+            station=self.station,
+            title="Probe",
+            description="Test",
+            starts_at=timezone.now() + timedelta(hours=1),
+            ends_at=timezone.now() + timedelta(hours=2),
+            created_by=self.user,
+        )
+        feed = self.client.get(reverse("calendar_feed_ics"))
+        self.assertEqual(feed.status_code, 200)
+        self.assertIn("BEGIN:VCALENDAR", feed.content.decode())
+        self.assertIn("Probe", feed.content.decode())
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        create = self.client.post(reverse("calendar_feed_manage"), {
+            "action": "create",
+            "label": "Tablet",
+        })
+        self.assertRedirects(create, reverse("calendar_feed_manage"))
+        token = CalendarFeedToken.objects.get(station=self.station)
+        self.client.logout()
+        public = self.client.get(reverse("calendar_feed_token_ics", args=[token.token]))
+        self.assertEqual(public.status_code, 200)
+        self.assertIn("Probe", public.content.decode())
+
+    def test_push_settings_hidden_when_disabled(self):
+        self.assertEqual(self.client.get(reverse("push_settings")).status_code, 404)
+
+    @override_settings(
+        WEB_PUSH_ENABLED=True,
+        VAPID_PUBLIC_KEY="BPtest",
+        VAPID_PRIVATE_KEY="private",
+    )
+    def test_push_subscription_can_be_stored(self):
+        response = self.client.post(
+            reverse("push_settings"),
+            data=json.dumps({
+                "endpoint": "https://push.example/subscription/1",
+                "keys": {"p256dh": "abc", "auth": "def"},
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(PushSubscription.objects.filter(user=self.user).exists())
+
+    def test_urgent_push_noop_when_disabled(self):
+        from .push import notify_urgent_handover
+
+        handover = HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.TASK,
+            priority=HandoverEntry.Priority.URGENT,
+            title="Dringend",
+            details="x",
+            author=self.user,
+        )
+        self.assertEqual(notify_urgent_handover(handover, self.user), 0)
 
 
 class MigrationDefaultTests(TestCase):

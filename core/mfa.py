@@ -2,7 +2,8 @@ import pyotp
 from django.conf import settings
 from django.utils import timezone
 
-from .models import TotpDevice
+from .models import TotpDevice, WebAuthnCredential
+from .webauthn_auth import user_has_passkey, webauthn_enabled
 
 
 def mfa_enabled():
@@ -14,6 +15,15 @@ def mfa_required():
 
 
 def user_has_confirmed_mfa(user):
+    """True if the user has at least one confirmed second factor (TOTP and/or Passkey)."""
+    if TotpDevice.objects.filter(user=user, is_confirmed=True).exists():
+        return True
+    if webauthn_enabled() and user_has_passkey(user):
+        return True
+    return False
+
+
+def user_has_totp(user):
     return TotpDevice.objects.filter(user=user, is_confirmed=True).exists()
 
 
@@ -61,3 +71,8 @@ def confirm_device(device, token):
 
 def disable_device(user):
     TotpDevice.objects.filter(user=user).delete()
+
+
+def disable_all_mfa(user):
+    disable_device(user)
+    WebAuthnCredential.objects.filter(user=user).delete()

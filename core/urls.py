@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import account_views, views
 
 
 urlpatterns = [
@@ -14,7 +14,11 @@ urlpatterns = [
     path("uebergaben/<int:pk>/status/", views.handover_status, name="handover_status"),
     path("kalender/", views.calendar_view, name="calendar"),
     path("kalender/neu/", views.calendar_create, name="calendar_create"),
+    path("kalender/feed.ics", account_views.calendar_feed_ics, name="calendar_feed_ics"),
+    path("kalender/abo/", account_views.calendar_feed_manage, name="calendar_feed_manage"),
+    path("kalender/abo/<str:token>.ics", account_views.calendar_feed_token_ics, name="calendar_feed_token_ics"),
     path("kalender/<int:pk>/termin.ics", views.calendar_event_ics, name="calendar_event_ics"),
+    path("benachrichtigungen/", account_views.push_settings, name="push_settings"),
     path("geburtstage/", views.birthdays, name="birthdays"),
     path("geburtstage/einstellung/", views.birthday_settings, name="birthday_settings"),
     path("kaffeekasse/", views.coffee, name="coffee"),

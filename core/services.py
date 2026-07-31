@@ -53,6 +53,7 @@ def create_handover(form, membership):
     audit(membership.user, membership.station, "handover.created", handover, {
         "fields": ["category", "priority", "title", "details"],
     })
+    _schedule_urgent_push(handover, membership.user)
     return handover
 
 
@@ -112,7 +113,26 @@ def update_handover_content(handover, cleaned_data, membership):
         "version": locked.version,
         "changes": structure_changes(before, after),
     })
+    if locked.priority == HandoverEntry.Priority.URGENT and "priority" in field_names:
+        _schedule_urgent_push(locked, membership.user)
     return locked
+
+
+def _schedule_urgent_push(handover, actor):
+    handover_id = handover.pk
+    actor_id = actor.pk
+
+    def send():
+        from django.contrib.auth.models import User
+
+        from .push import notify_urgent_handover
+
+        item = HandoverEntry.objects.filter(pk=handover_id).first()
+        user = User.objects.filter(pk=actor_id).first()
+        if item and user:
+            notify_urgent_handover(item, user)
+
+    transaction.on_commit(send)
 
 
 @transaction.atomic

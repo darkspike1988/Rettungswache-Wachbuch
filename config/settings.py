@@ -161,6 +161,13 @@ RETENTION_FEED_DAYS = int(os.getenv("RETENTION_FEED_DAYS", "90") or "0")
 RETENTION_AUDIT_DAYS = int(os.getenv("RETENTION_AUDIT_DAYS", "0") or "0")
 MFA_ENABLED = env_bool("MFA_ENABLED", default=True)
 MFA_REQUIRED = env_bool("MFA_REQUIRED", default=False)
+WEBAUTHN_ENABLED = env_bool("WEBAUTHN_ENABLED", default=True)
+WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", "").strip()
+WEBAUTHN_ORIGIN = os.getenv("WEBAUTHN_ORIGIN", "").strip()
+WEB_PUSH_ENABLED = env_bool("WEB_PUSH_ENABLED", default=False)
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "").strip()
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "").strip()
+VAPID_ADMIN_EMAIL = os.getenv("VAPID_ADMIN_EMAIL", "ops@localhost").strip() or "ops@localhost"
 
 # Essential auth cookies only. No analytics or advertising cookies are set.
 SESSION_COOKIE_NAME = "rwsth_session"

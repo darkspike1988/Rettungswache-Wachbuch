@@ -81,6 +81,13 @@ services:
       RETENTION_AUDIT_DAYS: ${RETENTION_AUDIT_DAYS:-0}
       MFA_ENABLED: ${MFA_ENABLED:-true}
       MFA_REQUIRED: ${MFA_REQUIRED:-false}
+      WEBAUTHN_ENABLED: ${WEBAUTHN_ENABLED:-true}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-}
+      WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN:-}
+      WEB_PUSH_ENABLED: ${WEB_PUSH_ENABLED:-false}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_ADMIN_EMAIL: ${VAPID_ADMIN_EMAIL:-ops@localhost}
     depends_on:
       migrate:
         condition: service_completed_successfully

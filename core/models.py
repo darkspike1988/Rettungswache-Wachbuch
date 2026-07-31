@@ -389,6 +389,63 @@ class TotpDevice(models.Model):
         return f"TOTP {self.user_id} ({state})"
 
 
+class WebAuthnCredential(models.Model):
+    """Passkey / WebAuthn public-key credential for phishing-resistant login or MFA."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="webauthn_credentials")
+    credential_id = models.CharField(max_length=512, unique=True)
+    public_key = models.TextField()
+    sign_count = models.PositiveIntegerField(default=0)
+    device_name = models.CharField(max_length=120, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.device_name or f"Passkey {self.pk}"
+
+
+class PushSubscription(models.Model):
+    """Browser Web-Push subscription for urgent station alerts."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="push_subscriptions")
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="push_subscriptions")
+    endpoint = models.URLField(max_length=500)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=100)
+    user_agent = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["endpoint"], name="unique_push_endpoint"),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Push {self.user_id}@{self.station_id}"
+
+
+class CalendarFeedToken(models.Model):
+    """Read-only token for external calendar apps (webcal/ICS subscribe)."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="calendar_feed_tokens")
+    token = models.CharField(max_length=64, unique=True)
+    label = models.CharField(max_length=120, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="calendar_feed_tokens")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.label or f"Kalender-Abo {self.pk}"
+
+
 class AuditEvent(models.Model):
     actor = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True)
     station = models.ForeignKey(Station, on_delete=models.PROTECT, null=True, blank=True)
