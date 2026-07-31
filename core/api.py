@@ -21,6 +21,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core import signing
 from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Sum
@@ -30,7 +31,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from .access import CONTENT_ROLES, get_membership
-from .forms import CoffeeEntryForm, HandoverForm, HandoverStatusForm
+from .forms import (
+    CalendarEventForm,
+    CoffeeEntryForm,
+    HandoverForm,
+    HandoverStatusForm,
+)
 from .models import CalendarEvent, CoffeeEntry, HandoverEntry, Membership
 from .services import audit, change_handover_status, create_handover
 from .views import prioritized_handovers
@@ -382,9 +388,30 @@ def handover_set_status(request, pk):
     return JsonResponse(_handover_summary(updated))
 
 
+@csrf_exempt
+def calendar(request):
+    """Collection endpoint: ``GET`` lists upcoming events, ``POST`` creates one."""
+    if request.method == "GET":
+        return _calendar_list(request)
+    if request.method == "POST":
+        return _calendar_create(request)
+    return _error(405, "Methode nicht erlaubt.")
+
+
+def _event_json(event):
+    return {
+        "id": event.pk,
+        "title": event.title,
+        "description": event.description,
+        "starts_at": event.starts_at.isoformat(),
+        "ends_at": event.ends_at.isoformat(),
+        "created_by": _person(event.created_by),
+    }
+
+
 @api_member_view()
 @api_module_required("calendar_enabled")
-def calendar(request):
+def _calendar_list(request):
     now = timezone.now()
     events = (
         CalendarEvent.objects.filter(
@@ -398,18 +425,43 @@ def calendar(request):
         "count": page.paginator.count,
         "page": page.number,
         "num_pages": page.paginator.num_pages,
-        "results": [
-            {
-                "id": event.pk,
-                "title": event.title,
-                "description": event.description,
-                "starts_at": event.starts_at.isoformat(),
-                "ends_at": event.ends_at.isoformat(),
-                "created_by": _person(event.created_by),
-            }
-            for event in page.object_list
-        ],
+        "results": [_event_json(event) for event in page.object_list],
     })
+
+
+@csrf_exempt
+@api_write_view(WRITE_ROLES)
+def _calendar_create(request):
+    station = request.membership.station
+    if not station.calendar_enabled:
+        return _error(404, "Modul ist nicht aktiviert.")
+    payload, error = _json_body(request)
+    if error is not None:
+        return error
+    form = CalendarEventForm(payload)
+    if not form.is_valid():
+        return JsonResponse(
+            {"error": "Termin ist ungueltig.", "fields": form.errors},
+            status=422,
+        )
+    try:
+        with transaction.atomic():
+            event = form.save(commit=False)
+            event.station = station
+            event.created_by = request.user
+            event.full_clean()
+            event.save()
+            audit(request.user, station, "calendar.created", event, {
+                "fields": ["title", "description", "starts_at", "ends_at"]
+            })
+    except DjangoValidationError as exc:
+        return JsonResponse(
+            {"error": "Termin ist ungueltig.", "fields": exc.message_dict}
+            if hasattr(exc, "message_dict")
+            else {"error": "; ".join(exc.messages)},
+            status=422,
+        )
+    return JsonResponse(_event_json(event), status=201)
 
 
 def _coffee_balances(station, membership, user):

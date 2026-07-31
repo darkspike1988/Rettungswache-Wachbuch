@@ -159,3 +159,10 @@ Bucht in die Kaffeekasse (nur Kassenwart oder Admin, Modul aktiv). Body
 `{ "member", "direction": "credit"|"debit", "amount_eur", "reason" }`. Antwort
 `201` mit der neuen Buchung. Buchungen sind append-only und unveraenderlich;
 Korrekturen erfolgen als Gegenbuchung ueber die Weboberflaeche.
+
+### POST /api/v1/kalender/
+
+Legt einen Termin an (nur Schichtleitung oder Admin, Modul aktiv). Body
+`{ "title", "description", "starts_at", "ends_at" }` mit Zeitstempeln im Format
+`YYYY-MM-DD HH:MM:SS`. Ende vor Beginn wird mit `422` abgewiesen. Antwort `201`
+mit dem angelegten Termin.

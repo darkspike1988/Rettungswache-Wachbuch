@@ -845,6 +845,50 @@ class ClientApiWriteTests(TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_shift_lead_creates_calendar_event_with_audit(self):
+        token = self.token(role=Membership.Role.SHIFT_LEAD)
+        response = self.post(
+            reverse("api:calendar"),
+            {
+                "title": "Geräteprüfung",
+                "description": "Jährliche Prüfung",
+                "starts_at": "2026-08-01 09:00:00",
+                "ends_at": "2026-08-01 11:00:00",
+            },
+            token,
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(CalendarEvent.objects.count(), 1)
+        self.assertTrue(AuditEvent.objects.filter(action="calendar.created").exists())
+
+    def test_calendar_create_requires_shift_lead_or_admin(self):
+        token = self.token(role=Membership.Role.MEMBER)
+        response = self.post(
+            reverse("api:calendar"),
+            {
+                "title": "Nicht erlaubt",
+                "starts_at": "2026-08-01 09:00:00",
+                "ends_at": "2026-08-01 11:00:00",
+            },
+            token,
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(CalendarEvent.objects.count(), 0)
+
+    def test_calendar_create_rejects_end_before_start(self):
+        token = self.token(role=Membership.Role.ADMIN)
+        response = self.post(
+            reverse("api:calendar"),
+            {
+                "title": "Verdreht",
+                "starts_at": "2026-08-01 11:00:00",
+                "ends_at": "2026-08-01 09:00:00",
+            },
+            token,
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(CalendarEvent.objects.count(), 0)
+
     def test_coffee_booking_requires_cashier_or_admin(self):
         member_token = self.token(role=Membership.Role.MEMBER)
         denied = self.post(
