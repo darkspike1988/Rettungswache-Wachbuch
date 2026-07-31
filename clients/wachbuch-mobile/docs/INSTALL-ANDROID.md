@@ -2,7 +2,7 @@
 
 Stand: 31. Juli 2026.
 
-Die wachbuch-Client-App ist **AGPL** und wird als selbst gebaute bzw. CI-APK
+Die Wachbuch-Client-App ist **AGPL** und wird als selbst gebaute bzw. CI-APK
 auf Smartphone und Tablet installiert. Für einen späteren Play-Store-Release siehe
 [PLAY-STORE.md](PLAY-STORE.md).
 

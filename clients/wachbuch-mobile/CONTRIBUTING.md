@@ -1,4 +1,4 @@
-# Mitwirken am wachbuch-Client-Client
+# Mitwirken am Wachbuch-Client
 
 1. Fork oder Branch anlegen.
 2. Keine echten Wach-, Mitarbeiter- oder Zugangsdaten in Issues/Commits.

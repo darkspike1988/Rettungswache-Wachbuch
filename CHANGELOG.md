@@ -4,6 +4,7 @@
 
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
+- Client-Zielrepo auf `wachbuch-Client` umgestellt; Publish-Skript bereit
 
 ## 0.12.0 - 2026-07-31
 
