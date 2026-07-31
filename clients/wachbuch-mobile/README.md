@@ -28,6 +28,22 @@ Es gibt **keine** Wachenauswahl in der App – die Station kommt aus der Server-
 - [Paperless-ngx Uploader](https://github.com/gmag11/Paperless_ngx_uploader) – schlanker Self-Host-Client
 - Nextcloud App-Passwords / Login-Flow – Server-URL zuerst
 
+## Android-APK (Smartphone & Tablet)
+
+Installierbare FOSS-APK (Package `de.wachbuch.mobile`, Android 7+):
+
+```bash
+./scripts/build-apk.sh
+# → dist/wachbuch-mobile.apk
+```
+
+Sideload: APK aufs Gerät kopieren, unbekannte Quellen erlauben, installieren.
+Details: [docs/INSTALL-ANDROID.md](docs/INSTALL-ANDROID.md).
+
+- **Smartphone:** untere Navigation
+- **Tablet (≥ 720 dp):** NavigationRail + Übergaben-Grid
+- CI baut die APK als Artifact `wachbuch-mobile-apk`
+
 ## Start
 
 ```bash
@@ -43,6 +59,7 @@ Solange das zweite Repo noch leer/nicht angelegt ist, aus dem Server-Repo:
 ```bash
 cd Rettungswache-Wachbuch/clients/wachbuch-mobile
 flutter pub get && flutter test && flutter run
+# oder: ./scripts/build-apk.sh
 ```
 
 ## Zweites Repo anlegen (Maintainer)

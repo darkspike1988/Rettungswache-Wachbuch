@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/auth/session_store.dart';
+import 'package:wachbuch_mobile/ui/layout.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
@@ -59,7 +60,6 @@ class _LoginScreenState extends State<LoginScreen> {
         if (token.isEmpty) {
           throw ApiException(400, 'Bitte App-Token einfügen (aus /konto/api/).');
         }
-        // Validate token against /me/
         await api.copyWithToken(token).me();
       } else {
         token = await api.obtainToken(
@@ -89,101 +89,124 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final maxW = AppLayout.isTablet(width) ? 480.0 : 420.0;
+
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            const SizedBox(height: 24),
-            Text(
-              'Wachbuch',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxW),
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                const SizedBox(height: 24),
+                Icon(
+                  Icons.local_hospital_outlined,
+                  size: AppLayout.isTablet(width) ? 64 : 48,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Wachbuch',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Selbst gehostet · eine Wache · AGPL',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 32),
+                TextField(
+                  controller: _serverCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Server-URL',
+                    hintText: 'https://wache.example.org',
+                    border: OutlineInputBorder(),
                   ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Selbst gehostet · eine Wache · AGPL',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                ),
+                const SizedBox(height: 16),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Login')),
+                    ButtonSegment(value: true, label: Text('App-Token')),
+                  ],
+                  selected: {_useTokenPaste},
+                  onSelectionChanged: (value) {
+                    setState(() => _useTokenPaste = value.first);
+                  },
+                ),
+                const SizedBox(height: 16),
+                if (_useTokenPaste)
+                  TextField(
+                    controller: _tokenCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'App-Token (wb_…)',
+                      border: OutlineInputBorder(),
+                      helperText: 'Aus dem Web unter /konto/api/ – nötig bei MFA',
+                    ),
+                    obscureText: true,
+                  )
+                else ...[
+                  TextField(
+                    controller: _userCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Benutzername',
+                      border: OutlineInputBorder(),
+                    ),
+                    autocorrect: false,
                   ),
-            ),
-            const SizedBox(height: 32),
-            TextField(
-              controller: _serverCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Server-URL',
-                hintText: 'https://wache.example.org',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-            ),
-            const SizedBox(height: 16),
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('Login')),
-                ButtonSegment(value: true, label: Text('App-Token')),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _passCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Passwort',
+                      border: OutlineInputBorder(),
+                    ),
+                    obscureText: true,
+                    onSubmitted: (_) {
+                      if (!_busy) {
+                        _submit();
+                      }
+                    },
+                  ),
+                ],
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _error!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _busy ? null : _submit,
+                  child: _busy
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Mit Wache verbinden'),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Wie Nextcloud/Paperless: Die App speichert nur die Server-URL und ein widerrufbares Token. '
+                  'Die Wache kommt aus der Mitgliedschaft auf dem Server. '
+                  'Smartphone und Tablet teilen denselben Client.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
-              selected: {_useTokenPaste},
-              onSelectionChanged: (value) {
-                setState(() => _useTokenPaste = value.first);
-              },
             ),
-            const SizedBox(height: 16),
-            if (_useTokenPaste)
-              TextField(
-                controller: _tokenCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'App-Token (wb_…)',
-                  border: OutlineInputBorder(),
-                  helperText: 'Aus dem Web unter /konto/api/ – nötig bei MFA',
-                ),
-                obscureText: true,
-              )
-            else ...[
-              TextField(
-                controller: _userCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Benutzername',
-                  border: OutlineInputBorder(),
-                ),
-                autocorrect: false,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Passwort',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _busy ? null : _submit,
-              child: _busy
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Mit Wache verbinden'),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Wie Nextcloud/Paperless: Die App speichert nur die Server-URL und ein widerrufbares Token. Die Wache kommt aus der Mitgliedschaft auf dem Server.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+          ),
         ),
       ),
     );

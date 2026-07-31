@@ -54,6 +54,13 @@ Bei MFA: App-Token im Web unter `/konto/api/` erzeugen und in der App einfügen.
 
 Kein Fremdcode 1:1 kopiert.
 
+## Android-APK
+
+- Bau: `clients/wachbuch-mobile/scripts/build-apk.sh` → `dist/wachbuch-mobile.apk`
+- Install: [clients/wachbuch-mobile/docs/INSTALL-ANDROID.md](../clients/wachbuch-mobile/docs/INSTALL-ANDROID.md)
+- Package-ID: `de.wachbuch.mobile` (minSdk 24)
+- Layout: Phone Bottom-Nav, Tablet NavigationRail / Grid
+
 ## Lizenz
 
 AGPL-3.0-or-later in Client-`LICENSE` und Server-Root-`LICENSE`.

@@ -2,7 +2,7 @@
 
 Stand: 31. Juli 2026.
 
-## Erreicht (Basis bis 0.10.0)
+## Erreicht (Basis bis 0.11.0)
 
 - Docker, lokaler Login, Rollen, Uebergaben, Tagesaufgaben, Geburtstage, Kasse-Ledger
 - PWA, oeffentliche Startseite, persoenlicher Bereich, Wachenchat
@@ -11,6 +11,7 @@ Stand: 31. Juli 2026.
 - E2EE fuer Wachenchat, private Chats und interne Post (Admin sieht keine Klartexte)
 - **API-Fundament** `/api/v1/` mit App-Tokens fuer Mobile-Clients
 - **AGPL Flutter-Client** unter `clients/wachbuch-mobile/` (Ziel-Repo Wachbuch-Mobile)
+- **Android-APK** sideloadbar (Phone/Tablet-Layout, FOSS-Build)
 - optionale MFA (TOTP/Passkeys), Web-Push, Wachen-ICS-Abos, Retention, Audit-Diffs
 - gesetzliche Feiertage NRW im fortlaufenden Kalender/ICS (`holidays_enabled`)
 - Compliance- und ASVS-L2-Matrix dokumentiert

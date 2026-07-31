@@ -38,7 +38,7 @@ EOF
 fi
 
 cp -a "$SRC/." "$WORK/"
-rm -rf "$WORK/.dart_tool" "$WORK/build" \
+rm -rf "$WORK/.dart_tool" "$WORK/build" "$WORK/dist" \
   "$WORK/.flutter-plugins" "$WORK/.flutter-plugins-dependencies"
 
 cd "$WORK"

@@ -126,6 +126,7 @@ Loeschfristen oder organisatorische Freigabe. Details stehen in
 - [Architektur](docs/ARCHITECTURE.md)
 - [API fuer Mobile-/Drittclients](docs/API.md)
 - [AGPL-Client iOS/Android](docs/CLIENT.md) → Ziel-Repo [Wachbuch-Mobile](https://github.com/darkspike1988/Wachbuch-Mobile)
+- [Android-APK installieren](clients/wachbuch-mobile/docs/INSTALL-ANDROID.md) (`./clients/wachbuch-mobile/scripts/build-apk.sh`)
 - [Betrieb, Backup und Updates](docs/OPERATIONS.md)
 - [Datenschutz und Sicherheit](docs/SECURITY-PRIVACY.md)
 - [Compliance: DSGVO, Cookies, AI Act, NRW](docs/COMPLIANCE.md)
