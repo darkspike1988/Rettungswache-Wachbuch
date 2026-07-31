@@ -146,7 +146,7 @@ def handover_create(request):
     form = HandoverForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         handover = create_handover(form, request.membership)
-        messages.success(request, "Uebergabe wurde angelegt.")
+        messages.success(request, "Übergabe wurde angelegt.")
         return redirect("handover_detail", pk=handover.pk)
     return render(request, "core/handover_form.html", {"form": form})
 

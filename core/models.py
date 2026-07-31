@@ -117,11 +117,11 @@ class HandoverRevision(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk:
-            raise ValidationError("Uebergaberevisionen duerfen nicht veraendert werden.")
+            raise ValidationError("Übergaberevisionen dürfen nicht verändert werden.")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        raise ValidationError("Uebergaberevisionen duerfen nicht geloescht werden.")
+        raise ValidationError("Übergaberevisionen dürfen nicht gelöscht werden.")
 
 
 class CalendarEvent(models.Model):
@@ -161,11 +161,11 @@ class BirthdayPreference(models.Model):
 
     def clean(self):
         if self.is_visible and (not self.day or not self.month):
-            raise ValidationError("Fuer die Anzeige werden Tag und Monat benoetigt.")
+            raise ValidationError("Für die Anzeige werden Tag und Monat benötigt.")
         if self.day and not 1 <= self.day <= 31:
-            raise ValidationError({"day": "Ungueltiger Tag."})
+            raise ValidationError({"day": "Ungültiger Tag."})
         if self.month and not 1 <= self.month <= 12:
-            raise ValidationError({"month": "Ungueltiger Monat."})
+            raise ValidationError({"month": "Ungültiger Monat."})
 
 
 class CoffeeEntry(models.Model):
@@ -193,7 +193,7 @@ class CoffeeEntry(models.Model):
     def clean(self):
         if self.correction_of:
             if self.correction_of.station_id != self.station_id:
-                raise ValidationError("Die Korrektur muss zur gleichen Wache gehoeren.")
+                raise ValidationError("Die Korrektur muss zur gleichen Wache gehören.")
             if self.correction_of.member_id != self.member_id:
                 raise ValidationError("Die Korrektur muss dieselbe Person betreffen.")
             if self.amount_cents != -self.correction_of.amount_cents:
@@ -203,12 +203,12 @@ class CoffeeEntry(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk:
-            raise ValidationError("Kassenbuchungen duerfen nicht veraendert werden.")
+            raise ValidationError("Kassenbuchungen dürfen nicht verändert werden.")
         self.full_clean()
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        raise ValidationError("Kassenbuchungen duerfen nicht geloescht werden.")
+        raise ValidationError("Kassenbuchungen dürfen nicht gelöscht werden.")
 
     @property
     def amount_euros(self):
@@ -241,9 +241,9 @@ class FeedSource(models.Model):
         try:
             port = parsed.port
         except ValueError as exc:
-            raise ValidationError({"url": "Die Portangabe ist ungueltig."}) from exc
+            raise ValidationError({"url": "Die Portangabe ist ungültig."}) from exc
         if parsed.scheme != "https" or port not in {None, 443}:
-            raise ValidationError({"url": "Quellen muessen HTTPS auf Port 443 verwenden."})
+            raise ValidationError({"url": "Quellen müssen HTTPS auf Port 443 verwenden."})
         if parsed.hostname not in settings.FEED_ALLOWED_HOSTS:
             raise ValidationError({
                 "url": "Der Host muss zuerst in FEED_ALLOWED_HOSTS freigegeben werden."
@@ -287,8 +287,8 @@ class AuditEvent(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk:
-            raise ValidationError("Audit-Ereignisse duerfen nicht veraendert werden.")
+            raise ValidationError("Audit-Ereignisse dürfen nicht verändert werden.")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        raise ValidationError("Audit-Ereignisse duerfen nicht geloescht werden.")
+        raise ValidationError("Audit-Ereignisse dürfen nicht gelöscht werden.")

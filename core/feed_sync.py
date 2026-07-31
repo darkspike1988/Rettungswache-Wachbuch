@@ -28,11 +28,11 @@ def fetch_source(source):
     ):
         raise ValueError("Quelle ist nicht in der erlaubten HTTPS-Hostliste.")
     if parsed_url.port not in {None, 443}:
-        raise ValueError("Feed-Quellen duerfen nur HTTPS-Port 443 verwenden.")
+        raise ValueError("Feed-Quellen dürfen nur HTTPS-Port 443 verwenden.")
     resolved = socket.getaddrinfo(parsed_url.hostname, 443, type=socket.SOCK_STREAM)
     addresses = list(dict.fromkeys(item[4][0] for item in resolved))
     if not addresses or any(not ipaddress.ip_address(value).is_global for value in addresses):
-        raise ValueError("Feed-Quelle zeigt nicht ausschliesslich auf globale IP-Adressen.")
+        raise ValueError("Feed-Quelle zeigt nicht ausschließlich auf globale IP-Adressen.")
     target = parsed_url.path or "/"
     if parsed_url.query:
         target = f"{target}?{parsed_url.query}"
@@ -67,7 +67,7 @@ def fetch_source(source):
             continue
         try:
             if 300 <= response.status < 400:
-                raise ValueError("Weiterleitungen sind fuer Feed-Quellen deaktiviert.")
+                raise ValueError("Weiterleitungen sind für Feed-Quellen deaktiviert.")
             if response.status >= 400:
                 raise ValueError(f"Quelle antwortet mit HTTP {response.status}.")
             content = bytearray()

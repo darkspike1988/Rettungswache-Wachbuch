@@ -95,7 +95,7 @@ def api_member_view(allowed_roles=CONTENT_ROLES):
             if membership is None:
                 return _error(403, "Keine aktive Wachenmitgliedschaft.")
             if allowed_roles is not None and membership.role not in allowed_roles:
-                return _error(403, "Fuer diese Rolle nicht freigegeben.")
+                return _error(403, "Für diese Rolle nicht freigegeben.")
             request.membership = membership
             return view_func(request, *args, **kwargs)
 
@@ -143,7 +143,7 @@ def api_write_view(allowed_roles):
             if membership is None:
                 return _error(403, "Keine aktive Wachenmitgliedschaft.")
             if allowed_roles is not None and membership.role not in allowed_roles:
-                return _error(403, "Fuer diese Rolle nicht freigegeben.")
+                return _error(403, "Für diese Rolle nicht freigegeben.")
             request.membership = membership
             return view_func(request, *args, **kwargs)
 
@@ -156,7 +156,7 @@ def _json_body(request):
     try:
         return json.loads(request.body or b"{}"), None
     except (ValueError, TypeError):
-        return None, _error(400, "Ungueltiger JSON-Koerper.")
+        return None, _error(400, "Ungültiger JSON-Körper.")
 
 
 @csrf_exempt
@@ -166,7 +166,7 @@ def login(request):
     try:
         payload = json.loads(request.body or b"{}")
     except (ValueError, TypeError):
-        return _error(400, "Ungueltiger JSON-Koerper.")
+        return _error(400, "Ungültiger JSON-Körper.")
     username = str(payload.get("username", "")).strip()
     password = str(payload.get("password", ""))
     if not username or not password:
@@ -174,7 +174,7 @@ def login(request):
     try:
         user = authenticate(request, username=username, password=password)
     except PermissionDenied:
-        return _error(429, "Zu viele Fehlversuche. Bitte spaeter erneut.")
+        return _error(429, "Zu viele Fehlversuche. Bitte später erneut.")
     if user is None:
         return _error(401, "Anmeldung fehlgeschlagen.")
     membership = get_membership(user)
@@ -345,7 +345,7 @@ def handover_detail(request, pk):
         .first()
     )
     if handover is None:
-        return _error(404, "Uebergabe wurde nicht gefunden.")
+        return _error(404, "Übergabe wurde nicht gefunden.")
     return JsonResponse(_handover_detail_json(handover))
 
 
@@ -358,7 +358,7 @@ def _handover_create(request):
     form = HandoverForm(payload)
     if not form.is_valid():
         return JsonResponse(
-            {"error": "Eingaben sind ungueltig.", "fields": form.errors},
+            {"error": "Eingaben sind ungültig.", "fields": form.errors},
             status=422,
         )
     handover = create_handover(form, request.membership)
@@ -372,14 +372,14 @@ def handover_set_status(request, pk):
         pk=pk, station=request.membership.station
     ).first()
     if handover is None:
-        return _error(404, "Uebergabe wurde nicht gefunden.")
+        return _error(404, "Übergabe wurde nicht gefunden.")
     payload, error = _json_body(request)
     if error is not None:
         return error
     form = HandoverStatusForm(payload, instance=handover)
     if not form.is_valid():
         return JsonResponse(
-            {"error": "Status ist ungueltig.", "fields": form.errors},
+            {"error": "Status ist ungültig.", "fields": form.errors},
             status=422,
         )
     updated = change_handover_status(
@@ -441,7 +441,7 @@ def _calendar_create(request):
     form = CalendarEventForm(payload)
     if not form.is_valid():
         return JsonResponse(
-            {"error": "Termin ist ungueltig.", "fields": form.errors},
+            {"error": "Termin ist ungültig.", "fields": form.errors},
             status=422,
         )
     try:
@@ -456,7 +456,7 @@ def _calendar_create(request):
             })
     except DjangoValidationError as exc:
         return JsonResponse(
-            {"error": "Termin ist ungueltig.", "fields": exc.message_dict}
+            {"error": "Termin ist ungültig.", "fields": exc.message_dict}
             if hasattr(exc, "message_dict")
             else {"error": "; ".join(exc.messages)},
             status=422,
@@ -538,7 +538,7 @@ def _coffee_create(request):
     form = CoffeeEntryForm(payload, station=station)
     if not form.is_valid():
         return JsonResponse(
-            {"error": "Buchung ist ungueltig.", "fields": form.errors},
+            {"error": "Buchung ist ungültig.", "fields": form.errors},
             status=422,
         )
     with transaction.atomic():
