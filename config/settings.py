@@ -7,6 +7,8 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+from core.version import APP_VERSION as DEFAULT_APP_VERSION  # noqa: E402
+
 
 def env_bool(name, default=False):
     return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
@@ -148,9 +150,18 @@ APP_NAME = os.getenv("APP_NAME", "Rettungswache-Wachbuch").strip()
 SOURCE_URL = os.getenv(
     "SOURCE_URL", "https://github.com/Darkspike1988/Rettungswache-Wachbuch"
 ).strip()
+APP_VERSION = os.getenv("APP_VERSION", DEFAULT_APP_VERSION).strip()
 FEED_ALLOWED_HOSTS = {
     value.strip().lower()
     for value in os.getenv("FEED_ALLOWED_HOSTS", "").split(",")
     if value.strip()
 }
 FEED_MAX_BYTES = 2_000_000
+
+# Essential auth cookies only. No analytics or advertising cookies are set.
+SESSION_COOKIE_NAME = "rwsth_session"
+CSRF_COOKIE_NAME = "rwsth_csrf"
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 60 * 60 * 12
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = False

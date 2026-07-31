@@ -83,9 +83,20 @@ class SecurityAndAccessTests(PilotTestCase):
     def test_health_endpoint_and_security_headers(self):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"status": "ok"})
+        self.assertEqual(response.json()["status"], "ok")
+        self.assertEqual(response.json()["version"], "0.3.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+
+    def test_privacy_page_lists_essential_cookies_only(self):
+        response = self.client.get(reverse("privacy"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "rwsth_session")
+        self.assertContains(response, "rwsth_csrf")
+        self.assertContains(response, "TDDDG")
+        self.assertContains(response, "AI Act")
+        self.assertContains(response, "Version 0.3.0")
+        self.assertNotContains(response, "Google Analytics")
 
     def test_user_without_membership_waits_for_approval(self):
         outsider = User.objects.create_user("outside@example.org")

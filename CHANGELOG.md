@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased - PWA-App und Docker-Login
+## 0.3.0 - 2026-07-31
 
+- Compliance-Doku zu DSGVO, TDDDG-Cookies, EU AI Act und NRW oeffentlichem Dienst
+- Datenschutz-/Cookie-Transparenzseite unter `/datenschutz/` ohne Tracking-Banner
+- sichtbare SemVer-Version in Footer, `/healthz/` und Image-Label
+- dokumentierter Versions- und Update-/Rollback-Ablauf
 - Tagesaufgaben-Modul nach Wandbogen: gruen taeglich, gelb Wochentag, blau zusaetzlich
 - Heute-Liste, Wochenbogen, Vorlagenverwaltung und Audit fuer Erledigungen
 - installierbare PWA mit Manifest, Service Worker, Icons und Offline-Hinweis

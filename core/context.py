@@ -26,4 +26,5 @@ def application_metadata(request):
     return {
         "app_name": settings.APP_NAME,
         "source_url": settings.SOURCE_URL,
+        "app_version": settings.APP_VERSION,
     }

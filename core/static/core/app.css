@@ -212,6 +212,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   border-top: 1px solid var(--line);
   font-size: .85rem;
 }
+.footer-links { display: flex; flex-wrap: wrap; gap: .35rem 1rem; align-items: center; }
+.app-version { color: var(--muted); }
 .messages { max-width: 48rem; margin-bottom: 1.5rem; }
 .message { padding: .85rem 1rem; color: var(--text); background: #e5f1f4; border-left: 4px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; }
 .message + .message { margin-top: .5rem; }

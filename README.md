@@ -123,6 +123,7 @@ Loeschfristen oder organisatorische Freigabe. Details stehen in
 - [Architektur](docs/ARCHITECTURE.md)
 - [Betrieb, Backup und Updates](docs/OPERATIONS.md)
 - [Datenschutz und Sicherheit](docs/SECURITY-PRIVACY.md)
+- [Compliance: DSGVO, Cookies, AI Act, NRW](docs/COMPLIANCE.md)
 - [Test- und Go-live-Checkliste](docs/GO-LIVE-CHECKLIST.md)
 - [Recherche und Quellen](docs/RESEARCH.md)
 - [Audit und Folgeplan](docs/AUDIT-2026-07.md)

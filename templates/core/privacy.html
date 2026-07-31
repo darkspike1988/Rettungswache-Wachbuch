@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Datenschutz und Cookies | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading narrow">
+  <p class="context-line">Rechtliche Hinweise</p>
+  <h1>Datenschutz, Cookies und KI</h1>
+  <p class="lead">Technische Produktinformation für Betreiber und Nutzer. Keine Rechtsberatung und kein Ersatz für die Betroffeneninformation der verantwortlichen Stelle.</p>
+</header>
+
+<section class="content-flow narrow prose">
+  <h2>Zweck der Anwendung</h2>
+  <p>Das Wachbuch unterstützt die interne Organisation einer Rettungswache (Übergaben, Termine, optionale Tagesaufgaben, Kaffeekasse, Teamrollen, Audit). Patienten-, Einsatz- und Alarmierungsdaten gehören nicht hinein.</p>
+
+  <h2>Cookies (TDDDG / DSGVO)</h2>
+  <p>Es werden keine Analyse-, Marketing- oder Tracking-Cookies gesetzt. Deshalb gibt es keinen Cookie-Banner mit Opt-in für Drittanbieter. Folgende technisch notwendige Cookies können gesetzt werden:</p>
+  <dl class="summary-list">
+    <div><dt>{{ session_cookie }}</dt><dd>Sitzungs-Cookie für die Anmeldung. HttpOnly, SameSite=Lax{% if session_age_hours %}, Laufzeit bis {{ session_age_hours }} Stunden{% endif %}.</dd></div>
+    <div><dt>{{ csrf_cookie }}</dt><dd>CSRF-Schutz für Formulare. HttpOnly, SameSite=Lax.</dd></div>
+  </dl>
+  <p>Zusätzlich kann der Browser lokal den Installationshinweis der PWA und einen Lese-Cache des Service Workers speichern. Das dient der Offline-Anzeige bereits geladener Seiten und enthält keine Werbe-ID.</p>
+
+  <h2>Beschäftigtendaten und öffentlicher Dienst NRW</h2>
+  <p>Login, Rollen, Audit-Ereignisse und optionale Module verarbeiten Beschäftigtendaten. Für Stellen des öffentlichen Dienstes in NRW sind typischerweise DSG NRW, LPVG NRW und die Beteiligung der Personalvertretung zu prüfen. Auswertungen zur Leistungs- oder Verhaltenskontrolle sind produktseitig nicht vorgesehen und organisatorisch zu untersagen.</p>
+
+  <h2>EU-KI-Verordnung (AI Act)</h2>
+  <p>Dieses Wachbuch ist klassische Anwendungssoftware ohne eingebettetes KI-System zur Inferenz über Personen. Es trifft keine automatisierten Entscheidungen über Beschäftigte. Werden externe KI-Werkzeuge nur in der Softwareentwicklung genutzt, fallen sie nicht in den Produktumfang; der Betreiber bleibt für eigene KI-Einsätze selbst verantwortlich.</p>
+
+  <h2>Version {{ app_version }}</h2>
+  <p>Die laufende Produktversion erscheint im Fußbereich und unter <code>/healthz/</code>. Änderungsprotokoll und Updateablauf stehen in der Betriebsdokumentation.</p>
+
+  <p><a class="button secondary" href="{% url 'access' %}">Zur Anmeldung</a></p>
+</section>
+{% endblock %}

@@ -98,7 +98,11 @@
   </main>
 
   <footer class="site-footer">
-    <a href="{{ source_url }}" rel="noopener noreferrer">Quellcode (AGPL-3.0)</a>
+    <div class="footer-links">
+      <a href="{{ source_url }}" rel="noopener noreferrer">Quellcode (AGPL-3.0)</a>
+      <a href="{% url 'privacy' %}">Datenschutz &amp; Cookies</a>
+      <span class="app-version">Version {{ app_version }}</span>
+    </div>
     <span>Keine Patienten- oder Einsatzdaten.</span>
   </footer>
   <script src="{% static 'core/app.js' %}" defer></script>

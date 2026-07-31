@@ -2,6 +2,7 @@ import json
 from datetime import date, timedelta
 from urllib.parse import quote
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.staticfiles.storage import staticfiles_storage
@@ -54,7 +55,7 @@ def healthz(request):
     with connection.cursor() as cursor:
         cursor.execute("SELECT 1")
         cursor.fetchone()
-    return JsonResponse({"status": "ok"})
+    return JsonResponse({"status": "ok", "version": settings.APP_VERSION})
 
 
 def _static_url(path):
@@ -131,7 +132,7 @@ def service_worker(request):
         request,
         "core/service_worker.js",
         {
-            "sw_version": "2026-07-30-pwa-1",
+            "sw_version": settings.APP_VERSION,
             "offline_url": reverse("offline"),
             "shell_assets": json.dumps(shell_assets),
         },
@@ -140,6 +141,15 @@ def service_worker(request):
     response["Service-Worker-Allowed"] = "/"
     response["Cache-Control"] = "no-cache"
     return response
+
+
+@require_GET
+def privacy_notice(request):
+    return render(request, "core/privacy.html", {
+        "session_cookie": settings.SESSION_COOKIE_NAME,
+        "csrf_cookie": settings.CSRF_COOKIE_NAME,
+        "session_age_hours": settings.SESSION_COOKIE_AGE // 3600,
+    })
 
 
 @require_GET

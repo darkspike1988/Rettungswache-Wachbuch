@@ -27,6 +27,8 @@ betriebliche Freigabe.
 - [ ] anwendbares Datenschutz- und Mitbestimmungsrecht ist bestimmt
 - [ ] Datenschutz, Informationssicherheit und Interessenvertretung sind beteiligt
 - [ ] VVT, DSFA-Vorpruefung und Betroffeneninformation sind freigegeben
+- [ ] Cookie-/TDDDG-Hinweis unter `/datenschutz/` ist an die Stelle angepasst
+- [ ] AI-Act-Pruefung dokumentiert (Produkt ohne KI-System / kein Scoring)
 - [ ] Auskunft, Berichtigung, Loeschung und Incident-Meldung sind geregelt
 - [ ] Audit-Zweck und Auswertungsverbot sind dokumentiert
 
@@ -34,5 +36,6 @@ betriebliche Freigabe.
 
 - [ ] externer Sicherheitstest oder angemessene ASVS-Pruefung ist abgeschlossen
 - [ ] Betreiberangaben, Datenschutzinformation und Supportweg sind vorhanden
+- [ ] Versions- und Updateprozess inkl. Rollback ist geuebt
 - [ ] verschluesseltes Offsite-Backup und erfolgreicher Restore-Test existieren
 - [ ] formale Go-live-Freigabe ist dokumentiert

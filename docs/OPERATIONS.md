@@ -3,7 +3,8 @@
 ## Endpunkte
 
 - Anwendung: `http://127.0.0.1:${HTTP_PORT:-8090}`
-- Healthcheck: `/healthz/`
+- Healthcheck: `/healthz/` (JSON mit `status` und `version`)
+- Datenschutz/Cookies: `/datenschutz/`
 - Anmeldung: `/anmelden/`
 - Stationsverwaltung: `/einstellungen/`
 - Teamfreigaben: `/team/`
@@ -82,14 +83,34 @@ docker compose exec -T backup /bin/sh /backup/restore-test.sh
 Der Restore-Test erstellt kurzzeitig `rwsth_restore_test`, spielt den neuesten
 Dump ein, prueft Schluesseltabellen und entfernt die Testdatenbank wieder.
 
-## Updateablauf
+## Versionierung und Updates
 
-1. Backup und Restore-Test ausfuehren.
-2. Abhaengigkeiten und Image-Digests kontrolliert aktualisieren.
-3. `docker compose build --no-cache` ausfuehren.
-4. Images auf HIGH/CRITICAL-Schwachstellen scannen.
-5. Tests ausfuehren und danach `docker compose up -d` starten.
-6. Healthcheck, Anmeldung, Rollen und optionale Feeds pruefen.
+Canonical Version steht in `core/version.py` und kann mit `APP_VERSION` in `.env`
+ueberschrieben werden. Die Version erscheint im Footer und unter `/healthz/`.
 
-Bei Stoerungen keine Tabellen manuell bearbeiten. Zuerst Logs und letzten Dump
-sichern, dann die Ursache reproduzierbar ueber Anwendung oder Migration beheben.
+### Release vorbereiten
+
+1. SemVer in `core/version.py` setzen und `CHANGELOG.md` aktualisieren.
+2. Migrationshinweise und Breaking Changes dokumentieren.
+3. Backup und Restore-Test ausfuehren.
+4. Abhaengigkeiten und Image-Digests kontrolliert aktualisieren.
+5. `docker compose build --no-cache` ausfuehren.
+6. Images auf HIGH/CRITICAL-Schwachstellen scannen.
+7. Tests ausfuehren und danach `docker compose up -d` starten.
+8. Healthcheck inkl. Versionsfeld, Anmeldung, Rollen, Tagesaufgaben und optionale
+   Feeds pruefen.
+9. Service-Worker-Caches leeren bzw. einmal ab-/anmelden, falls Shell-Assets
+   geaendert wurden.
+
+### Rollback
+
+1. Vorheriges Image-Tag bzw. Compose-Revision wieder aktivieren.
+2. Bei scheiternder Migration nur dokumentierte Reverse-Migrationen oder
+   Dump-Restore nutzen.
+3. Keine Tabellen manuell „reparieren“.
+4. Incident, Root Cause und erneuten Release-Versuch dokumentieren.
+
+Bei Stoerungen zuerst Logs und letzten Dump sichern, dann die Ursache
+reproduzierbar ueber Anwendung oder Migration beheben.
+
+Siehe auch [`COMPLIANCE.md`](COMPLIANCE.md).
