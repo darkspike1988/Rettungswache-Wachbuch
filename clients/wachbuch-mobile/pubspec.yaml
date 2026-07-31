@@ -1,7 +1,7 @@
 name: wachbuch_mobile
 description: AGPL companion app for self-hosted Wachbuch (iOS/Android).
 publish_to: "none"
-version: 0.1.2+3
+version: 0.2.0+4
 
 environment:
   sdk: ^3.8.0
@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   flutter_secure_storage: ^9.2.4
   http: ^1.4.0
+  mobile_scanner: ^7.4.0
+  permission_handler: ^12.0.3
   shared_preferences: ^2.5.3
 
 dev_dependencies:

@@ -7,10 +7,12 @@ class HomeShell extends StatefulWidget {
     super.key,
     required this.api,
     required this.onLogout,
+    required this.onChangeServer,
   });
 
   final WachbuchApi api;
   final Future<void> Function() onLogout;
+  final Future<void> Function() onChangeServer;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -108,6 +110,7 @@ class _HomeShellState extends State<HomeShell> {
         me: _me,
         serverUrl: widget.api.baseUrl,
         onLogout: widget.onLogout,
+        onChangeServer: widget.onChangeServer,
         onRefresh: _reload,
       ),
     ];
@@ -343,12 +346,14 @@ class _AccountTab extends StatelessWidget {
     required this.me,
     required this.serverUrl,
     required this.onLogout,
+    required this.onChangeServer,
     required this.onRefresh,
   });
 
   final Map<String, dynamic>? me;
   final String serverUrl;
   final Future<void> Function() onLogout;
+  final Future<void> Function() onChangeServer;
   final Future<void> Function() onRefresh;
 
   @override
@@ -387,7 +392,12 @@ class _AccountTab extends StatelessWidget {
             const SizedBox(height: 8),
             FilledButton.tonal(
               onPressed: onLogout,
-              child: const Text('Abmelden (Token löschen)'),
+              child: const Text('Abmelden'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: onChangeServer,
+              child: const Text('Anderen Server einrichten'),
             ),
           ],
         ),

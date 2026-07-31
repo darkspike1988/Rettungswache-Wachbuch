@@ -28,7 +28,7 @@ Es gibt **keine** Wachenauswahl in der App – die Station kommt aus der Server-
 - [Paperless-ngx Uploader](https://github.com/gmag11/Paperless_ngx_uploader) – schlanker Self-Host-Client
 - Nextcloud App-Passwords / Login-Flow – Server-URL zuerst
 
-## Android-APK (Smartphone & Tablet)
+# Android-APK (Smartphone & Tablet)
 
 Installierbare FOSS-APK (Package `de.wachbuch.mobile`, Android 7+):
 
@@ -38,7 +38,12 @@ Installierbare FOSS-APK (Package `de.wachbuch.mobile`, Android 7+):
 ```
 
 Sideload: APK aufs Gerät kopieren, unbekannte Quellen erlauben, installieren.
-Details: [docs/INSTALL-ANDROID.md](docs/INSTALL-ANDROID.md).
+Details: [docs/INSTALL-ANDROID.md](docs/INSTALL-ANDROID.md) · Play-Checkliste: [docs/PLAY-STORE.md](docs/PLAY-STORE.md).
+
+### Startflow (Play-/Material-konform)
+
+1. Nur **Adresse** eingeben **oder** Kamera-QR scannen → **Bestätigen**
+2. Danach **Benutzername** und **Passwort**
 
 - **Smartphone:** untere Navigation
 - **Tablet (≥ 720 dp):** NavigationRail + Übergaben-Grid

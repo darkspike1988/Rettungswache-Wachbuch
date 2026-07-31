@@ -58,8 +58,11 @@ Kein Fremdcode 1:1 kopiert.
 
 - Bau: `clients/wachbuch-mobile/scripts/build-apk.sh` → `dist/wachbuch-mobile.apk`
 - Install: [clients/wachbuch-mobile/docs/INSTALL-ANDROID.md](../clients/wachbuch-mobile/docs/INSTALL-ANDROID.md)
+- Play-Vorbereitung: [PLAY-STORE.md](../clients/wachbuch-mobile/docs/PLAY-STORE.md) (Target API 36, Kamera nur QR, kein Cleartext in Release)
+- Startflow: Server-Adresse/QR → Bestätigen → Login (Benutzername/Passwort)
 - Package-ID: `de.wachbuch.mobile` (minSdk 24)
 - Layout: Phone Bottom-Nav, Tablet NavigationRail / Grid
+- Web: QR unter `/konto/api/` für den Scan
 
 ## Lizenz
 

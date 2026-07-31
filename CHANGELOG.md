@@ -5,6 +5,13 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.12.0 - 2026-07-31
+
+- Mobile-Startflow: nur Server-Adresse oder QR-Scan → Bestätigen → Login (User/Passwort)
+- Play-Store-Vorbereitung (Material 3, Target API 36, Kamera nur QR, kein Cleartext in Release)
+- Web-QR unter `/konto/api/` zum Scannen der Server-Adresse
+- Doku an offizielle Google-Play-/Android-Richtlinien angelehnt (`docs/PLAY-STORE.md`)
+
 ## 0.11.0 - 2026-07-31
 
 - Android-APK sideloadbar (FOSS, Package `de.wachbuch.mobile`, minSdk 24)

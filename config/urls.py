@@ -39,6 +39,7 @@ urlpatterns = [
     path("konto/mfa/passkey/pruefen/", account_views.passkey_register_verify, name="passkey_register_verify"),
     path("konto/mfa/passkey/<int:pk>/entfernen/", account_views.passkey_delete, name="passkey_delete"),
     path("konto/api/", account_views.api_tokens_manage, name="api_tokens_manage"),
+    path("konto/api/mobile-qr.png", account_views.mobile_setup_qr, name="mobile_setup_qr"),
     path("abmelden/", auth_views.LogoutView.as_view(), name="logout"),
     path("django-admin/", admin.site.urls),
     path("api/v1/", include("core.api.urls")),

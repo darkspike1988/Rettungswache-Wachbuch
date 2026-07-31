@@ -5,9 +5,17 @@
 <header class="page-heading narrow">
   <p class="context-line">Mobile &amp; Integrationen</p>
   <h1>App-Tokens</h1>
-  <p class="lead">Widerrufbare Tokens für spätere Open-Source-Apps (iOS/Android), analog zu Paperless und Nextcloud. Header: <code>Authorization: Token …</code></p>
+  <p class="lead">Widerrufbare Tokens für Open-Source-Apps (iOS/Android), analog zu Paperless und Nextcloud. Header: <code>Authorization: Token …</code></p>
 </header>
 <section class="content-flow narrow">
+  <article class="form-card">
+    <h2>Mobile-App verbinden</h2>
+    <p class="lead">In der App zuerst diese Server-Adresse bestätigen (tippen oder QR scannen), danach Benutzername und Passwort.</p>
+    <p><code>{{ mobile_setup_url }}</code></p>
+    <p>
+      <img src="{% url 'mobile_setup_qr' %}" width="180" height="180" alt="QR-Code mit Server-Adresse für die Wachbuch-App">
+    </p>
+  </article>
   {% if plaintext_token %}
     <p class="notice" role="status">Neues Token (nur einmal sichtbar): <code>{{ plaintext_token }}</code></p>
   {% endif %}

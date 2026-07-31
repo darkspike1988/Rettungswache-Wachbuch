@@ -15,6 +15,7 @@ android {
 
     defaultConfig {
         applicationId = "de.wachbuch.mobile"
+        // Android 7+; Play target API follows Flutter (API 36 on current stable).
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -23,7 +24,8 @@ android {
 
     buildTypes {
         release {
-            // FOSS sideload / CI: debug-keystore until a dedicated release key exists.
+            // Sideload/CI until a Play upload key is configured.
+            // Play Console: https://developer.android.com/studio/publish/app-signing
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false

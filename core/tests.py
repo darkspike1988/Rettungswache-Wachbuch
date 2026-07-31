@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.11.0")
+        self.assertEqual(response.json()["version"], "0.12.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.11.0")
+        self.assertContains(response, "Version 0.12.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -1404,6 +1404,7 @@ class ApiMobileFoundationTests(PilotTestCase):
         })
         self.assertEqual(create.status_code, 200)
         self.assertIsNotNone(create.context["plaintext_token"])
+        self.assertTrue(create.context["mobile_setup_url"])
         from .models import ApiToken
 
         token = ApiToken.objects.get(user=self.user, label="iOS")
@@ -1414,6 +1415,12 @@ class ApiMobileFoundationTests(PilotTestCase):
         self.assertRedirects(revoke, reverse("api_tokens_manage"))
         token.refresh_from_db()
         self.assertFalse(token.is_active)
+
+    def test_mobile_setup_qr_png(self):
+        response = self.client.get(reverse("mobile_setup_qr"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "image/png")
+        self.assertGreater(len(response.content), 100)
 
 
 class MigrationDefaultTests(TestCase):

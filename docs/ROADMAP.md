@@ -12,6 +12,7 @@ Stand: 31. Juli 2026.
 - **API-Fundament** `/api/v1/` mit App-Tokens fuer Mobile-Clients
 - **AGPL Flutter-Client** unter `clients/wachbuch-mobile/` (Ziel-Repo Wachbuch-Mobile)
 - **Android-APK** sideloadbar (Phone/Tablet-Layout, FOSS-Build)
+- Mobile-Onboarding: Server-Adresse/QR → Login; Play-Richtlinien-Doku
 - optionale MFA (TOTP/Passkeys), Web-Push, Wachen-ICS-Abos, Retention, Audit-Diffs
 - gesetzliche Feiertage NRW im fortlaufenden Kalender/ICS (`holidays_enabled`)
 - Compliance- und ASVS-L2-Matrix dokumentiert

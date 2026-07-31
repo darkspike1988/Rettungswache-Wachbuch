@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import io
 import json
 import secrets
 
+import qrcode
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.models import User
@@ -371,8 +373,22 @@ def api_tokens_manage(request):
         if plaintext is None:
             return redirect("api_tokens_manage")
     tokens = ApiToken.objects.filter(user=request.user).order_by("-created_at")
+    setup_url = request.build_absolute_uri("/").rstrip("/")
     return render(request, "core/api_tokens.html", {
         "tokens": tokens,
         "plaintext_token": plaintext,
         "api_root": "/api/v1/",
+        "mobile_setup_url": setup_url,
     })
+
+
+@require_GET
+def mobile_setup_qr(request):
+    """PNG QR with the public server origin for the mobile client camera scan."""
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?next={reverse('mobile_setup_qr')}")
+    setup_url = request.build_absolute_uri("/").rstrip("/")
+    image = qrcode.make(setup_url, box_size=6, border=2)
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return HttpResponse(buffer.getvalue(), content_type="image/png")
