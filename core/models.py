@@ -505,12 +505,32 @@ class UserProfile(models.Model):
         return profile
 
 
+class UserCryptoIdentity(models.Model):
+    """Public identity + passphrase-wrapped private key for E2EE messaging."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="crypto")
+    public_jwk = models.JSONField()
+    wrapped_private_jwk = models.TextField()
+    kdf_salt = models.CharField(max_length=128)
+    kdf_iterations = models.PositiveIntegerField(default=210_000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Crypto {self.user_id}"
+
+
 class ChatMessage(models.Model):
-    """Station-scoped short colleague messages. No attachments, no patient content."""
+    """Station-scoped short colleague messages. Bodies are E2EE ciphertext when encrypted."""
 
     station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="chat_messages")
     author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="chat_messages")
-    body = models.TextField(max_length=1000)
+    body = models.TextField(max_length=1000, blank=True, default="")
+    ciphertext = models.TextField(blank=True, default="")
+    nonce = models.CharField(max_length=64, blank=True, default="")
+    key_wraps = models.JSONField(default=dict, blank=True)
+    algo = models.CharField(max_length=40, blank=True, default="")
+    is_encrypted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     is_hidden = models.BooleanField(default=False)
 
@@ -520,6 +540,102 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"Chat {self.pk}"
+
+
+class PrivateConversation(models.Model):
+    """1:1 private thread. Only the two participants can fetch ciphertext."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="private_conversations")
+    user_low = models.ForeignKey(User, on_delete=models.CASCADE, related_name="private_conversations_low")
+    user_high = models.ForeignKey(User, on_delete=models.CASCADE, related_name="private_conversations_high")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["station", "user_low", "user_high"],
+                name="unique_private_conversation_pair",
+            ),
+            models.CheckConstraint(
+                condition=~Q(user_low=F("user_high")),
+                name="private_conversation_distinct_users",
+            ),
+        ]
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"Privat {self.pk}"
+
+    def other_user(self, user):
+        return self.user_high if user.id == self.user_low_id else self.user_low
+
+
+class PrivateMessage(models.Model):
+    conversation = models.ForeignKey(
+        PrivateConversation,
+        on_delete=models.CASCADE,
+        related_name="messages",
+    )
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="private_messages")
+    ciphertext = models.TextField()
+    nonce = models.CharField(max_length=64)
+    key_wraps = models.JSONField(default=dict)
+    algo = models.CharField(max_length=40, default="A256GCM+ECDH-ES")
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_hidden = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["conversation", "-created_at"])]
+
+    @property
+    def is_encrypted(self):
+        return True
+
+    def __str__(self):
+        return f"PrivateMessage {self.pk}"
+
+
+class SecureMail(models.Model):
+    """Encrypted internal mail. Only sender and recipients hold key wraps."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="secure_mails")
+    sender = models.ForeignKey(User, on_delete=models.PROTECT, related_name="sent_secure_mails")
+    ciphertext = models.TextField()
+    nonce = models.CharField(max_length=64)
+    key_wraps = models.JSONField(default=dict)
+    algo = models.CharField(max_length=40, default="A256GCM+ECDH-ES")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["station", "-created_at"])]
+
+    @property
+    def is_encrypted(self):
+        return True
+
+    @property
+    def author_id(self):
+        return self.sender_id
+
+    def __str__(self):
+        return f"SecureMail {self.pk}"
+
+
+class SecureMailRecipient(models.Model):
+    mail = models.ForeignKey(SecureMail, on_delete=models.CASCADE, related_name="recipients")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_secure_mails")
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["mail", "user"], name="unique_secure_mail_recipient"),
+        ]
+
+    def __str__(self):
+        return f"MailRecipient {self.mail_id}:{self.user_id}"
 
 
 class AuditEvent(models.Model):

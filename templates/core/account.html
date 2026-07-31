@@ -51,7 +51,8 @@
 
   <nav class="more-list" aria-label="Konto-Links">
     {% if mfa_enabled %}<a href="{% url 'mfa_setup' %}"><strong>Zwei-Faktor / Passkeys</strong><span>Authenticator und Passkeys verwalten</span></a>{% endif %}
-    {% if membership and membership.station.chat_enabled %}<a href="{% url 'chat' %}"><strong>Wachenchat</strong><span>Kurze Nachrichten an die Kollegen</span></a>{% endif %}
+    <a href="{% url 'crypto_setup' %}"><strong>Chat-Schlüssel (E2EE)</strong><span>Damit Admin und Server keine Klartexte lesen</span></a>
+    {% if membership and membership.station.chat_enabled %}<a href="{% url 'chat' %}"><strong>Wachenchat</strong><span>Wache, Privat und Post</span></a>{% endif %}
     {% if web_push_enabled and membership %}<a href="{% url 'push_settings' %}"><strong>Push-Benachrichtigungen</strong><span>Dringende Übergaben</span></a>{% endif %}
     {% if membership and membership.station.birthdays_enabled %}<a href="{% url 'birthday_settings' %}"><strong>Geburtstag</strong><span>Freiwillige Anzeige</span></a>{% endif %}
   </nav>

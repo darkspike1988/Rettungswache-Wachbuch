@@ -2,12 +2,13 @@
 
 Stand: 31. Juli 2026.
 
-## Erreicht (Basis bis 0.7.0)
+## Erreicht (Basis bis 0.8.0)
 
 - Docker, lokaler Login, Rollen, Uebergaben, Tagesaufgaben, Geburtstage, Kasse-Ledger
 - PWA, oeffentliche Startseite, persoenlicher Bereich, Wachenchat
 - Master-Admin legt Nutzer an/gibt frei; optionale Selbstregistrierung
 - Profilbild, Passwort und Zwei-Faktor im persoenlichen Bereich
+- E2EE fuer Wachenchat, private Chats und interne Post (Admin sieht keine Klartexte)
 - optionale MFA (TOTP/Passkeys), Web-Push, Wachen-ICS-Abos, Retention, Audit-Diffs
 - gesetzliche Feiertage NRW im fortlaufenden Kalender/ICS (`holidays_enabled`)
 - Compliance- und ASVS-L2-Matrix dokumentiert
@@ -63,7 +64,7 @@ pro Station. Feiertage sind unabhaengig davon nutzbar.
 
 - Patientendaten, Einsatz-/Alarmierung, Dienstplanung
 - allgemeine Datei-Uploads (Ausnahme: kleines Profilbild im Konto)
-- Messenger ausserhalb des stationsbezogenen Wachenchats
+- Messenger ausserhalb von Wachenchat / Privat / interner Post
 - automatische Zahlungseinzuege und Banking-APIs
 - volles CalDAV-Serverprodukt (ICS-Abo bleibt der Weg)
 

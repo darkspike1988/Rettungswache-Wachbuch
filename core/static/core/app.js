@@ -327,4 +327,379 @@
       });
     }
   }
+
+  const SESSION_KEY = "rwsth-e2ee-private-jwk";
+  const te = new TextEncoder();
+  const td = new TextDecoder();
+
+  function bytesToB64url(bytes) {
+    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    let binary = "";
+    view.forEach((value) => {
+      binary += String.fromCharCode(value);
+    });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function b64urlToBytes(value) {
+    return new Uint8Array(base64urlToBuffer(value));
+  }
+
+  async function deriveWrapKey(passphrase, saltB64, iterations) {
+    const baseKey = await crypto.subtle.importKey("raw", te.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: b64urlToBytes(saltB64), iterations, hash: "SHA-256" },
+      baseKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"],
+    );
+  }
+
+  async function generateIdentity(passphrase) {
+    const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+    const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+    const privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+    const salt = bytesToB64url(crypto.getRandomValues(new Uint8Array(16)));
+    const iterations = 210000;
+    const wrapKey = await deriveWrapKey(passphrase, salt, iterations);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const wrapped = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      wrapKey,
+      te.encode(JSON.stringify(privateJwk)),
+    );
+    return {
+      public_jwk: { kty: publicJwk.kty, crv: publicJwk.crv, x: publicJwk.x, y: publicJwk.y },
+      wrapped_private_jwk: `${bytesToB64url(iv)}.${bytesToB64url(new Uint8Array(wrapped))}`,
+      kdf_salt: salt,
+      kdf_iterations: iterations,
+      private_jwk: privateJwk,
+    };
+  }
+
+  async function unlockIdentity(bundle, passphrase) {
+    const [ivB64, dataB64] = String(bundle.wrapped_private_jwk || "").split(".");
+    if (!ivB64 || !dataB64) {
+      throw new Error("Gespeicherter Schlüsselumschlag ist beschädigt.");
+    }
+    const wrapKey = await deriveWrapKey(passphrase, bundle.kdf_salt, bundle.kdf_iterations || 210000);
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: b64urlToBytes(ivB64) },
+      wrapKey,
+      b64urlToBytes(dataB64),
+    );
+    const privateJwk = JSON.parse(td.decode(plain));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(privateJwk));
+    return privateJwk;
+  }
+
+  function loadSessionPrivateJwk() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  async function importPrivateKey(jwk) {
+    return crypto.subtle.importKey("jwk", jwk, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
+  }
+
+  async function importPublicKey(jwk) {
+    return crypto.subtle.importKey("jwk", jwk, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  }
+
+  async function wrapKeyForRecipient(messageKeyRaw, recipientPublicJwk) {
+    const ephemeral = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+    const recipientKey = await importPublicKey(recipientPublicJwk);
+    const bits = await crypto.subtle.deriveBits({ name: "ECDH", public: recipientKey }, ephemeral.privateKey, 256);
+    const hkdfBase = await crypto.subtle.importKey("raw", bits, "HKDF", false, ["deriveKey"]);
+    const aesKey = await crypto.subtle.deriveKey(
+      { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(32), info: te.encode("wachbuch-e2ee-v1") },
+      hkdfBase,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt"],
+    );
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const wrapped = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, messageKeyRaw);
+    const epk = await crypto.subtle.exportKey("jwk", ephemeral.publicKey);
+    return {
+      epk: { kty: epk.kty, crv: epk.crv, x: epk.x, y: epk.y },
+      wrapped_key: `${bytesToB64url(iv)}.${bytesToB64url(new Uint8Array(wrapped))}`,
+    };
+  }
+
+  async function unwrapMessageKey(wrap, privateJwk) {
+    const privateKey = await importPrivateKey(privateJwk);
+    const epk = await importPublicKey(wrap.epk);
+    const bits = await crypto.subtle.deriveBits({ name: "ECDH", public: epk }, privateKey, 256);
+    const hkdfBase = await crypto.subtle.importKey("raw", bits, "HKDF", false, ["deriveKey"]);
+    const aesKey = await crypto.subtle.deriveKey(
+      { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(32), info: te.encode("wachbuch-e2ee-v1") },
+      hkdfBase,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["decrypt"],
+    );
+    const [ivB64, dataB64] = String(wrap.wrapped_key || "").split(".");
+    return crypto.subtle.decrypt({ name: "AES-GCM", iv: b64urlToBytes(ivB64) }, aesKey, b64urlToBytes(dataB64));
+  }
+
+  async function encryptForRecipients(plaintext, recipients) {
+    const messageKeyRaw = crypto.getRandomValues(new Uint8Array(32));
+    const messageKey = await crypto.subtle.importKey("raw", messageKeyRaw, { name: "AES-GCM" }, false, ["encrypt"]);
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, messageKey, te.encode(plaintext));
+    const key_wraps = {};
+    for (const recipient of recipients) {
+      if (!recipient.public_jwk) {
+        continue;
+      }
+      key_wraps[String(recipient.user_id)] = await wrapKeyForRecipient(messageKeyRaw, recipient.public_jwk);
+    }
+    return {
+      ciphertext: bytesToB64url(new Uint8Array(ciphertext)),
+      nonce: bytesToB64url(nonce),
+      key_wraps,
+    };
+  }
+
+  async function decryptEnvelope(envelope, privateJwk) {
+    if (!envelope.is_encrypted) {
+      return envelope.legacy_body || "";
+    }
+    if (!envelope.wrap) {
+      throw new Error("Kein Schlüsselumschlag für dich – Nachricht nicht lesbar.");
+    }
+    const rawKey = await unwrapMessageKey(envelope.wrap, privateJwk);
+    const messageKey = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["decrypt"]);
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: b64urlToBytes(envelope.nonce) },
+      messageKey,
+      b64urlToBytes(envelope.ciphertext),
+    );
+    return td.decode(plain);
+  }
+
+  async function ensureUnlocked(statusEl) {
+    let privateJwk = loadSessionPrivateJwk();
+    if (privateJwk) {
+      return privateJwk;
+    }
+    const passphrase = window.prompt("Passphrase für Ende-zu-Ende-Schlüssel eingeben:");
+    if (!passphrase) {
+      throw new Error("Entsperren abgebrochen.");
+    }
+    const response = await fetch("/konto/crypto/bundle.json", { credentials: "same-origin" });
+    const bundle = await response.json();
+    if (!bundle.configured) {
+      throw new Error("Bitte zuerst unter Mein Konto Schlüssel einrichten.");
+    }
+    setStatus(statusEl, "Schlüssel werden entsperrt …");
+    privateJwk = await unlockIdentity(bundle, passphrase);
+    setStatus(statusEl, "");
+    return privateJwk;
+  }
+
+  const cryptoSetupForm = doc.querySelector("[data-crypto-setup]");
+  if (cryptoSetupForm) {
+    cryptoSetupForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const status = doc.querySelector("[data-crypto-status]");
+      const passphrase = cryptoSetupForm.querySelector("[name='passphrase']").value;
+      const confirm = cryptoSetupForm.querySelector("[name='passphrase2']").value;
+      if (passphrase.length < 10) {
+        setStatus(status, "Passphrase mindestens 10 Zeichen.");
+        return;
+      }
+      if (passphrase !== confirm) {
+        setStatus(status, "Passphrasen stimmen nicht überein.");
+        return;
+      }
+      try {
+        setStatus(status, "Schlüssel werden erzeugt …");
+        const identity = await generateIdentity(passphrase);
+        await postJson("/konto/crypto/", {
+          public_jwk: identity.public_jwk,
+          wrapped_private_jwk: identity.wrapped_private_jwk,
+          kdf_salt: identity.kdf_salt,
+          kdf_iterations: identity.kdf_iterations,
+          replace: cryptoSetupForm.dataset.replace === "1",
+        });
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(identity.private_jwk));
+        window.location.reload();
+      } catch (error) {
+        setStatus(status, error.message || "Schlüsselsetup fehlgeschlagen.");
+      }
+    });
+  }
+
+  const cryptoUnlockForm = doc.querySelector("[data-crypto-unlock]");
+  if (cryptoUnlockForm) {
+    cryptoUnlockForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const status = doc.querySelector("[data-crypto-status]");
+      try {
+        const bundleResponse = await fetch("/konto/crypto/bundle.json", { credentials: "same-origin" });
+        const bundle = await bundleResponse.json();
+        await unlockIdentity(bundle, cryptoUnlockForm.querySelector("[name='passphrase']").value);
+        setStatus(status, "Schlüssel entsperrt.");
+        window.location.reload();
+      } catch (error) {
+        setStatus(status, error.message || "Entsperren fehlgeschlagen.");
+      }
+    });
+  }
+
+  async function renderEncryptedFeed(rootEl, feed, privateJwk) {
+    for (const item of feed) {
+      const bodyEl = rootEl.querySelector(`[data-msg-body="${item.id}"]`);
+      if (!bodyEl) {
+        continue;
+      }
+      try {
+        bodyEl.textContent = await decryptEnvelope(item, privateJwk);
+      } catch (_error) {
+        bodyEl.textContent = item.is_encrypted
+          ? "Verschlüsselt – nicht entschlüsselbar (fehlende Schlüssel)."
+          : (item.legacy_body || "");
+      }
+    }
+  }
+
+  const chatRoot = doc.querySelector("[data-e2ee-chat]");
+  if (chatRoot) {
+    const status = chatRoot.querySelector("[data-crypto-status]");
+    const feed = JSON.parse(chatRoot.querySelector("[data-feed-json]").textContent || "[]");
+    const members = JSON.parse(chatRoot.querySelector("[data-members-json]").textContent || "[]");
+    const compose = chatRoot.querySelector("[data-e2ee-compose]");
+    (async () => {
+      try {
+        if (!chatRoot.dataset.hasKeys) {
+          return;
+        }
+        const privateJwk = await ensureUnlocked(status);
+        await renderEncryptedFeed(chatRoot, feed, privateJwk);
+      } catch (error) {
+        setStatus(status, error.message || "Entschlüsseln fehlgeschlagen.");
+      }
+    })();
+    if (compose) {
+      compose.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const input = compose.querySelector("[name='body']");
+        const text = (input.value || "").trim();
+        if (!text) {
+          return;
+        }
+        try {
+          const privateJwk = await ensureUnlocked(status);
+          const recipients = members.filter((item) => item.has_keys && item.public_jwk);
+          if (!recipients.length) {
+            throw new Error("Noch keine Kollegen mit Schlüsseln.");
+          }
+          // Ensure self is included for later reading.
+          const payload = await encryptForRecipients(text, recipients);
+          await postJson(window.location.pathname, payload);
+          window.location.reload();
+        } catch (error) {
+          setStatus(status, error.message || "Senden fehlgeschlagen.");
+        }
+      });
+    }
+  }
+
+  const privateRoot = doc.querySelector("[data-e2ee-private]");
+  if (privateRoot) {
+    const status = privateRoot.querySelector("[data-crypto-status]");
+    const feed = JSON.parse(privateRoot.querySelector("[data-feed-json]").textContent || "[]");
+    const peers = JSON.parse(privateRoot.querySelector("[data-members-json]").textContent || "[]");
+    const compose = privateRoot.querySelector("[data-e2ee-compose]");
+    (async () => {
+      try {
+        const privateJwk = await ensureUnlocked(status);
+        await renderEncryptedFeed(privateRoot, feed, privateJwk);
+      } catch (error) {
+        setStatus(status, error.message || "Entschlüsseln fehlgeschlagen.");
+      }
+    })();
+    if (compose) {
+      compose.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const input = compose.querySelector("[name='body']");
+        const text = (input.value || "").trim();
+        if (!text) {
+          return;
+        }
+        try {
+          await ensureUnlocked(status);
+          const recipients = peers.filter((item) => item.has_keys && item.public_jwk);
+          const payload = await encryptForRecipients(text, recipients);
+          await postJson(window.location.pathname, payload);
+          window.location.reload();
+        } catch (error) {
+          setStatus(status, error.message || "Senden fehlgeschlagen.");
+        }
+      });
+    }
+  }
+
+  const mailRoot = doc.querySelector("[data-e2ee-mail]");
+  if (mailRoot) {
+    const status = mailRoot.querySelector("[data-crypto-status]");
+    const colleagues = JSON.parse(mailRoot.querySelector("[data-members-json]").textContent || "[]");
+    const compose = mailRoot.querySelector("[data-e2ee-mail-compose]");
+    if (compose) {
+      compose.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const subject = (compose.querySelector("[name='subject']").value || "").trim();
+        const body = (compose.querySelector("[name='body']").value || "").trim();
+        const selected = [...compose.querySelectorAll("[name='recipient_ids']:checked")].map((el) => Number(el.value));
+        if (!selected.length || !body) {
+          setStatus(status, "Empfänger und Text sind nötig.");
+          return;
+        }
+        try {
+          const privateJwk = await ensureUnlocked(status);
+          const viewerId = Number(mailRoot.dataset.viewerId);
+          const recipients = colleagues.filter((item) => selected.includes(item.user_id) && item.public_jwk);
+          const self = colleagues.find((item) => item.user_id === viewerId);
+          // Always wrap for sender + recipients; sender public key from bundle.
+          const bundle = await (await fetch("/konto/crypto/bundle.json", { credentials: "same-origin" })).json();
+          const allRecipients = [
+            ...recipients,
+            { user_id: viewerId, public_jwk: bundle.public_jwk, has_keys: true },
+          ];
+          const payload = await encryptForRecipients(JSON.stringify({ subject, body }), allRecipients);
+          payload.recipient_ids = selected;
+          const result = await postJson(window.location.pathname, payload);
+          window.location.href = result.redirect || window.location.pathname;
+          void privateJwk;
+          void self;
+        } catch (error) {
+          setStatus(status, error.message || "Senden fehlgeschlagen.");
+        }
+      });
+    }
+  }
+
+  const mailDetail = doc.querySelector("[data-e2ee-mail-detail]");
+  if (mailDetail) {
+    const status = mailDetail.querySelector("[data-crypto-status]");
+    const envelope = JSON.parse(mailDetail.querySelector("[data-envelope-json]").textContent || "{}");
+    (async () => {
+      try {
+        const privateJwk = await ensureUnlocked(status);
+        const plain = await decryptEnvelope(envelope, privateJwk);
+        const parsed = JSON.parse(plain);
+        mailDetail.querySelector("[data-mail-subject]").textContent = parsed.subject || "(ohne Betreff)";
+        mailDetail.querySelector("[data-mail-body]").textContent = parsed.body || "";
+      } catch (error) {
+        setStatus(status, error.message || "Mail nicht entschlüsselbar.");
+      }
+    })();
+  }
 })();

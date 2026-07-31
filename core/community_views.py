@@ -9,7 +9,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db import transaction
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -170,19 +170,59 @@ def avatar_image(request, user_id):
 @station_module_required("chat_enabled")
 @require_http_methods(["GET", "POST"])
 def chat(request):
+    import json
+
+    from .messaging import public_keys_for_users, serialize_message_for_client, station_content_users, validate_encrypted_payload
+    from .models import UserCryptoIdentity
+
     station = request.membership.station
-    form = ChatMessageForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
+    identity = UserCryptoIdentity.objects.filter(user=request.user).first()
+    if request.method == "POST" and request.headers.get("Content-Type", "").startswith("application/json"):
+        if not identity:
+            return JsonResponse({"ok": False, "error": "Bitte zuerst Schlüssel unter Mein Konto einrichten."}, status=400)
+        try:
+            body = json.loads(request.body.decode("utf-8") or "{}")
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return JsonResponse({"ok": False, "error": "Ungültige Anfrage."}, status=400)
+        members = list(station_content_users(station))
+        keyed_ids = set(
+            UserCryptoIdentity.objects.filter(user__in=members).values_list("user_id", flat=True)
+        )
+        # Encrypt for everyone who already has keys, always including author.
+        required = set(keyed_ids) | {request.user.id}
+        if request.user.id not in keyed_ids:
+            return JsonResponse({"ok": False, "error": "Eigene Schlüssel fehlen."}, status=400)
+        from django.core.exceptions import ValidationError
+
+        try:
+            payload = validate_encrypted_payload(body, required_recipient_ids=required)
+        except ValidationError as exc:
+            return JsonResponse({"ok": False, "error": " ".join(exc.messages)}, status=400)
         message = ChatMessage.objects.create(
             station=station,
             author=request.user,
-            body=form.cleaned_data["body"].strip(),
+            body="",
+            ciphertext=payload["ciphertext"],
+            nonce=payload["nonce"],
+            key_wraps=payload["key_wraps"],
+            algo=payload["algo"],
+            is_encrypted=True,
         )
         audit(request.user, station, "chat.message_created", message, {
-            "fields": ["body"],
+            "fields": ["ciphertext"],
+            "encrypted": True,
         })
-        messages.success(request, "Nachricht gesendet.")
+        return JsonResponse({"ok": True, "id": message.pk})
+
+    # Legacy plaintext form path disabled for new posts when crypto is expected.
+    form = ChatMessageForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        messages.error(
+            request,
+            "Neue Wachenchats sind Ende-zu-Ende-verschlüsselt. Bitte JavaScript nutzen bzw. Schlüssel einrichten.",
+        )
         return redirect("chat")
+
     page = (
         ChatMessage.objects.filter(station=station, is_hidden=False)
         .select_related("author")[:80]
@@ -193,6 +233,7 @@ def chat(request):
         for profile in UserProfile.objects.filter(user_id__in={item.author_id for item in thread})
     }
     feed = []
+    client_feed = []
     for item in thread:
         profile = profile_map.get(item.author_id)
         feed.append({
@@ -200,10 +241,23 @@ def chat(request):
             "initials": initials_for(item.author),
             "has_avatar": bool(profile and profile.has_avatar),
             "is_own": item.author_id == request.user.id,
+            "envelope": serialize_message_for_client(item, request.user.id),
         })
+        client_feed.append({
+            **serialize_message_for_client(item, request.user.id),
+            "author_name": item.author.first_name or item.author.username,
+            "initials": initials_for(item.author),
+            "has_avatar": bool(profile and profile.has_avatar),
+            "is_own": item.author_id == request.user.id,
+        })
+    members = public_keys_for_users(station_content_users(station))
     return render(request, "core/chat.html", {
         "form": form,
         "feed": feed,
+        "feed_json": json.dumps(client_feed),
+        "members_json": json.dumps(members),
+        "has_keys": identity is not None,
+        "viewer_id": request.user.id,
         "can_moderate": request.membership.role in {
             Membership.Role.SHIFT_LEAD,
             Membership.Role.ADMIN,

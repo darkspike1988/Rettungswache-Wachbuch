@@ -75,6 +75,7 @@ Legende: **OK** umgesetzt / **Teil** teilweise / **Offen** geplant / **n/a** nic
 | Kontrolle | Status | Hinweis |
 | --- | --- | --- |
 | Keine allgemeinen User-Uploads | OK | nur Profilavatar (JPEG in DB, max. 2 MB Roh, 192px) |
+| Chat/Post E2EE | OK | Ciphertext + Key-Wraps; Private Key nur passphrase-umschlossen |
 | Feed-SSRF-Haertung | OK | Allowlist, keine Redirects |
 
 ## V13 API / PWA

@@ -4,9 +4,20 @@
 <header class="page-heading narrow">
   <p class="context-line">Kollegen</p>
   <h1>Wachenchat</h1>
-  <p class="lead">Kurze Nachrichten an die Kollegen – leicht und stationsbezogen. Keine Patienten-, Einsatz- oder Alarmierungsdaten.</p>
+  <p class="lead">Ende-zu-Ende-verschlüsselt. Der Server speichert nur Ciphertext – Master-Admin sieht keine Klartexte in der Verwaltung.</p>
 </header>
-<section class="chat-thread" aria-live="polite">
+<nav class="chat-tabs" aria-label="Nachrichtenbereiche">
+  <a href="{% url 'chat' %}" aria-current="page">Wache</a>
+  <a href="{% url 'private_chat_home' %}">Privat</a>
+  <a href="{% url 'secure_mail_inbox' %}">Post</a>
+</nav>
+{% if not has_keys %}
+  <p class="notice">Bitte zuerst <a href="{% url 'crypto_setup' %}">Chat-Schlüssel einrichten</a>, sonst kannst du neue Nachrichten weder senden noch lesen.</p>
+{% endif %}
+<section class="chat-thread" data-e2ee-chat {% if has_keys %}data-has-keys="1"{% endif %} data-viewer-id="{{ viewer_id }}">
+  <p class="hint" data-crypto-status hidden></p>
+  <script type="application/json" data-feed-json>{{ feed_json|safe }}</script>
+  <script type="application/json" data-members-json>{{ members_json|safe }}</script>
   {% for item in feed %}
     <article class="chat-bubble {% if item.is_own %}is-own{% endif %}">
       <div class="chat-avatar" aria-hidden="true">
@@ -21,7 +32,8 @@
           <strong>{{ item.message.author.first_name|default:item.message.author.username }}</strong>
           <time datetime="{{ item.message.created_at|date:'c' }}">{{ item.message.created_at|date:"d.m. H:i" }}</time>
         </header>
-        <p>{{ item.message.body|linebreaksbr }}</p>
+        <p data-msg-body="{{ item.message.pk }}">{% if item.message.is_encrypted %}…{% else %}{{ item.message.body|linebreaksbr }}{% endif %}</p>
+        {% if item.message.is_encrypted %}<small class="crypto-tag">E2EE</small>{% endif %}
         {% if can_moderate %}
           <form method="post" action="{% url 'chat_hide' item.message.pk %}">{% csrf_token %}<button class="button secondary" type="submit">Ausblenden</button></form>
         {% endif %}
@@ -30,11 +42,11 @@
   {% empty %}
     <p class="empty-state">Noch keine Nachrichten. Schreib den Kollegen einen kurzen Hinweis.</p>
   {% endfor %}
+  {% if has_keys %}
+  <form class="form-card narrow chat-compose" data-e2ee-compose>
+    <p><label>Kurze Nachricht <textarea name="body" rows="2" maxlength="500" placeholder="Kurze Nachricht an die Kollegen …" required></textarea></label></p>
+    <button class="button primary" type="submit">Verschlüsselt senden</button>
+  </form>
+  {% endif %}
 </section>
-<form method="post" class="form-card narrow chat-compose">
-  {% csrf_token %}
-  {% include "core/form_errors.html" %}
-  {{ form.as_p }}
-  <button class="button primary" type="submit">Senden</button>
-</form>
 {% endblock %}

@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.7.0")
+        self.assertEqual(response.json()["version"], "0.8.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.7.0")
+        self.assertContains(response, "Version 0.8.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -1142,21 +1142,131 @@ class RegistrationAccountChatTests(PilotTestCase):
         self.assertEqual(image.status_code, 200)
         self.assertEqual(image["Content-Type"], "image/jpeg")
 
-    def test_chat_message_roundtrip_and_hide(self):
+    def test_chat_rejects_plaintext_posts(self):
         response = self.client.post(reverse("chat"), {"body": "Bitte Lager prüfen"})
         self.assertRedirects(response, reverse("chat"))
         from .models import ChatMessage
 
+        self.assertFalse(ChatMessage.objects.exists())
+
+    def test_encrypted_station_chat_stores_ciphertext_only(self):
+        from .models import ChatMessage, UserCryptoIdentity
+
+        UserCryptoIdentity.objects.create(
+            user=self.user,
+            public_jwk={"kty": "EC", "crv": "P-256", "x": "abc", "y": "def"},
+            wrapped_private_jwk="a" * 40,
+            kdf_salt="b" * 24,
+        )
+        payload = {
+            "ciphertext": "Y2lwaGVydGV4dA",
+            "nonce": "bm9uY2Vub25jZQ",
+            "key_wraps": {
+                str(self.user.pk): {
+                    "epk": {"kty": "EC", "crv": "P-256", "x": "eHg", "y": "eXk"},
+                    "wrapped_key": "aXY.d3JhcA",
+                }
+            },
+        }
+        response = self.client.post(
+            reverse("chat"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
         message = ChatMessage.objects.get()
-        self.assertEqual(message.body, "Bitte Lager prüfen")
-        page = self.client.get(reverse("chat"))
-        self.assertContains(page, "Bitte Lager prüfen")
-        self.assertEqual(len(page.context["feed"]), 1)
-        self.membership.role = Membership.Role.SHIFT_LEAD
-        self.membership.save(update_fields=["role"])
-        hide = self.client.post(reverse("chat_hide", args=[message.pk]))
-        self.assertRedirects(hide, reverse("chat"))
-        self.assertFalse(self.client.get(reverse("chat")).context["feed"])
+        self.assertTrue(message.is_encrypted)
+        self.assertEqual(message.body, "")
+        self.assertEqual(message.ciphertext, "Y2lwaGVydGV4dA")
+        self.assertNotIn("Bitte", message.ciphertext)
+
+    def test_secure_mail_not_readable_by_master_admin_outsider(self):
+        from .models import SecureMail, SecureMailRecipient, UserCryptoIdentity
+
+        admin_user = User.objects.create_user("master@example.org", first_name="Master")
+        Membership.objects.create(
+            user=admin_user,
+            station=self.station,
+            role=Membership.Role.ADMIN,
+        )
+        peer = User.objects.create_user("peer@example.org", first_name="Peer")
+        Membership.objects.create(
+            user=peer,
+            station=self.station,
+            role=Membership.Role.MEMBER,
+        )
+        for user in (self.user, peer):
+            UserCryptoIdentity.objects.create(
+                user=user,
+                public_jwk={"kty": "EC", "crv": "P-256", "x": "abc", "y": "def"},
+                wrapped_private_jwk="a" * 40,
+                kdf_salt="b" * 24,
+            )
+        mail = SecureMail.objects.create(
+            station=self.station,
+            sender=self.user,
+            ciphertext="Y2lwaGVy",
+            nonce="bm9uY2U",
+            key_wraps={
+                str(self.user.pk): {
+                    "epk": {"kty": "EC", "crv": "P-256", "x": "eHg", "y": "eXk"},
+                    "wrapped_key": "aXY.d3JhcA",
+                },
+                str(peer.pk): {
+                    "epk": {"kty": "EC", "crv": "P-256", "x": "eHg", "y": "eXk"},
+                    "wrapped_key": "aXY.d3JhcA",
+                },
+            },
+        )
+        SecureMailRecipient.objects.create(mail=mail, user=peer)
+        self.client.force_login(admin_user)
+        self.assertEqual(self.client.get(reverse("secure_mail_detail", args=[mail.pk])).status_code, 404)
+        self.client.force_login(peer)
+        self.assertEqual(self.client.get(reverse("secure_mail_detail", args=[mail.pk])).status_code, 200)
+
+    def test_private_conversation_hidden_from_non_participants(self):
+        from .models import PrivateConversation, PrivateMessage
+
+        peer = User.objects.create_user("peer2@example.org")
+        Membership.objects.create(user=peer, station=self.station, role=Membership.Role.MEMBER)
+        outsider = User.objects.create_user("outsider@example.org")
+        Membership.objects.create(
+            user=outsider,
+            station=self.station,
+            role=Membership.Role.ADMIN,
+        )
+        low, high = sorted([self.user.pk, peer.pk])
+        conversation = PrivateConversation.objects.create(
+            station=self.station,
+            user_low_id=low,
+            user_high_id=high,
+        )
+        PrivateMessage.objects.create(
+            conversation=conversation,
+            author=self.user,
+            ciphertext="Y2lwaGVy",
+            nonce="bm9uY2U",
+            key_wraps={
+                str(self.user.pk): {
+                    "epk": {"kty": "EC", "crv": "P-256", "x": "eHg", "y": "eXk"},
+                    "wrapped_key": "aXY.d3JhcA",
+                },
+                str(peer.pk): {
+                    "epk": {"kty": "EC", "crv": "P-256", "x": "eHg", "y": "eXk"},
+                    "wrapped_key": "aXY.d3JhcA",
+                },
+            },
+        )
+        self.client.force_login(outsider)
+        self.assertEqual(
+            self.client.get(reverse("private_chat_thread", args=[conversation.pk])).status_code,
+            404,
+        )
+        self.client.force_login(self.user)
+        self.assertEqual(
+            self.client.get(reverse("private_chat_thread", args=[conversation.pk])).status_code,
+            200,
+        )
 
 
 class HolidayCalendarTests(PilotTestCase):

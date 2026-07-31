@@ -5,6 +5,13 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.8.0 - 2026-07-31
+
+- Ende-zu-Ende-Verschluesselung fuer Wachenchat (Ciphertext auf dem Server)
+- private 1:1-Chats nur fuer Teilnehmer; Master-Admin ohne Teilnahme sieht nichts
+- interne verschluesselte Post (`/post/`); nur Absender/Empfaenger lesen Klartext
+- Chat-Schluessel unter `/konto/crypto/` (Passphrase-umschlossener Private Key)
+
 ## 0.7.0 - 2026-07-31
 
 - Master-Admin legt Nutzer an und gibt Wachenzugaenge frei (`/team/anlegen/`)

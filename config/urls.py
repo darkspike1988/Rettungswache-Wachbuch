@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from core import account_views, community_views
+from core import account_views, community_views, secure_views
 from core.auth_views import PasswordLoginView
 from core.views import (
     healthz,
@@ -26,6 +26,8 @@ urlpatterns = [
     path("registrieren/", community_views.register, name="register"),
     path("konto/", community_views.account_home, name="account_home"),
     path("konto/avatar/<int:user_id>/", community_views.avatar_image, name="avatar_image"),
+    path("konto/crypto/", secure_views.crypto_setup, name="crypto_setup"),
+    path("konto/crypto/bundle.json", secure_views.crypto_bundle, name="crypto_bundle"),
     path("anmelden/mfa/", mfa_verify, name="mfa_verify"),
     path("anmelden/passkey/optionen/", account_views.passkey_login_options, name="passkey_login_options"),
     path("anmelden/passkey/pruefen/", account_views.passkey_login_verify, name="passkey_login_verify"),
