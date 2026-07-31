@@ -464,6 +464,120 @@ class FeedTests(TestCase):
         self.assertTrue(FeedItem.objects.filter(external_id="new").exists())
 
 
+class ClientApiTests(PilotTestCase):
+    def create_handover(self, title, priority, status=HandoverEntry.Status.OPEN):
+        return HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.TASK,
+            priority=priority,
+            status=status,
+            title=title,
+            details="Testinhalt",
+            author=self.user,
+        )
+
+    def test_status_reports_membership_for_signed_in_member(self):
+        response = self.client.get(reverse("api:status"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["authenticated"])
+        self.assertTrue(data["has_membership"])
+        self.assertEqual(data["station"], self.station.name)
+        self.assertEqual(data["role"], Membership.Role.MEMBER)
+        self.assertIn("api_version", data)
+
+    def test_status_is_available_without_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse("api:status"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertFalse(data["authenticated"])
+        self.assertFalse(data["has_membership"])
+        self.assertNotIn("station", data)
+
+    def test_overview_returns_prioritized_station_summary(self):
+        self.create_handover("Normal", HandoverEntry.Priority.NORMAL)
+        urgent = self.create_handover("Dringend", HandoverEntry.Priority.URGENT)
+        self.create_handover(
+            "Erledigt", HandoverEntry.Priority.URGENT, HandoverEntry.Status.DONE
+        )
+        CoffeeEntry.objects.create(
+            station=self.station,
+            member=self.user,
+            amount_cents=500,
+            reason="Einzahlung",
+            created_by=self.user,
+        )
+        response = self.client.get(reverse("api:overview"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["station"]["slug"], self.station.slug)
+        self.assertEqual(data["role"], Membership.Role.MEMBER)
+        self.assertEqual(data["handovers"]["open_count"], 2)
+        self.assertEqual(data["handovers"]["urgent_count"], 1)
+        self.assertEqual(data["handovers"]["items"][0]["id"], urgent.pk)
+        self.assertEqual(data["coffee"]["own_balance_euros"], 5.0)
+        self.assertFalse(data["coffee"]["can_book"])
+        self.assertNotIn("total_balance_euros", data["coffee"])
+
+    def test_overview_cashier_sees_total_balance(self):
+        self.membership.role = Membership.Role.CASHIER
+        self.membership.save(update_fields=["role"])
+        other = User.objects.create_user("colleague@example.org")
+        CoffeeEntry.objects.create(
+            station=self.station,
+            member=other,
+            amount_cents=700,
+            reason="Einzahlung",
+            created_by=self.user,
+        )
+        response = self.client.get(reverse("api:overview"))
+        data = response.json()
+        self.assertTrue(data["coffee"]["can_book"])
+        self.assertEqual(data["coffee"]["own_balance_euros"], 0.0)
+        self.assertEqual(data["coffee"]["total_balance_euros"], 7.0)
+
+    def test_overview_hides_disabled_modules(self):
+        self.station.calendar_enabled = False
+        self.station.coffee_enabled = False
+        self.station.save(update_fields=["calendar_enabled", "coffee_enabled"])
+        response = self.client.get(reverse("api:overview"))
+        data = response.json()
+        self.assertNotIn("events", data)
+        self.assertNotIn("coffee", data)
+        self.assertFalse(data["modules"]["calendar"])
+
+    def test_overview_is_station_scoped(self):
+        other_station = Station.objects.create(name="Andere", slug="andere")
+        HandoverEntry.objects.create(
+            station=other_station,
+            category=HandoverEntry.Category.TASK,
+            title="Fremd",
+            details="Stationsfremd",
+            author=self.user,
+        )
+        response = self.client.get(reverse("api:overview"))
+        data = response.json()
+        self.assertEqual(data["handovers"]["open_count"], 0)
+
+    def test_overview_requires_authentication(self):
+        self.client.logout()
+        response = self.client.get(reverse("api:overview"))
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("error", response.json())
+
+    def test_overview_forbidden_for_auditor(self):
+        self.membership.role = Membership.Role.AUDITOR
+        self.membership.save(update_fields=["role"])
+        response = self.client.get(reverse("api:overview"))
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("error", response.json())
+
+    def test_overview_rejects_non_get_methods(self):
+        response = self.client.post(reverse("api:overview"))
+        self.assertEqual(response.status_code, 405)
+
+
 class TeamAndAuditTests(PilotTestCase):
     def setUp(self):
         super().setUp()

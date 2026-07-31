@@ -17,5 +17,6 @@ urlpatterns = [
     ),
     path("abmelden/", auth_views.LogoutView.as_view(), name="logout"),
     path("django-admin/", admin.site.urls),
+    path("api/v1/", include("core.api_urls")),
     path("", include("core.urls")),
 ]

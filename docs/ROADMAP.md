@@ -29,3 +29,45 @@
 Spaetere Optionen sind eine installierbare PWA, CalDAV-Export und weitere
 offizielle Verkehrsdaten. Chat, Patientendaten, Dienstplanung und Uploads bleiben
 ausserhalb des Wachbuchs, solange kein eigener freigegebener Zweck besteht.
+
+## Mobiler Client (iOS und Android)
+
+Ergaenzend zur server-gerenderten Oberflaeche entsteht ein plattformuebergreifender
+Client (Repository `Wachbuch-Client`, Expo/React Native). Er greift ueber eine
+schmale JSON-API auf denselben Server zu. Leitplanken aus der Recherche gelten
+unveraendert: keine Patienten-, Gesundheits- oder Einsatzdaten, dokumentierte
+Rechtsgrundlage je Zweck, stationsbezogene Rollen, unveraenderliche Audit- und
+Kassenbuchungen sowie Datensparsamkeit (nur Tag und Monat bei Geburtstagen).
+
+### Phase M0 - Lese-API und Verbindungsnachweis (umgesetzt)
+
+- versionierte, read-only API unter `/api/v1/` (`status`, `uebersicht`)
+- gleiche stationsbezogene Zugriffsregeln wie die HTML-Ansichten; Auditoren und
+  Nutzer ohne Mitgliedschaft erhalten JSON-Fehler statt Inhalten
+- Client zeigt Serverstatus und API-Version an
+- Details siehe [`docs/API.md`](API.md)
+
+### Phase M1 - Lesefunktionen
+
+- Uebergabeliste und -detail, naechste Termine, eigener Kaffeekassenstand
+- konsequente Rollen- und Modulpruefung je Endpunkt
+- Paginierung und schlanke, cachefreundliche Antworten
+
+### Phase M2 - Authentifizierung fuer native Apps und Schreibpfade
+
+- geeignetes Auth-Verfahren fuer Apps festlegen (Token oder OAuth/OIDC ueber den
+  bestehenden Identity-Layer), abgestimmt auf die MFA-/Passkey-Strategie aus
+  Phase 2 des Kernbetriebs
+- Schreibendpunkte nur mit Audit-Ereignis, CSRF-/Replay-Schutz und Rollencheck
+- CORS ausschliesslich fuer freigegebene Urspruenge; native Apps benoetigen es
+  nicht (nur der Web-Build im Browser unterliegt CORS)
+
+### Phase M3 - Haerte und Reichweite
+
+- ASVS-L2-Pruefung der API zusaetzlich zur Weboberflaeche
+- optionaler Offline-Cache ohne dauerhafte lokale Kopien sensibler Daten
+- installierbare PWA als Alternative zum nativen Build pruefen
+
+iOS-Builds erfordern macOS/Xcode; Android ist unter Linux baubar. Push-Dienste,
+Uploads und personenbezogene Auswertungen bleiben ausserhalb des Wachbuchs, solange
+kein eigener freigegebener Zweck und keine Mitbestimmung vorliegen.
