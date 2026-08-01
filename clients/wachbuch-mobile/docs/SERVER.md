@@ -6,13 +6,14 @@ Dieses Client-Repo gehört zu:
 
 | Client | Server |
 | --- | --- |
-| App 0.2.x | API `/api/v1/` ab Server **0.12.0** |
+| App 0.2.x | API `/api/v1/` ab Server **0.14.0** |
 | Adresse / QR → Login | Discovery `GET /api/v1/` |
-| User / Passwort | `POST /api/v1/token/` |
+| User / Passwort | `POST /api/v1/token/` (Alias `/anmeldung/`) |
 | MFA | App-Token unter `/konto/api/` |
-| Station | nur aus `GET /api/v1/me/` |
-| Übergaben | `GET /api/v1/handovers/` |
+| Station | nur aus `GET /api/v1/me/` / `uebersicht/` |
+| Übergaben | `/handovers/` oder `/uebergaben/` |
+| Kalender / Kasse / Checklisten | `/kalender/`, `/kaffeekasse/`, `/checklisten/` |
 
-Header: `Authorization: Token <wb_…>`
+Header: `Authorization: Token <wb_…>` (widerrufbar)
 
 Ausführlich: [docs/API.md im Server](https://github.com/darkspike1988/Rettungswache-Wachbuch/blob/main/docs/API.md)

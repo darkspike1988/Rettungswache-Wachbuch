@@ -38,6 +38,8 @@ from .models import (
     AuditEvent,
     BirthdayPreference,
     CalendarEvent,
+    Checklist,
+    ChecklistCompletion,
     CoffeeEntry,
     FeedItem,
     FeedSource,
@@ -724,6 +726,44 @@ def task_edit(request, pk):
 
 
 @membership_required(CONTENT_ROLES)
+@station_module_required("checklists_enabled")
+def checklists(request):
+    station = request.membership.station
+    checklists_qs = list(
+        Checklist.objects.filter(station=station, is_active=True).prefetch_related("items")
+    )
+    latest = {}
+    for completion in (
+        ChecklistCompletion.objects.filter(station=station)
+        .select_related("completed_by", "checklist")
+        .order_by("checklist_id", "-created_at")
+    ):
+        latest.setdefault(completion.checklist_id, completion)
+    for checklist in checklists_qs:
+        checklist.latest_completion = latest.get(checklist.id)
+    return render(request, "core/checklists.html", {"checklists": checklists_qs})
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("checklists_enabled")
+@require_POST
+def checklist_complete(request, pk):
+    station = request.membership.station
+    checklist = get_object_or_404(Checklist, pk=pk, station=station, is_active=True)
+    with transaction.atomic():
+        completion = ChecklistCompletion.objects.create(
+            station=station,
+            checklist=checklist,
+            completed_by=request.user,
+            note=(request.POST.get("note") or "")[:300],
+        )
+        audit(request.user, station, "checklist.completed", completion, {
+            "fields": ["checklist", "note"],
+        })
+    messages.success(request, "Checkliste wurde als erledigt vermerkt.")
+    return redirect("checklists")
+
+
 def more(request):
     return render(request, "core/more.html")
 

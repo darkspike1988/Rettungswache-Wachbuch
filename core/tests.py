@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.13.0")
+        self.assertEqual(response.json()["version"], "0.14.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.13.0")
+        self.assertContains(response, "Version 0.14.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -1421,6 +1421,161 @@ class ApiMobileFoundationTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "image/png")
         self.assertGreater(len(response.content), 100)
+
+
+class ApiUnifiedContractTests(PilotTestCase):
+    """Widerrufbare Tokens + deutsche Aliase + Schreibpfade (PR#10 ∪ PR#12)."""
+
+    def _token(self, scopes=None):
+        from .api.views import DEFAULT_MOBILE_SCOPES, generate_api_token
+        from .models import ApiToken
+
+        raw, token_hash, prefix = generate_api_token()
+        ApiToken.objects.create(
+            user=self.user,
+            label="Unified",
+            token_prefix=prefix,
+            token_hash=token_hash,
+            scopes=list(scopes if scopes is not None else DEFAULT_MOBILE_SCOPES),
+        )
+        return raw
+
+    def _auth(self, raw):
+        return {"HTTP_AUTHORIZATION": f"Bearer {raw}"}
+
+    def test_german_aliases_and_status(self):
+        raw = self._token()
+        status = self.client.get(reverse("api_v1_status"), **self._auth(raw))
+        self.assertEqual(status.status_code, 200)
+        self.assertTrue(status.json()["authenticated"])
+        self.assertTrue(status.json()["has_membership"])
+        overview = self.client.get(reverse("api_v1_overview"), **self._auth(raw))
+        self.assertEqual(overview.status_code, 200)
+        self.assertIn("checklists", overview.json()["modules"])
+        handovers = self.client.get(reverse("api_v1_uebergaben"), **self._auth(raw))
+        self.assertEqual(handovers.status_code, 200)
+
+    def test_create_handover_via_german_alias(self):
+        raw = self._token()
+        response = self.client.post(
+            reverse("api_v1_uebergaben"),
+            data=json.dumps({
+                "category": HandoverEntry.Category.STATION,
+                "priority": HandoverEntry.Priority.NORMAL,
+                "title": "Funkgerät laden",
+                "details": "Ohne Patientendaten",
+            }),
+            content_type="application/json",
+            **self._auth(raw),
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["title"], "Funkgerät laden")
+        self.assertTrue(HandoverEntry.objects.filter(title="Funkgerät laden").exists())
+
+    def test_handover_status_requires_shift_lead(self):
+        raw = self._token()
+        handover = HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.STATION,
+            priority=HandoverEntry.Priority.NORMAL,
+            title="Statuswechsel",
+            details="x",
+            author=self.user,
+        )
+        denied = self.client.post(
+            reverse("api_v1_uebergabe_status", args=[handover.pk]),
+            data=json.dumps({"status": HandoverEntry.Status.IN_PROGRESS}),
+            content_type="application/json",
+            **self._auth(raw),
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.membership.role = Membership.Role.SHIFT_LEAD
+        self.membership.save(update_fields=["role"])
+        ok = self.client.post(
+            reverse("api_v1_handover_status", args=[handover.pk]),
+            data=json.dumps({"status": HandoverEntry.Status.IN_PROGRESS}),
+            content_type="application/json",
+            **self._auth(raw),
+        )
+        self.assertEqual(ok.status_code, 200)
+        handover.refresh_from_db()
+        self.assertEqual(handover.status, HandoverEntry.Status.IN_PROGRESS)
+
+    def test_calendar_and_coffee_api_respect_modules_and_roles(self):
+        raw = self._token()
+        cal = self.client.get(reverse("api_v1_kalender"), **self._auth(raw))
+        self.assertEqual(cal.status_code, 200)
+        self.membership.role = Membership.Role.SHIFT_LEAD
+        self.membership.save(update_fields=["role"])
+        starts = timezone.now() + timedelta(days=2)
+        created = self.client.post(
+            reverse("api_v1_kalender"),
+            data=json.dumps({
+                "title": "Dienstbesprechung",
+                "description": "",
+                "starts_at": starts.strftime("%Y-%m-%dT%H:%M"),
+                "ends_at": (starts + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M"),
+            }),
+            content_type="application/json",
+            **self._auth(raw),
+        )
+        self.assertEqual(created.status_code, 201)
+
+        self.membership.role = Membership.Role.CASHIER
+        self.membership.save(update_fields=["role"])
+        coffee = self.client.post(
+            reverse("api_v1_kaffeekasse"),
+            data=json.dumps({
+                "member": self.user.pk,
+                "direction": "credit",
+                "amount_eur": "5.00",
+                "reason": "Einzahlung",
+            }),
+            content_type="application/json",
+            **self._auth(raw),
+        )
+        self.assertEqual(coffee.status_code, 201)
+        balance = self.client.get(reverse("api_v1_kaffeekasse"), **self._auth(raw))
+        self.assertEqual(balance.status_code, 200)
+        self.assertGreaterEqual(balance.json()["balance_euros"], 5.0)
+
+        self.station.coffee_enabled = False
+        self.station.save(update_fields=["coffee_enabled"])
+        missing = self.client.get(reverse("api_v1_kaffeekasse"), **self._auth(raw))
+        self.assertEqual(missing.status_code, 404)
+
+    def test_checklists_module_api_and_html(self):
+        from .models import Checklist, ChecklistCompletion, ChecklistItem
+
+        raw = self._token()
+        disabled = self.client.get(reverse("api_v1_checklisten"), **self._auth(raw))
+        self.assertEqual(disabled.status_code, 404)
+        html_off = self.client.get(reverse("checklists"))
+        self.assertEqual(html_off.status_code, 404)
+
+        self.station.checklists_enabled = True
+        self.station.save(update_fields=["checklists_enabled"])
+        checklist = Checklist.objects.create(
+            station=self.station, title="Fahrzeugcheck", description="Täglich"
+        )
+        ChecklistItem.objects.create(checklist=checklist, text="Reifen", position=0)
+        listed = self.client.get(reverse("api_v1_checklisten"), **self._auth(raw))
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["results"][0]["title"], "Fahrzeugcheck")
+        self.assertEqual(listed.json()["results"][0]["items"], ["Reifen"])
+
+        done = self.client.post(
+            reverse("api_v1_checkliste_erledigt", args=[checklist.pk]),
+            data=json.dumps({"note": "Erledigt"}),
+            content_type="application/json",
+            **self._auth(raw),
+        )
+        self.assertEqual(done.status_code, 201)
+        self.assertEqual(ChecklistCompletion.objects.filter(checklist=checklist).count(), 1)
+
+        html = self.client.get(reverse("checklists"))
+        self.assertEqual(html.status_code, 200)
+        self.assertContains(html, "Fahrzeugcheck")
 
 
 class CryptoAtRestTests(TestCase):

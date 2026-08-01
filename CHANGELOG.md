@@ -5,6 +5,14 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.14.0 - 2026-08-01
+
+- API v1 vereinheitlicht: widerrufbare `wb_`-App-Tokens plus deutsche Alias-Pfade
+  (`anmeldung/`, `status/`, `uebersicht/`, `uebergaben/`, `kalender/`, `kaffeekasse/`, `checklisten/`)
+- Schreibende API: Uebergaben anlegen/Status, Kalender, Kaffeekasse, Checklisten-Abschluss
+- Checklisten-Modul (Admin-Schalter, HTML `/checklisten/`, append-only Completions, DB-REVOKE)
+- Multi-Stage-Dockerfile und Compose-Log-Rotation; OpenAPI/Doku aktualisiert
+
 ## 0.13.0 - 2026-07-31
 
 - Krypto-Profil an BSI TR-02102 angelehnt (`docs/CRYPTO-BSI.md`): AES-256-GCM, ECDH P-256, TLS 1.3

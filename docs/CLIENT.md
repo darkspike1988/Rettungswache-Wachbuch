@@ -6,7 +6,7 @@ Stand: 31. Juli 2026.
 
 | | |
 | --- | --- |
-| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch (≥ **0.12.0**) |
+| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch (≥ **0.14.0**) |
 | **Client** | https://github.com/darkspike1988/Wachbuch-Client (App **0.2.x**) |
 | **Spiegel im Server** | `clients/wachbuch-mobile/` |
 | **Push Server → Client** | `./scripts/publish-mobile-client-repo.sh` |
@@ -28,12 +28,15 @@ App                      Wachbuch-Server
 ─────────────────────    ────────────────────────────
 1. Adresse oder QR
    └─ Bestätigen         GET  /api/v1/          Discovery
-2. Login User/Passwort   POST /api/v1/token/    (oder /konto/api/ Token)
+2. Login User/Passwort   POST /api/v1/token/    (Alias: /anmeldung/)
+                         oder App-Token unter /konto/api/
 3. Sitzung               GET  /api/v1/me/       User + eine Station
-4. Fachdaten             GET  /api/v1/handovers/
+                         GET  /api/v1/uebersicht/
+4. Fachdaten             /handovers/ oder /uebergaben/,
+                         /kalender/, /kaffeekasse/, /checklisten/
 ```
 
-Header: `Authorization: Token <wb_…>`
+Header: `Authorization: Token <wb_…>` (widerrufbar)
 
 ## Wachenspezifisch
 

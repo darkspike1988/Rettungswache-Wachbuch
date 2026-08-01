@@ -345,13 +345,15 @@ def api_tokens_manage(request):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create":
+            from .api.views import DEFAULT_MOBILE_SCOPES
+
             raw, token_hash, prefix = generate_api_token()
             token = ApiToken.objects.create(
                 user=request.user,
                 label=(request.POST.get("label") or "Mobile App")[:120],
                 token_prefix=prefix,
                 token_hash=token_hash,
-                scopes=["read:me", "read:handovers"],
+                scopes=list(DEFAULT_MOBILE_SCOPES),
             )
             audit(request.user, membership.station, "api.token_created", token, {
                 "fields": ["label", "scopes"],

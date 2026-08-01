@@ -201,6 +201,7 @@ class StationSettingsForm(forms.ModelForm):
             "tasks_enabled",
             "chat_enabled",
             "holidays_enabled",
+            "checklists_enabled",
         ]
         labels = {"name": "Name der Rettungswache"}
 
