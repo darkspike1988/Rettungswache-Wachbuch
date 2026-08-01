@@ -14,4 +14,6 @@ urlpatterns = [
     path("uebergaben/<int:pk>/status/", api.handover_set_status, name="handover_status"),
     path("kalender/", api.calendar, name="calendar"),
     path("kaffeekasse/", api.coffee, name="coffee"),
+    path("checklisten/", api.checklists, name="checklists"),
+    path("checklisten/<int:pk>/erledigt/", api.checklist_complete, name="checklist_complete"),
 ]

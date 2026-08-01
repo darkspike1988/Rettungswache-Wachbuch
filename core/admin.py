@@ -4,6 +4,9 @@ from .models import (
     AuditEvent,
     BirthdayPreference,
     CalendarEvent,
+    Checklist,
+    ChecklistCompletion,
+    ChecklistItem,
     CoffeeEntry,
     FeedItem,
     FeedSource,
@@ -38,6 +41,7 @@ class StationAdmin(admin.ModelAdmin):
         "birthdays_enabled",
         "coffee_enabled",
         "feeds_enabled",
+        "checklists_enabled",
     )
     list_filter = ("is_active",)
 
@@ -92,6 +96,27 @@ class FeedSourceAdmin(admin.ModelAdmin):
 class FeedItemAdmin(ReadOnlyAdmin):
     list_display = ("title", "source", "published_at", "imported_at")
     list_filter = ("source",)
+
+
+class ChecklistItemInline(admin.TabularInline):
+    model = ChecklistItem
+    extra = 3
+
+
+@admin.register(Checklist)
+class ChecklistAdmin(admin.ModelAdmin):
+    list_display = ("title", "station", "is_active", "created_at")
+    list_filter = ("station", "is_active")
+    inlines = [ChecklistItemInline]
+
+    def get_readonly_fields(self, request, obj=None):
+        return ("created_at",)
+
+
+@admin.register(ChecklistCompletion)
+class ChecklistCompletionAdmin(ReadOnlyAdmin):
+    list_display = ("checklist", "station", "completed_by", "created_at")
+    list_filter = ("station", "checklist")
 
 
 @admin.register(AuditEvent)

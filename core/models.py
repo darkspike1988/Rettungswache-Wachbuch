@@ -15,6 +15,7 @@ class Station(models.Model):
     birthdays_enabled = models.BooleanField(default=True, verbose_name="Geburtstage aktiviert")
     coffee_enabled = models.BooleanField(default=True, verbose_name="Kaffeekasse aktiviert")
     feeds_enabled = models.BooleanField(default=False, verbose_name="Externe Meldungen aktiviert")
+    checklists_enabled = models.BooleanField(default=False, verbose_name="Checklisten aktiviert")
 
     class Meta:
         ordering = ["name"]
@@ -270,6 +271,58 @@ class FeedItem(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Checklist(models.Model):
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="checklists")
+    title = models.CharField(max_length=120)
+    description = models.CharField(max_length=300, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["title"]
+
+    def __str__(self):
+        return self.title
+
+
+class ChecklistItem(models.Model):
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name="items")
+    text = models.CharField(max_length=200)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        return self.text
+
+
+class ChecklistCompletion(models.Model):
+    station = models.ForeignKey(
+        Station, on_delete=models.PROTECT, related_name="checklist_completions"
+    )
+    checklist = models.ForeignKey(
+        Checklist, on_delete=models.PROTECT, related_name="completions"
+    )
+    completed_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="checklist_completions"
+    )
+    note = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["station", "-created_at"])]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Checklisten-Abschlüsse dürfen nicht verändert werden.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Checklisten-Abschlüsse dürfen nicht gelöscht werden.")
 
 
 class AuditEvent(models.Model):

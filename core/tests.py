@@ -15,6 +15,9 @@ from .models import (
     AuditEvent,
     BirthdayPreference,
     CalendarEvent,
+    Checklist,
+    ChecklistCompletion,
+    ChecklistItem,
     CoffeeEntry,
     FeedItem,
     FeedSource,
@@ -655,6 +658,59 @@ class ClientApiTests(PilotTestCase):
         self.assertEqual(cashier_view["balances"]["total_balance_euros"], 8.0)
 
 
+class ChecklistModuleTests(PilotTestCase):
+    def setUp(self):
+        super().setUp()
+        self.station.checklists_enabled = True
+        self.station.save(update_fields=["checklists_enabled"])
+        self.checklist = Checklist.objects.create(
+            station=self.station, title="Täglicher RTW-Check"
+        )
+        ChecklistItem.objects.create(checklist=self.checklist, text="Sauerstoff prüfen", position=1)
+        ChecklistItem.objects.create(checklist=self.checklist, text="AED prüfen", position=2)
+
+    def test_module_toggle_hides_checklists(self):
+        self.assertEqual(self.client.get(reverse("checklists")).status_code, 200)
+        self.station.checklists_enabled = False
+        self.station.save(update_fields=["checklists_enabled"])
+        self.assertEqual(self.client.get(reverse("checklists")).status_code, 404)
+
+    def test_more_page_lists_checklists_only_when_enabled(self):
+        self.assertContains(self.client.get(reverse("more")), "Checklisten")
+        self.station.checklists_enabled = False
+        self.station.save(update_fields=["checklists_enabled"])
+        self.assertNotContains(self.client.get(reverse("more")), "Checklisten")
+
+    def test_completion_is_recorded_with_audit(self):
+        response = self.client.post(
+            reverse("checklist_complete", args=[self.checklist.pk]),
+            {"note": "Alles in Ordnung"},
+        )
+        self.assertRedirects(response, reverse("checklists"))
+        completion = ChecklistCompletion.objects.get()
+        self.assertEqual(completion.checklist, self.checklist)
+        self.assertEqual(completion.completed_by, self.user)
+        self.assertTrue(AuditEvent.objects.filter(action="checklist.completed").exists())
+
+    def test_completion_is_immutable(self):
+        completion = ChecklistCompletion.objects.create(
+            station=self.station, checklist=self.checklist, completed_by=self.user
+        )
+        completion.note = "geändert"
+        with self.assertRaises(ValidationError):
+            completion.save()
+        with self.assertRaises(ValidationError):
+            completion.delete()
+
+    def test_completion_is_station_scoped(self):
+        other = Station.objects.create(name="Andere", slug="andere-cl")
+        foreign = Checklist.objects.create(station=other, title="Fremd")
+        response = self.client.post(
+            reverse("checklist_complete", args=[foreign.pk]), {}
+        )
+        self.assertEqual(response.status_code, 404)
+
+
 class ClientApiTokenTests(TestCase):
     def setUp(self):
         self.station = Station.objects.create(name="Tokenwache", slug="tokenwache")
@@ -888,6 +944,35 @@ class ClientApiWriteTests(TestCase):
         )
         self.assertEqual(response.status_code, 422)
         self.assertEqual(CalendarEvent.objects.count(), 0)
+
+    def test_checklist_api_lists_and_completes(self):
+        self.station.checklists_enabled = True
+        self.station.save(update_fields=["checklists_enabled"])
+        checklist = Checklist.objects.create(station=self.station, title="RTW-Check")
+        ChecklistItem.objects.create(checklist=checklist, text="Sauerstoff", position=1)
+        token = self.token(role=Membership.Role.MEMBER)
+        listing = self.client.get(
+            reverse("api:checklists"), HTTP_AUTHORIZATION=f"Bearer {token}"
+        )
+        self.assertEqual(listing.status_code, 200)
+        data = listing.json()
+        self.assertEqual(data["results"][0]["title"], "RTW-Check")
+        self.assertEqual(data["results"][0]["items"], ["Sauerstoff"])
+        done = self.post(
+            reverse("api:checklist_complete", args=[checklist.pk]),
+            {"note": "ok"},
+            token,
+        )
+        self.assertEqual(done.status_code, 201)
+        self.assertEqual(ChecklistCompletion.objects.count(), 1)
+        self.assertTrue(AuditEvent.objects.filter(action="checklist.completed").exists())
+
+    def test_checklist_api_hidden_when_module_disabled(self):
+        token = self.token(role=Membership.Role.MEMBER)
+        response = self.client.get(
+            reverse("api:checklists"), HTTP_AUTHORIZATION=f"Bearer {token}"
+        )
+        self.assertEqual(response.status_code, 404)
 
     def test_coffee_booking_requires_cashier_or_admin(self):
         member_token = self.token(role=Membership.Role.MEMBER)

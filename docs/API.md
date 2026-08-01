@@ -166,3 +166,25 @@ Legt einen Termin an (nur Schichtleitung oder Admin, Modul aktiv). Body
 `{ "title", "description", "starts_at", "ends_at" }` mit Zeitstempeln im Format
 `YYYY-MM-DD HH:MM:SS`. Ende vor Beginn wird mit `422` abgewiesen. Antwort `201`
 mit dem angelegten Termin.
+
+## GET /api/v1/checklisten/
+
+Nur bei aktiviertem Checklisten-Modul (`checklists_enabled`, sonst `404`). Listet
+die aktiven Checklisten der Wache mit ihren Punkten und dem letzten Abschluss:
+
+```json
+{ "results": [ {
+  "id": 1, "title": "Täglicher RTW-Check", "description": "",
+  "items": ["Sauerstoff prüfen", "AED prüfen"],
+  "last_completed_at": "2026-08-01T07:10:00+02:00", "last_completed_by": "admin"
+} ] }
+```
+
+Checklisten-Vorlagen werden von technischen Administratoren im Django-Admin
+angelegt; ein- und ausgeschaltet wird das Modul durch Stationsadministratoren
+unter `/einstellungen/`.
+
+### POST /api/v1/checklisten/&lt;id&gt;/erledigt/
+
+Vermerkt eine Checkliste als erledigt (Inhaltsrollen, Modul aktiv). Optionaler
+Body `{ "note": "…" }`. Append-only mit Audit-Ereignis. Antwort `201`.

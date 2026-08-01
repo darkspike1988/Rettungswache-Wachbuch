@@ -37,7 +37,14 @@ from .forms import (
     HandoverForm,
     HandoverStatusForm,
 )
-from .models import CalendarEvent, CoffeeEntry, HandoverEntry, Membership
+from .models import (
+    CalendarEvent,
+    Checklist,
+    ChecklistCompletion,
+    CoffeeEntry,
+    HandoverEntry,
+    Membership,
+)
 from .services import audit, change_handover_status, create_handover
 from .views import prioritized_handovers
 
@@ -243,6 +250,7 @@ def overview(request):
             "birthdays": station.birthdays_enabled,
             "coffee": station.coffee_enabled,
             "feeds": station.feeds_enabled,
+            "checklists": station.checklists_enabled,
         },
         "handovers": {
             "open_count": active.count(),
@@ -559,4 +567,65 @@ def _coffee_create(request):
         "reason": entry.reason,
         "created_at": entry.created_at.isoformat(),
         "is_correction": False,
+    }, status=201)
+
+
+@api_member_view()
+@api_module_required("checklists_enabled")
+def checklists(request):
+    station = request.membership.station
+    active = (
+        Checklist.objects.filter(station=station, is_active=True)
+        .prefetch_related("items")
+    )
+    latest = {}
+    for completion in (
+        ChecklistCompletion.objects.filter(station=station)
+        .select_related("completed_by")
+        .order_by("checklist_id", "-created_at")
+    ):
+        latest.setdefault(completion.checklist_id, completion)
+    results = []
+    for checklist in active:
+        done = latest.get(checklist.pk)
+        results.append({
+            "id": checklist.pk,
+            "title": checklist.title,
+            "description": checklist.description,
+            "items": [item.text for item in checklist.items.all()],
+            "last_completed_at": done.created_at.isoformat() if done else None,
+            "last_completed_by": _person(done.completed_by) if done else None,
+        })
+    return JsonResponse({"results": results})
+
+
+@csrf_exempt
+@api_write_view(CONTENT_ROLES)
+def checklist_complete(request, pk):
+    station = request.membership.station
+    if not station.checklists_enabled:
+        return _error(404, "Modul ist nicht aktiviert.")
+    checklist = Checklist.objects.filter(
+        pk=pk, station=station, is_active=True
+    ).first()
+    if checklist is None:
+        return _error(404, "Checkliste wurde nicht gefunden.")
+    payload, error = _json_body(request)
+    if error is not None:
+        return error
+    with transaction.atomic():
+        completion = ChecklistCompletion.objects.create(
+            station=station,
+            checklist=checklist,
+            completed_by=request.user,
+            note=str(payload.get("note", ""))[:300],
+        )
+        audit(request.user, station, "checklist.completed", completion, {
+            "fields": ["checklist", "note"]
+        })
+    return JsonResponse({
+        "id": completion.pk,
+        "checklist": checklist.pk,
+        "completed_by": _person(request.user),
+        "created_at": completion.created_at.isoformat(),
     }, status=201)
