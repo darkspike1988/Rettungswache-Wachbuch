@@ -24,9 +24,11 @@ def current_membership(request):
 
 def application_metadata(request):
     from .community_views import registration_enabled
+    from .demo import demo_accounts_for_display, demo_mode_enabled, demo_password
     from .push import web_push_enabled
     from .webauthn_auth import webauthn_enabled
 
+    demo = demo_mode_enabled()
     return {
         "app_name": settings.APP_NAME,
         "source_url": settings.SOURCE_URL,
@@ -35,4 +37,7 @@ def application_metadata(request):
         "webauthn_enabled": webauthn_enabled(),
         "web_push_enabled": web_push_enabled(),
         "registration_enabled": registration_enabled(),
+        "demo_mode": demo,
+        "demo_password": demo_password() if demo else "",
+        "demo_accounts": demo_accounts_for_display() if demo else [],
     }
