@@ -1,11 +1,11 @@
 # Rettungswache-Wachbuch
 
 [![CI](https://github.com/Darkspike1988/Rettungswache-Wachbuch/actions/workflows/ci.yml/badge.svg)](https://github.com/Darkspike1988/Rettungswache-Wachbuch/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License:AGPL_v3-blue.svg)](LICENSE)
 
-Ein selbst gehostetes, mobiles Wachbuch fuer die interne Organisation einer
-Rettungswache. Die Anwendung ist kein Einsatzleit-, Alarmierungs-,
-Dienstplanungs- oder Patientendokumentationssystem.
+Ein selbst gehostetes, mobiles **Wachbuch** fuer die interne Organisation einer
+Rettungswache (Repository: Rettungswache-Wachbuch). Die Anwendung ist kein
+Einsatzleit-, Alarmierungs-, Dienstplanungs- oder Patientendokumentationssystem.
 
 ## Funktionen
 
@@ -15,16 +15,26 @@ Dienstplanungs- oder Patientendokumentationssystem.
 - unveraenderliches Kaffeekassen-Ledger mit Korrekturbuchungen
 - optionale offizielle RSS- und Verkehrsquellen
 - stationsbezogene Rollen und nachvollziehbare Audit-Ereignisse
-- lokaler Login oder Anmeldung ueber Tailscale-Identitaetsheader
-- responsive, JavaScript-freie Oberflaeche
+- lokaler Login mit persoenlichen Konten
+- installierbare PWA fuer Handy und Wachenterminals
+- responsive App-Shell mit Offline-Hinweis fuer gelesene Seiten
 
-## Administration
+## Stack
 
-Stationsadministratoren koennen unter `/einstellungen/` den Namen der Wache und
-die sichtbaren Module selbst festlegen. Unter `/team/` verwalten sie Freigaben
-und Rollen. Technische Administratoren konfigurieren unter `/django-admin/`
-Systemkonten und externe Quellen. Fachliche Datensaetze sind dort bewusst nur
-lesbar, damit Versionierung und Audit nicht umgangen werden.
+Ein Docker-Compose-Projekt startet alles:
+
+| Dienst | Aufgabe |
+| --- | --- |
+| `db` | PostgreSQL 17 mit getrennten App-/Feed-Rollen |
+| `migrate` | einmalige Schema- und Bootstrap-Migration |
+| `web` | Gunicorn/Django hinter Loopback-Port |
+| `feed-worker` | periodischer Abruf freigegebener HTTPS-Quellen |
+| `backup` | taegliche lokale PostgreSQL-Dumps |
+
+Authentifizierung laeuft ausschliesslich ueber lokale Django-Konten. TLS und
+Netzfreigabe liegen beim Reverse-Proxy vor dem Container. Die Oberflaeche kann
+ueber den Browser als App installiert werden; Schreibvorgänge brauchen weiterhin
+eine aktive Verbindung.
 
 ## Schnellstart mit Docker
 
@@ -48,11 +58,18 @@ docker compose exec web python manage.py createsuperuser
 docker compose exec web python manage.py grant_station_admin BENUTZERNAME
 ```
 
-Danach ist die Anwendung standardmaessig unter `http://127.0.0.1:8090` und die
-Anmeldung unter `/anmelden/` erreichbar. Der Port bindet absichtlich nur an
-Loopback. Fuer andere Geraete ist ein abgesicherter Reverse-Proxy mit TLS oder
-Tailscale Serve erforderlich. `SECURE_COOKIES=false` ist ausschliesslich fuer
-diesen lokalen HTTP-Schnellstart vorgesehen.
+Danach ist die oeffentliche Startseite unter `http://127.0.0.1:8090/` und die
+Anmeldung unter `/anmelden/` erreichbar. Die Fachfunktionen (Uebersicht,
+Uebergaben usw.) stehen erst nach Login mit aktiver Mitgliedschaft bereit. Der
+Port bindet absichtlich nur an Loopback. `SECURE_COOKIES=false` ist
+ausschliesslich fuer diesen lokalen HTTP-Schnellstart vorgesehen.
+
+Weitere Teamkonten legt der **Master-Admin** unter `/team/anlegen/` an und gibt sie
+sofort der Wache frei. Optional kann `REGISTRATION_ENABLED=true` eine oeffentliche
+Kontoanfrage erlauben; Freigabe bleibt beim Master-Admin unter `/team/`.
+Technische Systemkonten bleiben unter `/django-admin/`. `createsuperuser` erzeugt
+einen globalen technischen Administrator; die stationsbezogene Master-Admin-Rolle
+allein vergibt keine Django-Superuser-Rechte.
 
 Tests:
 
@@ -60,26 +77,27 @@ Tests:
 docker compose exec web python manage.py test --settings=config.test_settings
 ```
 
-## Tailscale-Anmeldung
+## Reverse-Proxy mit TLS
 
-Fuer eine Tailnet-only-Installation werden in `.env` mindestens diese Werte
-gesetzt:
+Fuer Handys oder gemeinsame Wachenterminals steht vor dem Loopback-Port ein
+Reverse-Proxy mit TLS. In `.env` dann mindestens:
 
 ```dotenv
-TRUST_TAILSCALE_HEADERS=true
-TAILSCALE_ADMIN_LOGIN=admin@example.org
 SECURE_COOKIES=true
-ALLOWED_HOSTS=your-host.example.ts.net
-CSRF_TRUSTED_ORIGINS=https://your-host.example.ts.net
+ALLOWED_HOSTS=wache.example.org
+CSRF_TRUSTED_ORIGINS=https://wache.example.org
 ```
 
-Die Identitaetsheader duerfen nur an einem nicht oeffentlich erreichbaren
-Loopback-Port akzeptiert werden. Hinweise zur Proxy-Konfiguration stehen in
-[`docs/OPERATIONS.md`](docs/OPERATIONS.md).
+Der Proxy leitet auf `127.0.0.1:8090` weiter und setzt `X-Forwarded-Proto=https`.
+Details stehen in [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
-`createsuperuser` erzeugt bewusst einen globalen technischen Administrator fuer
-den Django-Admin. Eine stationsbezogene Adminrolle allein vergibt keine globalen
-Systemrechte.
+## Administration
+
+Stations-Master-Admins koennen unter `/einstellungen/` den Namen der Wache und
+die sichtbaren Module selbst festlegen. Unter `/team/` legen sie Nutzer an und
+verwalten Freigaben sowie Rollen. Technische Administratoren konfigurieren unter
+`/django-admin/` Systemkonten und externe Quellen. Fachliche Datensaetze sind
+dort bewusst nur lesbar, damit Versionierung und Audit nicht umgangen werden.
 
 ## Externe Quellen
 
@@ -106,10 +124,18 @@ Loeschfristen oder organisatorische Freigabe. Details stehen in
 ## Dokumentation
 
 - [Architektur](docs/ARCHITECTURE.md)
+- [API fuer Mobile-/Drittclients](docs/API.md)
+- [Krypto nach BSI TR-02102](docs/CRYPTO-BSI.md)
+- [AGPL-Client iOS/Android](docs/CLIENT.md) → [Wachbuch-Client](https://github.com/darkspike1988/Wachbuch-Client)
+- [Android-APK installieren](clients/wachbuch-mobile/docs/INSTALL-ANDROID.md) (`./clients/wachbuch-mobile/scripts/build-apk.sh`)
+- Sync: `./scripts/publish-mobile-client-repo.sh` / `./scripts/pull-mobile-client-repo.sh`
 - [Betrieb, Backup und Updates](docs/OPERATIONS.md)
 - [Datenschutz und Sicherheit](docs/SECURITY-PRIVACY.md)
+- [Compliance: DSGVO, Cookies, AI Act, NRW](docs/COMPLIANCE.md)
 - [Test- und Go-live-Checkliste](docs/GO-LIVE-CHECKLIST.md)
 - [Recherche und Quellen](docs/RESEARCH.md)
+- [Audit und Folgeplan](docs/AUDIT-2026-07.md)
+- [Wandbausteine Tagesaufgaben](docs/WALL-BLOCKS.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Designregeln](docs/DESIGN-SYSTEM.md)
 

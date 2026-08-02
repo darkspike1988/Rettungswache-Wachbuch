@@ -1,5 +1,8 @@
 # Datenschutz und Sicherheit
 
+Ergaenzende Compliance-Hinweise stehen in [`COMPLIANCE.md`](COMPLIANCE.md).
+Dieses Dokument ist keine Rechtsberatung.
+
 ## Privacy by Design
 
 - Keine Felder fuer Patienten-, Diagnose-, Einsatznummern- oder Alarmdaten.
@@ -8,6 +11,9 @@
 - Kaffeekasse als nachvollziehbares Ledger statt stiller Aenderungen.
 - Audit speichert Feldnamen und Ereignisse, nicht die fachlichen Freitexte.
 - Keine Rankings, Lesestatistiken oder personenbezogene Leistungskennzahlen.
+- Nur technisch notwendige Cookies (`rwsth_session`, `rwsth_csrf`); Transparenz
+  unter `/datenschutz/`.
+- Produkt ohne eingebettetes KI-System; kein Social Scoring ueber Auditdaten.
 
 ## Vor einem betrieblichen Pilotbetrieb klaeren
 
@@ -20,17 +26,25 @@
 - abgestimmte Rollen, Loeschfristen, Korrekturverfahren und Auswertungsverbote
 - Betroffeneninformationen und Verfahren fuer Auskunft, Berichtigung, Loeschung
   sowie Datenschutzverletzungen
+- Cookie-/TDDDG- und AI-Act-Dokumentation an die konkrete Stelle anpassen
 
 ## Technische Baseline
 
-- TLS durch einen kontrollierten Reverse-Proxy oder Tailscale Serve
+- TLS durch einen kontrollierten Reverse-Proxy vor dem Docker-Port
 - lokaler HTTP-Zugriff nur ueber Loopback; sichere Cookies bei jedem TLS-Betrieb
-- persoenliche Konten, Login-Drosselung und keine gemeinsam genutzten Zugaenge
+- persoenliche lokale Konten, Login-Drosselung und keine gemeinsam genutzten Zugaenge
+- optionales Profilbild nur als kleines JPEG in der Datenbank (kein allgemeiner Upload)
+- Chat, Privat und Post Ende-zu-Ende: **AES-256-GCM** + ECDH P-256 (BSI TR-02102);
+  Server speichert Ciphertext; Master-Admin ohne Teilnahme sieht keine Klartexte
+- Login-Passwoerter mit **Argon2id**; TOTP-Geheimnisse AES-256-GCM at rest
+- Krypto-Zuordnung: [`CRYPTO-BSI.md`](CRYPTO-BSI.md)
 - sichere Session-Cookies, CSRF-Schutz, CSP und restriktive Browser-Header
 - serverseitige Objekt- und Rollenpruefung
 - separate Datenbank ohne veroeffentlichten Port
 - Abhaengigkeits-, Container- und Anwendungsscan vor Go-live
-- Sicherheitsabnahme gegen OWASP ASVS 5.0 Level 2 als Ziel
+- Versionskennung in Footer und `/healthz/`
+- Sicherheitsabnahme gegen OWASP ASVS 5.0 Level 2 als Ziel; interne Matrix in
+  [`ASVS-L2.md`](ASVS-L2.md)
 
 Ein privates Netz ersetzt weder das Rollenmodell noch eine organisatorische
 Freigabe.

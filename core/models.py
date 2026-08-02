@@ -1,10 +1,12 @@
+from datetime import date
 from urllib.parse import urlparse
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
+from django.utils import timezone
 
 
 class Station(models.Model):
@@ -15,6 +17,10 @@ class Station(models.Model):
     birthdays_enabled = models.BooleanField(default=True, verbose_name="Geburtstage aktiviert")
     coffee_enabled = models.BooleanField(default=True, verbose_name="Kaffeekasse aktiviert")
     feeds_enabled = models.BooleanField(default=False, verbose_name="Externe Meldungen aktiviert")
+    tasks_enabled = models.BooleanField(default=True, verbose_name="Tagesaufgaben aktiviert")
+    chat_enabled = models.BooleanField(default=True, verbose_name="Wachenchat aktiviert")
+    holidays_enabled = models.BooleanField(default=True, verbose_name="Feiertage (NRW) im Kalender")
+    checklists_enabled = models.BooleanField(default=False, verbose_name="Checklisten aktiviert")
 
     class Meta:
         ordering = ["name"]
@@ -40,7 +46,7 @@ class Membership(models.Model):
         MEMBER = "member", "Mitglied"
         SHIFT_LEAD = "shift_lead", "Schichtleitung"
         CASHIER = "cashier", "Kassenwart"
-        ADMIN = "admin", "Admin"
+        ADMIN = "admin", "Master-Admin"
         AUDITOR = "auditor", "Auditor"
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="station_memberships")
@@ -166,6 +172,12 @@ class BirthdayPreference(models.Model):
             raise ValidationError({"day": "Ungueltiger Tag."})
         if self.month and not 1 <= self.month <= 12:
             raise ValidationError({"month": "Ungueltiger Monat."})
+        if self.day and self.month:
+            try:
+                # Schaltjahr, damit der 29. Februar zulaessig bleibt.
+                date(2000, self.month, self.day)
+            except ValueError as exc:
+                raise ValidationError("Tag und Monat ergeben kein gueltiges Datum.") from exc
 
 
 class CoffeeEntry(models.Model):
@@ -215,6 +227,99 @@ class CoffeeEntry(models.Model):
         return self.amount_cents / 100
 
 
+class StationTask(models.Model):
+    """Wachaufgaben analog zur Wandtafel: gruen taeglich, gelb Wochentag, blau zusaetzlich."""
+
+    class Band(models.TextChoices):
+        DAILY = "daily", "Taeglich"
+        WEEKDAY = "weekday", "Wochentag"
+        EXTRA = "extra", "Zusaetzlich"
+
+    WEEKDAY_LABELS = (
+        (0, "Montag"),
+        (1, "Dienstag"),
+        (2, "Mittwoch"),
+        (3, "Donnerstag"),
+        (4, "Freitag"),
+        (5, "Samstag"),
+        (6, "Sonntag"),
+    )
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="station_tasks")
+    title = models.CharField(max_length=160)
+    band = models.CharField(max_length=20, choices=Band.choices, default=Band.DAILY)
+    weekday = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        choices=WEEKDAY_LABELS,
+        help_text="Nur fuer Wochentagsaufgaben noetig (0=Montag).",
+    )
+    notes = models.CharField(max_length=240, blank=True)
+    sort_order = models.PositiveSmallIntegerField(default=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["band", "weekday", "sort_order", "title"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (Q(band="weekday") & Q(weekday__isnull=False))
+                    | (~Q(band="weekday") & Q(weekday__isnull=True))
+                ),
+                name="station_task_weekday_matches_band",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    def clean(self):
+        if self.band == self.Band.WEEKDAY:
+            if self.weekday is None or not 0 <= self.weekday <= 6:
+                raise ValidationError({"weekday": "Wochentagsaufgaben brauchen einen Wochentag."})
+        elif self.weekday is not None:
+            raise ValidationError({"weekday": "Nur Wochentagsaufgaben duerfen einen Wochentag haben."})
+
+    def applies_to_date(self, work_date):
+        if not self.is_active:
+            return False
+        if self.band == self.Band.DAILY:
+            return True
+        if self.band == self.Band.WEEKDAY:
+            return self.weekday == work_date.weekday()
+        return True
+
+    @property
+    def band_css(self):
+        return {
+            self.Band.DAILY: "band-daily",
+            self.Band.WEEKDAY: "band-weekday",
+            self.Band.EXTRA: "band-extra",
+        }.get(self.band, "band-extra")
+
+
+class StationTaskCompletion(models.Model):
+    task = models.ForeignKey(StationTask, on_delete=models.CASCADE, related_name="completions")
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="task_completions")
+    work_date = models.DateField()
+    completed_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="station_task_completions"
+    )
+    completed_at = models.DateTimeField(auto_now_add=True)
+    note = models.CharField(max_length=160, blank=True)
+
+    class Meta:
+        ordering = ["-work_date", "-completed_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["task", "work_date"], name="unique_task_completion_day"),
+        ]
+
+    def __str__(self):
+        return f"{self.task_id} @ {self.work_date}"
+
+
 class FeedSource(models.Model):
     class Kind(models.TextChoices):
         NEWS_RSS = "news_rss", "Nachrichten (RSS)"
@@ -259,17 +364,361 @@ class FeedItem(models.Model):
     published_at = models.DateTimeField(null=True, blank=True)
     starts_on = models.DateField(null=True, blank=True)
     ends_on = models.DateField(null=True, blank=True)
-    imported_at = models.DateTimeField(auto_now=True)
+    first_imported_at = models.DateTimeField(default=timezone.now)
+    last_seen_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["source", "external_id"], name="unique_feed_item")
         ]
-        ordering = ["-published_at", "-imported_at"]
+        ordering = [F("published_at").desc(nulls_last=True), "-last_seen_at"]
         indexes = [models.Index(fields=["source", "-published_at"])]
 
     def __str__(self):
         return self.title
+
+
+class TotpDevice(models.Model):
+    """Optional TOTP second factor for a local account (RFC 6238)."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp_device")
+    secret = models.CharField(max_length=255)
+    is_confirmed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        state = "aktiv" if self.is_confirmed else "unbestätigt"
+        return f"TOTP {self.user_id} ({state})"
+
+
+class WebAuthnCredential(models.Model):
+    """Passkey / WebAuthn public-key credential for phishing-resistant login or MFA."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="webauthn_credentials")
+    credential_id = models.CharField(max_length=512, unique=True)
+    public_key = models.TextField()
+    sign_count = models.PositiveIntegerField(default=0)
+    device_name = models.CharField(max_length=120, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.device_name or f"Passkey {self.pk}"
+
+
+class PushSubscription(models.Model):
+    """Browser Web-Push subscription for urgent station alerts."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="push_subscriptions")
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="push_subscriptions")
+    endpoint = models.URLField(max_length=500)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=100)
+    user_agent = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["endpoint"], name="unique_push_endpoint"),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Push {self.user_id}@{self.station_id}"
+
+
+class CalendarFeedToken(models.Model):
+    """Read-only token for external calendar apps (webcal/ICS subscribe)."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="calendar_feed_tokens")
+    token = models.CharField(max_length=64, unique=True)
+    label = models.CharField(max_length=120, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="calendar_feed_tokens")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.label or f"Kalender-Abo {self.pk}"
+
+
+class ApiToken(models.Model):
+    """Revocable app token for /api/v1/ (Paperless/Nextcloud-style mobile clients)."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="api_tokens")
+    label = models.CharField(max_length=120)
+    token_prefix = models.CharField(max_length=16)
+    token_hash = models.CharField(max_length=64, unique=True)
+    scopes = models.JSONField(default=list, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.label} ({self.token_prefix}…)"
+
+
+class RegistrationRequest(models.Model):
+    """Optional self-service signup waiting for Master-Admin approval."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Wartend"
+        APPROVED = "approved", "Freigegeben"
+        REJECTED = "rejected", "Abgelehnt"
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="registration_request")
+    preferred_station = models.ForeignKey(
+        Station,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="registration_requests",
+    )
+    note = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_registrations",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Registrierung {self.user_id} ({self.status})"
+
+
+class UserProfile(models.Model):
+    """Personal extras for /konto/. Avatar bytes only – no general uploads."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    avatar = models.BinaryField(null=True, blank=True, editable=False)
+    avatar_content_type = models.CharField(max_length=32, blank=True, default="")
+    avatar_updated_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Profil {self.user_id}"
+
+    @property
+    def has_avatar(self):
+        return bool(self.avatar)
+
+    @classmethod
+    def for_user(cls, user):
+        profile, _ = cls.objects.get_or_create(user=user)
+        return profile
+
+
+class UserCryptoIdentity(models.Model):
+    """Public identity + passphrase-wrapped private key for E2EE messaging."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="crypto")
+    public_jwk = models.JSONField()
+    wrapped_private_jwk = models.TextField()
+    kdf_salt = models.CharField(max_length=128)
+    kdf_iterations = models.PositiveIntegerField(default=210_000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Crypto {self.user_id}"
+
+
+class ChatMessage(models.Model):
+    """Station-scoped short colleague messages. Bodies are E2EE ciphertext when encrypted."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="chat_messages")
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="chat_messages")
+    body = models.TextField(max_length=1000, blank=True, default="")
+    ciphertext = models.TextField(blank=True, default="")
+    nonce = models.CharField(max_length=64, blank=True, default="")
+    key_wraps = models.JSONField(default=dict, blank=True)
+    algo = models.CharField(max_length=40, blank=True, default="")
+    is_encrypted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_hidden = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["station", "-created_at"])]
+
+    def __str__(self):
+        return f"Chat {self.pk}"
+
+
+class PrivateConversation(models.Model):
+    """1:1 private thread. Only the two participants can fetch ciphertext."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="private_conversations")
+    user_low = models.ForeignKey(User, on_delete=models.CASCADE, related_name="private_conversations_low")
+    user_high = models.ForeignKey(User, on_delete=models.CASCADE, related_name="private_conversations_high")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["station", "user_low", "user_high"],
+                name="unique_private_conversation_pair",
+            ),
+            models.CheckConstraint(
+                condition=~Q(user_low=F("user_high")),
+                name="private_conversation_distinct_users",
+            ),
+        ]
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"Privat {self.pk}"
+
+    def other_user(self, user):
+        return self.user_high if user.id == self.user_low_id else self.user_low
+
+
+class PrivateMessage(models.Model):
+    conversation = models.ForeignKey(
+        PrivateConversation,
+        on_delete=models.CASCADE,
+        related_name="messages",
+    )
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="private_messages")
+    ciphertext = models.TextField()
+    nonce = models.CharField(max_length=64)
+    key_wraps = models.JSONField(default=dict)
+    algo = models.CharField(max_length=40, default="A256GCM+ECDH-ES")
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_hidden = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["conversation", "-created_at"])]
+
+    @property
+    def is_encrypted(self):
+        return True
+
+    def __str__(self):
+        return f"PrivateMessage {self.pk}"
+
+
+class SecureMail(models.Model):
+    """Encrypted internal mail. Only sender and recipients hold key wraps."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="secure_mails")
+    sender = models.ForeignKey(User, on_delete=models.PROTECT, related_name="sent_secure_mails")
+    ciphertext = models.TextField()
+    nonce = models.CharField(max_length=64)
+    key_wraps = models.JSONField(default=dict)
+    algo = models.CharField(max_length=40, default="A256GCM+ECDH-ES")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["station", "-created_at"])]
+
+    @property
+    def is_encrypted(self):
+        return True
+
+    @property
+    def author_id(self):
+        return self.sender_id
+
+    def __str__(self):
+        return f"SecureMail {self.pk}"
+
+
+class SecureMailRecipient(models.Model):
+    mail = models.ForeignKey(SecureMail, on_delete=models.CASCADE, related_name="recipients")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_secure_mails")
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["mail", "user"], name="unique_secure_mail_recipient"),
+        ]
+
+    def __str__(self):
+        return f"MailRecipient {self.mail_id}:{self.user_id}"
+
+
+class Checklist(models.Model):
+    """Wiederkehrende Prüfvorlage einer Wache (admin-gepflegt)."""
+
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="checklists")
+    title = models.CharField(max_length=120)
+    description = models.CharField(max_length=300, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["title"]
+
+    def __str__(self):
+        return self.title
+
+
+class ChecklistItem(models.Model):
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name="items")
+    text = models.CharField(max_length=200)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        return self.text
+
+
+class ChecklistCompletion(models.Model):
+    """Append-only Abschluss einer Checkliste."""
+
+    station = models.ForeignKey(
+        Station, on_delete=models.PROTECT, related_name="checklist_completions"
+    )
+    checklist = models.ForeignKey(
+        Checklist, on_delete=models.PROTECT, related_name="completions"
+    )
+    completed_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="checklist_completions"
+    )
+    note = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["station", "-created_at"])]
+
+    def clean(self):
+        super().clean()
+        if self.checklist_id and self.station_id and self.checklist.station_id != self.station_id:
+            raise ValidationError("Checkliste gehört nicht zu dieser Wache.")
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Checklisten-Abschlüsse dürfen nicht verändert werden.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Checklisten-Abschlüsse dürfen nicht gelöscht werden.")
 
 
 class AuditEvent(models.Model):
@@ -287,8 +736,8 @@ class AuditEvent(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk:
-            raise ValidationError("Audit-Ereignisse duerfen nicht veraendert werden.")
+            raise ValidationError("Audit-Ereignisse dürfen nicht verändert werden.")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        raise ValidationError("Audit-Ereignisse duerfen nicht geloescht werden.")
+        raise ValidationError("Audit-Ereignisse dürfen nicht gelöscht werden.")

@@ -2,17 +2,19 @@
 
 ## Endpunkte
 
-- Anwendung: `http://127.0.0.1:${HTTP_PORT:-8090}`
-- Healthcheck: `/healthz/`
-- Anmeldung: `/anmelden/`
+- Anwendung: `http://127.0.0.1:${HTTP_PORT:-8090}/` (oeffentliche Projektseite)
+- Uebersicht (nach Login): `/uebersicht/`
+- Healthcheck: `/healthz/` (JSON mit `status` und `version`)
+- Datenschutz/Cookies: `/datenschutz/`
+- Anmeldung: `/anmelden/` (optional TOTP unter `/anmelden/mfa/` und `/konto/mfa/`)
 - Stationsverwaltung: `/einstellungen/`
+- Teamfreigaben: `/team/`
 - technische Verwaltung: `/django-admin/`
 
 Der Standard-Port ist nicht oeffentlich gebunden. `HTTP_BIND_ADDRESS=0.0.0.0`
-sollte nur in einem kontrollierten Netz und nie zusammen mit ungeprueftem
-Vertrauen in Proxy-Identitaetsheader verwendet werden. Fuer jeden TLS-Betrieb
-muss `SECURE_COOKIES=true` gesetzt sein; `false` ist nur fuer lokalen HTTP-Zugriff
-ueber Loopback vorgesehen.
+sollte nur in einem kontrollierten Netz hinter einem Reverse-Proxy verwendet
+werden. Fuer jeden TLS-Betrieb muss `SECURE_COOKIES=true` gesetzt sein; `false`
+ist nur fuer lokalen HTTP-Zugriff ueber Loopback vorgesehen.
 
 ## Standardbefehle
 
@@ -21,6 +23,7 @@ docker compose ps
 docker compose logs --since 30m web migrate feed-worker backup
 docker compose up -d --build
 docker compose exec -T web python manage.py test --settings=config.test_settings
+docker compose exec -T web python manage.py apply_retention
 curl -fsS http://127.0.0.1:8090/healthz/
 ```
 
@@ -33,24 +36,34 @@ docker compose exec web python manage.py createsuperuser
 docker compose exec web python manage.py grant_station_admin BENUTZERNAME
 ```
 
-Bei Tailscale-Anmeldung wird beim ersten Aufruf ein Konto angelegt. Nur der mit
-`TAILSCALE_ADMIN_LOGIN` konfigurierte Login erhaelt automatisch die
-stationsbezogene Adminrolle, aber keine globalen Django-Superuser-Rechte.
-Andere Konten muessen unter `/team/` freigegeben werden. Gemeinschaftskonten
-sind nicht vorgesehen.
+Weitere persoenliche Konten werden unter `/django-admin/auth/user/` angelegt.
+Stationsadministratoren geben sie anschliessend unter `/team/` frei und setzen
+die Rolle. Gemeinschaftskonten sind nicht vorgesehen. Unter **Mehr → Zwei-Faktor
+/ Passkeys** koennen TOTP und Passkeys eingerichtet werden. Mit
+`MFA_REQUIRED=true` wird die Einrichtung nach dem Passwort-Login erzwungen.
 
-## Tailscale Serve
+Passkeys brauchen `WEBAUTHN_RP_ID` (Hostname) und `WEBAUTHN_ORIGIN` (z. B.
+`https://wache.example`). Web-Push braucht `WEB_PUSH_ENABLED=true` sowie
+VAPID-Schluessel (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`).
 
-Ein Beispiel fuer einen lokalen HTTP-Port 8090:
+## Reverse-Proxy
 
-```bash
-tailscale serve --bg --https=18090 http://127.0.0.1:8090
-tailscale serve status
+TLS nach **BSI TR-02102-2**: bevorzugt TLS 1.3 mit AEAD (z. B. AES-256-GCM).
+Details: [`CRYPTO-BSI.md`](CRYPTO-BSI.md).
+
+Beispiel fuer Caddy vor dem Loopback-Port:
+
+```caddy
+wache.example.org {
+        reverse_proxy 127.0.0.1:8090
+}
 ```
 
-Hostname und HTTPS-Port muessen in `ALLOWED_HOSTS` und
-`CSRF_TRUSTED_ORIGINS` abgebildet sein. Header-Vertrauen ist nur fuer diesen
-geschuetzten Einstieg zu aktivieren.
+Hostname und HTTPS-Origin muessen in `ALLOWED_HOSTS` und
+`CSRF_TRUSTED_ORIGINS` stehen. Der Proxy sollte `X-Forwarded-Proto` setzen.
+Fuer jeden TLS-Betrieb muss `SECURE_COOKIES=true` gesetzt sein.
+Django wertet `SECURE_PROXY_SSL_HEADER` aus und erzwingt sichere Cookies, wenn
+`SECURE_COOKIES=true` gesetzt ist.
 
 ## Feeds
 
@@ -82,14 +95,57 @@ docker compose exec -T backup /bin/sh /backup/restore-test.sh
 Der Restore-Test erstellt kurzzeitig `rwsth_restore_test`, spielt den neuesten
 Dump ein, prueft Schluesseltabellen und entfernt die Testdatenbank wieder.
 
-## Updateablauf
+## Aufbewahrung (Retention)
 
-1. Backup und Restore-Test ausfuehren.
-2. Abhaengigkeiten und Image-Digests kontrolliert aktualisieren.
-3. `docker compose build --no-cache` ausfuehren.
-4. Images auf HIGH/CRITICAL-Schwachstellen scannen.
-5. Tests ausfuehren und danach `docker compose up -d` starten.
-6. Healthcheck, Anmeldung, Rollen und optionale Feeds pruefen.
+- `RETENTION_FEED_DAYS` (Standard `90`): entfernt Feed-Eintraege, deren
+  `last_seen_at` aelter ist. `0` deaktiviert die Feed-Loeschung.
+- `RETENTION_AUDIT_DAYS` (Standard `0`): Audit-Purge bleibt absichtlich aus, bis
+  organisatorische Fristen freigegeben sind. Nur mit Owner-Rechten und klarer
+  Freigabe setzen.
+- Kommando: `docker compose exec -T web python manage.py apply_retention`
+  (z. B. taeglich per Host-Cron).
 
-Bei Stoerungen keine Tabellen manuell bearbeiten. Zuerst Logs und letzten Dump
-sichern, dann die Ursache reproduzierbar ueber Anwendung oder Migration beheben.
+## Datenbank-Passwortrotation
+
+App- und Feed-Rollenpasswoerter rotieren (Owner-Passwort bleibt unangetastet):
+
+```bash
+./scripts/rotate-db-passwords.sh
+```
+
+Das Skript setzt neue Zufallswerte in PostgreSQL und `.env`, startet `web` und
+`feed-worker` neu. Anschliessend Healthcheck und Feed-Worker-Logs pruefen. Das
+Owner-Passwort (`POSTGRES_PASSWORD`) nur mit Dump/Restore und Neuinitialisierung
+rotieren.
+
+## Versionierung und Updates
+
+Canonical Version steht in `core/version.py` und kann mit `APP_VERSION` in `.env`
+ueberschrieben werden. Die Version erscheint im Footer und unter `/healthz/`.
+
+### Release vorbereiten
+
+1. SemVer in `core/version.py` setzen und `CHANGELOG.md` aktualisieren.
+2. Migrationshinweise und Breaking Changes dokumentieren.
+3. Backup und Restore-Test ausfuehren.
+4. Abhaengigkeiten und Image-Digests kontrolliert aktualisieren.
+5. `docker compose build --no-cache` ausfuehren.
+6. Images auf HIGH/CRITICAL-Schwachstellen scannen.
+7. Tests ausfuehren und danach `docker compose up -d` starten.
+8. Healthcheck inkl. Versionsfeld, Anmeldung, Rollen, Tagesaufgaben und optionale
+   Feeds pruefen.
+9. Service-Worker-Caches leeren bzw. einmal ab-/anmelden, falls Shell-Assets
+   geaendert wurden.
+
+### Rollback
+
+1. Vorheriges Image-Tag bzw. Compose-Revision wieder aktivieren.
+2. Bei scheiternder Migration nur dokumentierte Reverse-Migrationen oder
+   Dump-Restore nutzen.
+3. Keine Tabellen manuell „reparieren“.
+4. Incident, Root Cause und erneuten Release-Versuch dokumentieren.
+
+Bei Stoerungen zuerst Logs und letzten Dump sichern, dann die Ursache
+reproduzierbar ueber Anwendung oder Migration beheben.
+
+Siehe auch [`COMPLIANCE.md`](COMPLIANCE.md).

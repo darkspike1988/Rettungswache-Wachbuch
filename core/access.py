@@ -1,8 +1,10 @@
 from functools import wraps
+from urllib.parse import urlencode
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import redirect
+from django.urls import reverse
 
 from .models import Membership
 
@@ -30,7 +32,9 @@ def membership_required(allowed_roles=None):
         @wraps(view_func)
         def wrapped(request, *args, **kwargs):
             if not request.user.is_authenticated:
-                return redirect("access")
+                login_url = reverse("login")
+                query = urlencode({"next": request.get_full_path()})
+                return redirect(f"{login_url}?{query}")
             membership = get_membership(request.user)
             if not membership:
                 return redirect("access")

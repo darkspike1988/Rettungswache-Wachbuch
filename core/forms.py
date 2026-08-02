@@ -1,10 +1,12 @@
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 from django import forms
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import BirthdayPreference, CalendarEvent, HandoverEntry, Membership, Station
+from .models import BirthdayPreference, CalendarEvent, HandoverEntry, Membership, Station, StationTask
 
 
 class DateTimeLocalInput(forms.DateTimeInput):
@@ -18,10 +20,35 @@ class HandoverForm(forms.ModelForm):
         widgets = {"details": forms.Textarea(attrs={"rows": 6})}
 
 
+class HandoverEditForm(forms.ModelForm):
+    class Meta:
+        model = HandoverEntry
+        fields = ["category", "priority", "title", "details"]
+        widgets = {"details": forms.Textarea(attrs={"rows": 6})}
+        labels = {
+            "category": "Kategorie",
+            "priority": "Priorität",
+            "title": "Titel",
+            "details": "Details",
+        }
+
+
 class HandoverStatusForm(forms.ModelForm):
     class Meta:
         model = HandoverEntry
         fields = ["status"]
+
+
+class TotpConfirmForm(forms.Form):
+    token = forms.CharField(
+        max_length=8,
+        label="Einmalcode",
+        widget=forms.TextInput(attrs={
+            "inputmode": "numeric",
+            "autocomplete": "one-time-code",
+            "pattern": "[0-9]*",
+        }),
+    )
 
 
 class CalendarEventForm(forms.ModelForm):
@@ -54,8 +81,15 @@ class BirthdayForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("consent") and (not cleaned.get("day") or not cleaned.get("month")):
+        day = cleaned.get("day")
+        month = cleaned.get("month")
+        if cleaned.get("consent") and (not day or not month):
             raise forms.ValidationError("Bitte Tag und Monat angeben oder die Anzeige deaktivieren.")
+        if day and month:
+            try:
+                date(2000, month, day)
+            except ValueError as exc:
+                raise forms.ValidationError("Tag und Monat ergeben kein gültiges Datum.") from exc
         return cleaned
 
     def save(self, commit=True):
@@ -65,8 +99,9 @@ class BirthdayForm(forms.ModelForm):
         if instance.is_visible and not was_visible:
             instance.consented_at = timezone.now()
             instance.withdrawn_at = None
-        if not instance.is_visible and was_visible:
-            instance.withdrawn_at = timezone.now()
+        if not instance.is_visible:
+            if was_visible:
+                instance.withdrawn_at = timezone.now()
             instance.day = None
             instance.month = None
             instance.consented_at = None
@@ -113,6 +148,37 @@ class MembershipAssignmentForm(forms.Form):
         ).order_by("first_name", "username")
 
 
+class MasterAdminCreateUserForm(forms.Form):
+    username = forms.CharField(max_length=150, label="Benutzername (z. B. E-Mail)")
+    first_name = forms.CharField(max_length=150, label="Vorname", required=False)
+    last_name = forms.CharField(max_length=150, label="Nachname", required=False)
+    password1 = forms.CharField(
+        label="Startpasswort",
+        widget=forms.PasswordInput,
+        help_text="Der Nutzer sollte das Passwort danach unter Mein Konto ändern.",
+    )
+    password2 = forms.CharField(label="Startpasswort wiederholen", widget=forms.PasswordInput)
+    role = forms.ChoiceField(choices=Membership.Role.choices, label="Rolle", initial=Membership.Role.MEMBER)
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("Dieser Benutzername ist bereits vergeben.")
+        return username
+
+    def clean(self):
+        cleaned = super().clean()
+        password1 = cleaned.get("password1")
+        password2 = cleaned.get("password2")
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("Die Passwörter stimmen nicht überein.")
+        if password1:
+            from django.contrib.auth.password_validation import validate_password
+
+            validate_password(password1)
+        return cleaned
+
+
 class MembershipEditForm(forms.Form):
     role = forms.ChoiceField(choices=Membership.Role.choices, label="Rolle")
     is_active = forms.BooleanField(required=False, label="Zugang aktiv")
@@ -132,5 +198,131 @@ class StationSettingsForm(forms.ModelForm):
             "birthdays_enabled",
             "coffee_enabled",
             "feeds_enabled",
+            "tasks_enabled",
+            "chat_enabled",
+            "holidays_enabled",
+            "checklists_enabled",
         ]
         labels = {"name": "Name der Rettungswache"}
+
+
+class RegistrationForm(forms.Form):
+    username = forms.CharField(max_length=150, label="Benutzername (z. B. E-Mail)")
+    first_name = forms.CharField(max_length=150, label="Vorname", required=False)
+    preferred_station = forms.ModelChoiceField(
+        queryset=Station.objects.none(),
+        required=False,
+        label="Gewünschte Wache",
+        empty_label="Noch offen / bitte zuordnen",
+    )
+    note = forms.CharField(
+        max_length=300,
+        required=False,
+        label="Hinweis an die Verwaltung",
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    password1 = forms.CharField(label="Passwort", widget=forms.PasswordInput)
+    password2 = forms.CharField(label="Passwort wiederholen", widget=forms.PasswordInput)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["preferred_station"].queryset = Station.objects.filter(
+            is_active=True
+        ).order_by("name")
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("Dieser Benutzername ist bereits vergeben.")
+        return username
+
+    def clean(self):
+        cleaned = super().clean()
+        password1 = cleaned.get("password1")
+        password2 = cleaned.get("password2")
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("Die Passwörter stimmen nicht überein.")
+        if password1:
+            from django.contrib.auth.password_validation import validate_password
+
+            validate_password(password1)
+        return cleaned
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email"]
+        labels = {
+            "first_name": "Vorname",
+            "last_name": "Nachname",
+            "email": "E-Mail",
+        }
+
+
+class AvatarForm(forms.Form):
+    avatar = forms.ImageField(
+        required=False,
+        label="Profilbild",
+        help_text="JPEG, PNG oder WebP, max. 2 MB. Wird auf 192×192 verkleinert.",
+    )
+    clear_avatar = forms.BooleanField(required=False, label="Profilbild entfernen")
+
+    def clean(self):
+        cleaned = super().clean()
+        avatar = cleaned.get("avatar")
+        clear = cleaned.get("clear_avatar")
+        if not avatar and not clear:
+            raise forms.ValidationError("Bitte ein Bild wählen oder Entfernen markieren.")
+        if avatar and clear:
+            raise forms.ValidationError("Bild hochladen und entfernen geht nicht gleichzeitig.")
+        if avatar:
+            from .avatars import process_avatar_upload
+
+            try:
+                data, content_type = process_avatar_upload(avatar)
+            except ValidationError as exc:
+                raise forms.ValidationError(exc.messages) from exc
+            cleaned["avatar_bytes"] = data
+            cleaned["avatar_content_type"] = content_type
+        return cleaned
+
+
+class ChatMessageForm(forms.Form):
+    body = forms.CharField(
+        max_length=500,
+        label="Kurze Nachricht",
+        widget=forms.Textarea(attrs={
+            "rows": 2,
+            "maxlength": 500,
+            "placeholder": "Kurze Nachricht an die Kollegen …",
+        }),
+    )
+
+
+class StationTaskForm(forms.ModelForm):
+    class Meta:
+        model = StationTask
+        fields = ["title", "band", "weekday", "notes", "sort_order", "is_active"]
+        labels = {
+            "title": "Aufgabe",
+            "band": "Farbe / Bereich",
+            "weekday": "Wochentag",
+            "notes": "Hinweis",
+            "sort_order": "Reihenfolge",
+            "is_active": "Aktiv",
+        }
+        help_texts = {
+            "band": "Grün = täglich, Gelb = Wochentag, Blau = zusätzlich.",
+            "weekday": "Nur bei gelben Wochentagsaufgaben setzen.",
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        band = cleaned.get("band")
+        weekday = cleaned.get("weekday")
+        if band == StationTask.Band.WEEKDAY and weekday is None:
+            self.add_error("weekday", "Bitte einen Wochentag wählen.")
+        if band != StationTask.Band.WEEKDAY:
+            cleaned["weekday"] = None
+        return cleaned

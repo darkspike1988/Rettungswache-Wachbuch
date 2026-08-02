@@ -55,7 +55,7 @@ def fetch_source(source):
                 target,
                 headers={
                     "Host": parsed_url.hostname,
-                    "User-Agent": "Rettungswache-Wachbuch/1.0",
+                    "User-Agent": "Wachbuch/1.0",
                 },
                 preload_content=False,
                 redirect=False,
@@ -102,6 +102,25 @@ def sync_source(source):
         raise
 
 
+def upsert_feed_item(source, external_id, **fields):
+    now = timezone.now()
+    item, created = FeedItem.objects.get_or_create(
+        source=source,
+        external_id=external_id,
+        defaults={
+            **fields,
+            "first_imported_at": now,
+            "last_seen_at": now,
+        },
+    )
+    if not created:
+        for key, value in fields.items():
+            setattr(item, key, value)
+        item.last_seen_at = now
+        item.save()
+    return item, created
+
+
 @transaction.atomic
 def sync_rss(source, payload):
     parsed = feedparser.parse(payload)
@@ -118,15 +137,13 @@ def sync_rss(source, payload):
             published = datetime.fromtimestamp(
                 calendar.timegm(entry.published_parsed), tz=datetime_timezone.utc
             )
-        FeedItem.objects.update_or_create(
-            source=source,
-            external_id=external_id,
-            defaults={
-                "title": strip_tags(str(entry.get("title", "")))[:300],
-                "summary": strip_tags(str(entry.get("summary", "")))[:1500],
-                "url": link[:600],
-                "published_at": published,
-            },
+        upsert_feed_item(
+            source,
+            external_id,
+            title=strip_tags(str(entry.get("title", "")))[:300],
+            summary=strip_tags(str(entry.get("summary", "")))[:1500],
+            url=link[:600],
+            published_at=published,
         )
         count += 1
     return count
@@ -165,16 +182,14 @@ def sync_closure_csv(source, payload):
             row.get("art_vb", "").strip(),
             row.get("vonbis", "").strip(),
         ]
-        FeedItem.objects.update_or_create(
-            source=source,
-            external_id=external_id,
-            defaults={
-                "title": title[:300],
-                "summary": " | ".join(part for part in summary_parts if part)[:1500],
-                "url": "https://open-data.bielefeld.de/dataset/verkehrsmeldungen",
-                "starts_on": parse_csv_date(row.get("beginn")),
-                "ends_on": parse_csv_date(row.get("ende")),
-            },
+        upsert_feed_item(
+            source,
+            external_id,
+            title=title[:300],
+            summary=" | ".join(part for part in summary_parts if part)[:1500],
+            url="https://open-data.bielefeld.de/dataset/verkehrsmeldungen",
+            starts_on=parse_csv_date(row.get("beginn")),
+            ends_on=parse_csv_date(row.get("ende")),
         )
         count += 1
     source.items.exclude(external_id__in=seen).delete()

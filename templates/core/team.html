@@ -1,7 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Team | {{ app_name }}{% endblock %}
 {% block content %}
-<header class="page-heading heading-with-action"><div><p class="context-line">Administration</p><h1>Team &amp; Rollen</h1><p class="lead">Zugriff bleibt stationsbezogen.</p></div><a class="button primary" href="{% url 'team_create' %}">Zugang freigeben{% if pending_count %} ({{ pending_count }}){% endif %}</a></header>
+<header class="page-heading heading-with-action">
+  <div>
+    <p class="context-line">Master-Admin</p>
+    <h1>Team &amp; Rollen</h1>
+    <p class="lead">Neue Nutzer anlegen und freigeben – Zugang bleibt stationsbezogen.</p>
+  </div>
+  <div class="form-actions">
+    <a class="button primary" href="{% url 'team_user_create' %}">Benutzer anlegen</a>
+    <a class="button secondary" href="{% url 'team_create' %}">Zugang freigeben{% if pending_count %} ({{ pending_count }}){% endif %}</a>
+  </div>
+</header>
+
+{% if pending_registrations %}
+<section class="section-block">
+  <h2>Offene Registrierungen</h2>
+  <div class="member-list-clean">
+    {% for item in pending_registrations %}
+      <article>
+        <div>
+          <strong>{{ item.user.first_name|default:item.user.username }}</strong>
+          <span>{{ item.user.username }}</span>
+          {% if item.preferred_station %}<span>Wunsch: {{ item.preferred_station.name }}</span>{% endif %}
+          {% if item.note %}<span>{{ item.note }}</span>{% endif %}
+        </div>
+        <a class="button secondary" href="{% url 'team_create' %}">Freigeben</a>
+        <form method="post" action="{% url 'registration_reject' item.pk %}">{% csrf_token %}<button class="button secondary" type="submit">Ablehnen</button></form>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="section-block flush"><div class="member-list-clean">{% for member in page_obj %}<article><div><strong>{{ member.user.first_name|default:member.user.username }}</strong><span>{{ member.user.username }}</span></div><span>{{ member.get_role_display }}</span><span class="status-label {% if member.is_active %}success{% else %}neutral{% endif %}">{% if member.is_active %}Aktiv{% else %}Inaktiv{% endif %}</span><a href="{% url 'membership_update' member.pk %}">{{ member.user.first_name|default:member.user.username }} bearbeiten</a></article>{% empty %}<p class="empty-state">Noch keine Mitgliedschaften.</p>{% endfor %}</div></section>
 {% include "core/pagination.html" %}
 {% endblock %}

@@ -2,10 +2,13 @@
 {% block title %}{{ handover.title }} | {{ app_name }}{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'handover_list' %}">Zurück zu Übergaben</a>
-<header class="page-heading narrow">
-  <p class="context-line">{{ handover.get_category_display }} &middot; Version {{ handover.version }}</p>
-  <h1>{{ handover.title }}</h1>
-  <div class="status-row"><span class="status-label priority-{{ handover.priority }}">{{ handover.get_priority_display }}</span><span class="status-label neutral">{{ handover.get_status_display }}</span></div>
+<header class="page-heading narrow heading-with-action">
+  <div>
+    <p class="context-line">{{ handover.get_category_display }} &middot; Version {{ handover.version }}</p>
+    <h1>{{ handover.title }}</h1>
+    <div class="status-row"><span class="status-label priority-{{ handover.priority }}">{{ handover.get_priority_display }}</span><span class="status-label neutral">{{ handover.get_status_display }}</span></div>
+  </div>
+  {% if can_edit_content %}<a class="button secondary" href="{% url 'handover_edit' handover.pk %}">Inhalt korrigieren</a>{% endif %}
 </header>
 <div class="content-flow narrow">
   <section class="section-block prose"><h2>Information</h2><p>{{ handover.details|linebreaksbr }}</p></section>

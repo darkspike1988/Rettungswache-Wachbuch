@@ -10,4 +10,3 @@ MIDDLEWARE = [
     item for item in MIDDLEWARE  # noqa: F405
     if item != "whitenoise.middleware.WhiteNoiseMiddleware"
 ]
-TRUST_TAILSCALE_HEADERS = False

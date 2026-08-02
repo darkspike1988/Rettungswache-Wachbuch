@@ -7,6 +7,8 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+from core.version import APP_VERSION as DEFAULT_APP_VERSION  # noqa: E402
+
 
 def env_bool(name, default=False):
     return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
@@ -42,7 +44,6 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "core.middleware.TailscaleAuthMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
@@ -107,6 +108,15 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# BSI TR-02102 / moderne Verwaltungspraxis: Argon2id bevorzugt, PBKDF2 als Fallback.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]
+
 LANGUAGE_CODE = "de-de"
 TIME_ZONE = "Europe/Berlin"
 USE_I18N = True
@@ -121,9 +131,9 @@ STORAGES = {
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LOGIN_URL = "access"
-LOGIN_REDIRECT_URL = "access"
-LOGOUT_REDIRECT_URL = "access"
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "landing"
+LOGOUT_REDIRECT_URL = "landing"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_HTTPONLY = True
 SECURE_COOKIES = env_bool("SECURE_COOKIES", default=not DEBUG)
@@ -138,22 +148,42 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_HSTS_PRELOAD = False
 X_FRAME_OPTIONS = "DENY"
 
-# TLS ends at Tailscale Serve; redirecting the loopback health probe would break it.
+# TLS terminates at an external reverse proxy. Inside the container the health
+# probe and Gunicorn speak plain HTTP on loopback, so Django must not redirect.
 SECURE_SSL_REDIRECT = False
-# The shared tailnet hostname must not impose preload/subdomain policy on other apps.
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
 
-TRUST_TAILSCALE_HEADERS = env_bool("TRUST_TAILSCALE_HEADERS")
-TAILSCALE_ADMIN_LOGIN = os.getenv("TAILSCALE_ADMIN_LOGIN", "").strip().lower()
 DEFAULT_STATION_NAME = os.getenv("DEFAULT_STATION_NAME", "Rettungswache").strip()
 DEFAULT_STATION_SLUG = os.getenv("DEFAULT_STATION_SLUG", "rettungswache").strip()
-APP_NAME = os.getenv("APP_NAME", "Rettungswache-Wachbuch").strip()
+APP_NAME = os.getenv("APP_NAME", "Wachbuch").strip() or "Wachbuch"
 SOURCE_URL = os.getenv(
     "SOURCE_URL", "https://github.com/Darkspike1988/Rettungswache-Wachbuch"
 ).strip()
+APP_VERSION = os.getenv("APP_VERSION", DEFAULT_APP_VERSION).strip()
 FEED_ALLOWED_HOSTS = {
     value.strip().lower()
     for value in os.getenv("FEED_ALLOWED_HOSTS", "").split(",")
     if value.strip()
 }
 FEED_MAX_BYTES = 2_000_000
+RETENTION_FEED_DAYS = int(os.getenv("RETENTION_FEED_DAYS", "90") or "0")
+RETENTION_AUDIT_DAYS = int(os.getenv("RETENTION_AUDIT_DAYS", "0") or "0")
+MFA_ENABLED = env_bool("MFA_ENABLED", default=True)
+MFA_REQUIRED = env_bool("MFA_REQUIRED", default=False)
+REGISTRATION_ENABLED = env_bool("REGISTRATION_ENABLED", default=False)
+REGISTRATION_RATE_LIMIT = int(os.getenv("REGISTRATION_RATE_LIMIT", "5") or "5")
+WEBAUTHN_ENABLED = env_bool("WEBAUTHN_ENABLED", default=True)
+WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", "").strip()
+WEBAUTHN_ORIGIN = os.getenv("WEBAUTHN_ORIGIN", "").strip()
+WEB_PUSH_ENABLED = env_bool("WEB_PUSH_ENABLED", default=False)
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "").strip()
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "").strip()
+VAPID_ADMIN_EMAIL = os.getenv("VAPID_ADMIN_EMAIL", "ops@localhost").strip() or "ops@localhost"
+
+# Essential auth cookies only. No analytics or advertising cookies are set.
+SESSION_COOKIE_NAME = "rwsth_session"
+CSRF_COOKIE_NAME = "rwsth_csrf"
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 60 * 60 * 12
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = False

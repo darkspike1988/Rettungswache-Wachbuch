@@ -4,6 +4,9 @@ from .models import (
     AuditEvent,
     BirthdayPreference,
     CalendarEvent,
+    Checklist,
+    ChecklistCompletion,
+    ChecklistItem,
     CoffeeEntry,
     FeedItem,
     FeedSource,
@@ -11,6 +14,8 @@ from .models import (
     HandoverRevision,
     Membership,
     Station,
+    StationTask,
+    StationTaskCompletion,
 )
 
 
@@ -38,6 +43,8 @@ class StationAdmin(admin.ModelAdmin):
         "birthdays_enabled",
         "coffee_enabled",
         "feeds_enabled",
+        "tasks_enabled",
+        "checklists_enabled",
     )
     list_filter = ("is_active",)
 
@@ -81,6 +88,19 @@ class CoffeeEntryAdmin(ReadOnlyAdmin):
     list_filter = ("station",)
 
 
+@admin.register(StationTask)
+class StationTaskAdmin(admin.ModelAdmin):
+    list_display = ("title", "station", "band", "weekday", "is_active", "sort_order")
+    list_filter = ("station", "band", "is_active")
+    search_fields = ("title", "notes")
+
+
+@admin.register(StationTaskCompletion)
+class StationTaskCompletionAdmin(ReadOnlyAdmin):
+    list_display = ("task", "station", "work_date", "completed_by", "completed_at")
+    list_filter = ("station", "work_date")
+
+
 @admin.register(FeedSource)
 class FeedSourceAdmin(admin.ModelAdmin):
     list_display = ("name", "kind", "locality", "is_enabled", "last_success_at")
@@ -90,8 +110,28 @@ class FeedSourceAdmin(admin.ModelAdmin):
 
 @admin.register(FeedItem)
 class FeedItemAdmin(ReadOnlyAdmin):
-    list_display = ("title", "source", "published_at", "imported_at")
+    list_display = ("title", "source", "published_at", "first_imported_at", "last_seen_at")
     list_filter = ("source",)
+
+
+class ChecklistItemInline(admin.TabularInline):
+    model = ChecklistItem
+    extra = 3
+
+
+@admin.register(Checklist)
+class ChecklistAdmin(admin.ModelAdmin):
+    list_display = ("title", "station", "is_active", "created_at")
+    list_filter = ("station", "is_active")
+    search_fields = ("title",)
+    readonly_fields = ("created_at",)
+    inlines = [ChecklistItemInline]
+
+
+@admin.register(ChecklistCompletion)
+class ChecklistCompletionAdmin(ReadOnlyAdmin):
+    list_display = ("checklist", "station", "completed_by", "created_at")
+    list_filter = ("station",)
 
 
 @admin.register(AuditEvent)

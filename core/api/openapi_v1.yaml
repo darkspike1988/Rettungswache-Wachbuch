@@ -1,0 +1,223 @@
+openapi: 3.0.3
+info:
+  title: Wachbuch API
+  description: |
+    Versionierte JSON-API für selbst gehostetes Wachbuch.
+    Widerrufbare App-Tokens (wb_…, Paperless/Nextcloud-Stil) plus deutsche
+    Alias-Pfade für den AGPL-Client (Wachbuch-Client).
+  version: "1.1.0"
+servers:
+  - url: /api/v1
+    description: Relative to the Wachbuch origin
+paths:
+  /:
+    get:
+      summary: API discovery
+      security: []
+      responses:
+        "200":
+          description: Discovery document
+  /token/:
+    post:
+      summary: Obtain API token (username + password)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+                label: { type: string }
+      responses:
+        "200":
+          description: Token created (shown once)
+        "401":
+          description: Invalid credentials
+        "403":
+          description: No membership or MFA requires UI token
+  /anmeldung/:
+    post:
+      summary: German alias for /token/
+      security: []
+      responses:
+        "200":
+          description: Token created (shown once)
+  /me/:
+    get:
+      summary: Current user, membership and station modules
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Profile payload
+        "401":
+          description: Missing/invalid token
+  /status/:
+    get:
+      summary: Lightweight auth/membership status (optional token)
+      security: []
+      responses:
+        "200":
+          description: Status payload
+  /uebersicht/:
+    get:
+      summary: Dashboard overview for the token user's station
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Overview with open handovers and modules
+  /handovers/:
+    get:
+      summary: Active handovers for the token user's station
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Paginated-style list (results array)
+        "403":
+          description: Missing scope or role
+    post:
+      summary: Create handover
+      security:
+        - TokenAuth: []
+      responses:
+        "201":
+          description: Created
+        "403":
+          description: Missing scope or role
+  /handovers/{id}/:
+    get:
+      summary: Handover detail
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Detail payload
+  /handovers/{id}/status/:
+    post:
+      summary: Set handover status (shift lead / admin)
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Updated
+  /uebergaben/:
+    get:
+      summary: German alias for GET /handovers/
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: List
+    post:
+      summary: German alias for POST /handovers/
+      security:
+        - TokenAuth: []
+      responses:
+        "201":
+          description: Created
+  /uebergaben/{id}/:
+    get:
+      summary: German alias for handover detail
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Detail
+  /uebergaben/{id}/status/:
+    post:
+      summary: German alias for status change
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Updated
+  /kalender/:
+    get:
+      summary: Upcoming calendar events (module calendar)
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Event list
+        "404":
+          description: Module disabled
+    post:
+      summary: Create calendar event (shift lead / admin)
+      security:
+        - TokenAuth: []
+      responses:
+        "201":
+          description: Created
+  /kaffeekasse/:
+    get:
+      summary: Coffee ledger balance and recent entries
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Balance and results
+        "404":
+          description: Module disabled
+    post:
+      summary: Append coffee ledger entry (cashier / admin)
+      security:
+        - TokenAuth: []
+      responses:
+        "201":
+          description: Created
+  /checklisten/:
+    get:
+      summary: Active checklists for the station
+      security:
+        - TokenAuth: []
+      responses:
+        "200":
+          description: Checklist templates
+        "404":
+          description: Module disabled
+  /checklisten/{id}/erledigt/:
+    post:
+      summary: Mark checklist completed (append-only)
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "201":
+          description: Completion recorded
+components:
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Format: Token <secret> or Bearer <secret>"

@@ -3,13 +3,14 @@
 ## Ueberblick
 
 Das Wachbuch ist ein modularer Monolith aus Django und PostgreSQL. Webprozess,
-Feed-Worker, Migrationen und Backup verwenden dasselbe Repository, aber getrennte
-Container und Datenbankrollen.
+Feed-Worker, Migrationen und Backup verwenden dasselbe Image bzw. Repository,
+aber getrennte Container und Datenbankrollen.
 
 ```text
-Browser
-  |
-TLS-Reverse-Proxy oder Tailscale Serve
+Installierte PWA / Browser
+  |                 Native Open-Source-App (spaeter)
+  |                        |
+TLS-Reverse-Proxy ---- /api/v1/ (Token)
   |
 127.0.0.1:8090
   |
@@ -18,12 +19,35 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
   +--------- PostgreSQL ------+
 ```
 
+Die PWA bleibt ein serverseitig gerenderter Client. Manifest und Service Worker
+liefern Shell-Assets und einen Lese-Cache; Schreibvorgänge laufen weiterhin nur
+online gegen Django.
+
+Native Clients nutzen widerrufbare App-Tokens unter `/api/v1/` (siehe
+[`API.md`](API.md)), nicht die Browser-Session. Der AGPL-Flutter-Client liegt
+unter [`Wachbuch-Client`](https://github.com/darkspike1988/Wachbuch-Client)
+(Spiegel `clients/wachbuch-mobile/`, [`CLIENT.md`](CLIENT.md)).
+
+## Container
+
+| Dienst | Image / Rolle |
+| --- | --- |
+| `db` | PostgreSQL 17, interne Netze, Init fuer App-/Feed-Rollen |
+| `migrate` | einmalig, Owner-Rechte, Schema und Bootstrap |
+| `web` | Gunicorn, eingeschraenktes App-DB-Konto, Loopback-Port |
+| `feed-worker` | Sync-Kommando, Feed-DB-Konto, nur Egress-Netz |
+| `backup` | Dump-Schleife und Restore-Test gegen Owner-Konto |
+
+Das Anwendungsimage ist read-only, laeuft als Non-root-Benutzer `app`, droppt
+Capabilities und besitzt einen eingebauten Healthcheck.
+
 ## Vertrauensgrenzen
 
 - Docker bindet den Webport standardmaessig nur an Host-Loopback.
-- Tailscale-Identitaetsheader werden nur bei explizitem
-  `TRUST_TAILSCALE_HEADERS=true` ausgewertet. In diesem Modus darf kein
-  ungefilterter Client den Anwendungsport erreichen.
+- Authentifizierung erfolgt ausschliesslich ueber lokale Django-Konten mit
+  Passwort und Login-Drosselung. Es gibt keinen Header-basierten Auto-Login.
+  Die Startseite `/` ist oeffentlich; Fachrouten verlangen Login und aktive
+  Mitgliedschaft. Die PWA startet auf `/uebersicht/`.
 - Web, Feed-Worker und Backup erreichen PostgreSQL ueber getrennte interne
   Netze. Der Worker hat keinen TCP-Pfad zum Webcontainer.
 - Ein kurzlebiger `migrate`-Container besitzt die Datenbank-Owner-Rechte. Der
@@ -45,11 +69,10 @@ Django/Gunicorn -------- Feed-Worker -------- freigegebene HTTPS-Quellen
 
 ## Authentifizierung
 
-Im Standardmodus authentifiziert Django lokale Benutzer. Der Befehl
-`grant_station_admin` verbindet einen Superuser mit einer Wache. Optional setzt
-Tailscale Serve Identitaetsheader. Das konfigurierte Tailscale-Administratorkonto
-wird beim ersten Zugriff der Standardwache zugeordnet; weitere Konten warten auf
-eine Freigabe unter `/team/`.
+Django authentifiziert lokale Benutzer. Der Befehl `grant_station_admin`
+verbindet einen bestehenden Benutzer mit der Standardwache als Admin.
+Weitere Konten werden unter `/django-admin/` angelegt und unter `/team/`
+freigegeben. Gemeinschaftskonten sind nicht vorgesehen.
 
 ## Wiederherstellung
 

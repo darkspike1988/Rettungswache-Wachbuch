@@ -1,5 +1,140 @@
 # Changelog
 
+## Unreleased
+
+- Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
+  Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
+
+## 0.14.1 - 2026-08-02
+
+- Review-Haertung API: Passwortwechsel widerruft App-Tokens; Scope-Checks auf `/me/` und `/uebersicht/`
+- App-Tokens mit Default-Ablauf (90 Tage); Axes-Reset nach Token-Mint; API-404 als JSON
+- Checklisten-Abschluss prueft Stationskonsistenz; Compose-Log-Rotation fuer web/worker/backup
+
+## 0.14.0 - 2026-08-01
+
+- API v1 vereinheitlicht: widerrufbare `wb_`-App-Tokens plus deutsche Alias-Pfade
+  (`anmeldung/`, `status/`, `uebersicht/`, `uebergaben/`, `kalender/`, `kaffeekasse/`, `checklisten/`)
+- Schreibende API: Uebergaben anlegen/Status, Kalender, Kaffeekasse, Checklisten-Abschluss
+- Checklisten-Modul (Admin-Schalter, HTML `/checklisten/`, append-only Completions, DB-REVOKE)
+- Multi-Stage-Dockerfile und Compose-Log-Rotation; OpenAPI/Doku aktualisiert
+
+## 0.13.0 - 2026-07-31
+
+- Krypto-Profil an BSI TR-02102 angelehnt (`docs/CRYPTO-BSI.md`): AES-256-GCM, ECDH P-256, TLS 1.3
+- Login-Passwoerter bevorzugt **Argon2id**; TOTP-Geheimnisse AES-256-GCM at rest
+- E2EE Private-Key-Umschlag: PBKDF2-SHA-256 mit 600 000 Iterationen (bestehende Umschlaege weiter lesbar)
+
+## 0.12.1 - 2026-07-31
+
+- Server und Client-Repo aufeinander abgestimmt (`Wachbuch-Client` ↔ `clients/wachbuch-mobile/`)
+- Pull-Skript `scripts/pull-mobile-client-repo.sh`; Publish mit klarer 403-Hilfe (GitHub-App)
+- Client-Doku: Startflow Adresse/QR → Login, Versions-Paarung App 0.2.x / Server ≥ 0.12
+
+## 0.12.0 - 2026-07-31
+
+- Mobile-Startflow: nur Server-Adresse oder QR-Scan → Bestätigen → Login (User/Passwort)
+- Play-Store-Vorbereitung (Material 3, Target API 36, Kamera nur QR, kein Cleartext in Release)
+- Web-QR unter `/konto/api/` zum Scannen der Server-Adresse
+- Doku an offizielle Google-Play-/Android-Richtlinien angelehnt (`docs/PLAY-STORE.md`)
+
+## 0.11.0 - 2026-07-31
+
+- Android-APK sideloadbar (FOSS, Package `de.wachbuch.mobile`, minSdk 24)
+- Tablet-/Smartphone-Layout: NavigationRail bzw. Bottom-Nav, Übergaben-Grid
+- Build-Skript `clients/wachbuch-mobile/scripts/build-apk.sh`, Install-Doku
+- Client-CI baut Release-APK als Artifact
+
+## 0.10.1 - 2026-07-31
+
+- Client für separates Repo vorbereitet: `Wachbuch-Client` (Publish-Skript, CI, volle AGPL-LICENSE)
+- Doku zum einmaligen Anlegen des zweiten GitHub-Repos und Spiegeln per Skript
+
+## 0.10.0 - 2026-07-31
+
+- AGPL Flutter-Client unter `clients/wachbuch-mobile/` (iOS/Android)
+- Login per Server-URL + Passwort-Token oder App-Token; wachenspezifisch via `/me/`
+- Client-Doku in `docs/CLIENT.md` inkl. Vorbilder (Paperless/Nextcloud)
+
+## 0.9.0 - 2026-07-31
+
+- API-Fundament `/api/v1/` fuer spaetere Open-Source-iOS-/Android-Clients
+- App-Tokens (Paperless/Nextcloud-Stil) unter `/konto/api/` und `POST /api/v1/token/`
+- Discovery, OpenAPI, `me`, lesende Uebergaben; Doku in `docs/API.md`
+
+## 0.8.0 - 2026-07-31
+
+- Ende-zu-Ende-Verschluesselung fuer Wachenchat (Ciphertext auf dem Server)
+- private 1:1-Chats nur fuer Teilnehmer; Master-Admin ohne Teilnahme sieht nichts
+- interne verschluesselte Post (`/post/`); nur Absender/Empfaenger lesen Klartext
+- Chat-Schluessel unter `/konto/crypto/` (Passphrase-umschlossener Private Key)
+
+## 0.7.0 - 2026-07-31
+
+- Master-Admin legt Nutzer an und gibt Wachenzugaenge frei (`/team/anlegen/`)
+- oeffentliche Selbstregistrierung standardmaessig aus (optional per Env)
+- persoenlicher Bereich: Profilbild, Passwort, Zwei-Faktor, Link zum Wachenchat
+- Wachenchat als kurze Kollegennachrichten mit Avatar/Initialen (Facebook light)
+- Rolle `admin` heisst sichtbar **Master-Admin**
+
+## 0.6.1 - 2026-07-31
+
+- gesetzliche Feiertage NRW im fortlaufenden Wachenkalender und ICS-Feed
+- Modulschalter `holidays_enabled` in den Stationseinstellungen
+
+## 0.6.0 - 2026-07-31
+
+- Selbstregistrierung mit Admin-Freigabe und Ablehnung
+- persoenlicher Kontbereich (`/konto/`) fuer Profil und Passwort
+- stationsbezogener Wachenchat (ohne Uploads, moderierbar)
+- Modulschalter `chat_enabled` in den Stationseinstellungen
+
+## 0.5.0 - 2026-07-31
+
+- Passkeys (WebAuthn) fuer Anmeldung und als zweiter Faktor neben TOTP
+- Web-Push fuer dringende Uebergaben (opt-in, VAPID)
+- Stationsweiter ICS-Feed und widerrufbare Kalender-Abo-Links
+- ASVS-L2-Abdeckungsmatrix und Permissions-Policy fuer WebAuthn
+- MFA-Fehlversuche begrenzt; CSP `connect-src` fuer Push-Dienste
+
+## 0.4.0 - 2026-07-31
+
+- Austritt: Deaktivierung einer Mitgliedschaft zieht Geburtstags-Opt-in zurueck
+- Audit-Diffs fuer Rollen, Modulschalter und Uebergabe-Status (ohne Freitexte)
+- kontrollierte Uebergabe-Korrektur mit neuer Revision (`/uebergaben/<id>/bearbeiten/`)
+- Feed-Felder `first_imported_at` / `last_seen_at` und Null-sichere Sortierung
+- Retention-Kommando `apply_retention` (`RETENTION_FEED_DAYS`, optional Audit)
+- optionale TOTP-Zwei-Faktor-Anmeldung (`MFA_ENABLED` / `MFA_REQUIRED`)
+- Skript und Ablauf zur Rotation der App-/Feed-DB-Passwoerter
+- Touchziele fuer Footer-, Sektions- und Kassen-Aktionslinks nachgezogen
+
+## 0.3.0 - 2026-07-31
+
+- Compliance-Doku zu DSGVO, TDDDG-Cookies, EU AI Act und NRW oeffentlichem Dienst
+- Datenschutz-/Cookie-Transparenzseite unter `/datenschutz/` ohne Tracking-Banner
+- oeffentliche Startseite unter `/` praesentiert das Projekt; Fachfunktionen erst nach Login
+- Dashboard unter `/uebersicht/`; Logout und unauthentifizierte App-Routen fuehren zu Startseite bzw. Anmeldung
+- sichtbare Produktmarke einheitlich `Wachbuch`; Header-Unterzeile zeigt den Stationsnamen
+- sichtbare SemVer-Version in Footer, `/healthz/` und Image-Label
+- dokumentierter Versions- und Update-/Rollback-Ablauf
+- Tagesaufgaben-Modul nach Wandbogen: gruen taeglich, gelb Wochentag, blau zusaetzlich
+- Heute-Liste, Wochenbogen, Vorlagenverwaltung und Audit fuer Erledigungen
+- installierbare PWA mit Manifest, Service Worker, Icons und Offline-Hinweis
+- App-Shell mit Safe Areas, Installationshinweis, Dringend-Badge und Schnellzugriff
+- ICS-Export fuer einzelne Wachentermine
+- Design der Oberflaeche fuer Standalone-Nutzung aufpoliert
+- Tailscale-Header-Login und zugehoerige Konfiguration vollstaendig entfernt
+- Authentifizierung nur noch ueber lokale Django-Konten hinter Docker/Reverse-Proxy
+- Docker-Image mit Labels, ausfuehrbaren Startskripten und Healthcheck gestrafft
+- Compose-Projektname und Image-Name vereinheitlicht; Stack-Dokumentation bereinigt
+- Geburtstage speichern Tag/Monat nur noch bei aktivem Opt-in und pruefen echte Kalenderdaten
+- Geburtstagsliste blendet inaktive Mitglieder aus
+- erneute Teamfreigabe reaktiviert bestehende Mitgliedschaften statt in einen 500-Fehler zu laufen
+- Kaffeekorrekturen sperren die Originalbuchung und fangen parallele Doppelkorrekturen ab
+- Feedansicht zeigt nur aktivierte Quellen und benennt die Guetersloh-Datenluecke
+- Migration setzt externe Meldungen nach dem Modul-Upgrade wieder auf Opt-in
+- Audit-Dokument mit Funktionsueberblick und Folgeplan ergaenzt
+
 ## Unreleased - Open-Source-Basis
 
 - portable Docker-Konfiguration ohne servergebundene Hosts und Datenbank-URLs
