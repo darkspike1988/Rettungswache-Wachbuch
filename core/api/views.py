@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import json
 import secrets
+from datetime import timedelta
 from functools import wraps
 
 from django.conf import settings
@@ -22,7 +23,6 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Sum
-from django.shortcuts import get_object_or_404
 
 from ..access import CONTENT_ROLES, get_membership
 from ..forms import CalendarEventForm, CoffeeEntryForm, HandoverForm, HandoverStatusForm
@@ -40,6 +40,7 @@ from ..version import APP_VERSION
 
 API_VERSION = "v1"
 TOKEN_PREFIX = "wb_"
+DEFAULT_TOKEN_TTL_DAYS = 90
 WRITE_ROLES = {Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN}
 CASHIER_ROLES = {Membership.Role.CASHIER, Membership.Role.ADMIN}
 DEFAULT_MOBILE_SCOPES = [
@@ -65,10 +66,22 @@ def generate_api_token() -> tuple[str, str, str]:
     return raw, hash_api_token(raw), raw[:11]
 
 
+def default_token_expiry():
+    return timezone.now() + timedelta(days=DEFAULT_TOKEN_TTL_DAYS)
+
+
 def _json_error(message, status=400, **extra):
     payload = {"ok": False, "error": message}
     payload.update(extra)
     return JsonResponse(payload, status=status)
+
+
+def _api_get_or_404(model, **kwargs):
+    """Return (obj, None) or (None, JsonResponse 404) for API clients."""
+    obj = model.objects.filter(**kwargs).first()
+    if obj is None:
+        return None, _json_error("Nicht gefunden.", status=404)
+    return obj, None
 
 
 def _parse_json(request):
@@ -132,8 +145,6 @@ def api_token_required(view):
 
 def _scope_allowed(token: ApiToken, scope: str) -> bool:
     scopes = token.scopes or []
-    if "*" in scopes or "all" in scopes:
-        return True
     return scope in scopes
 
 
@@ -207,6 +218,10 @@ def obtain_token(request):
             status=403,
             code="mfa_required",
         )
+    from axes.utils import reset as axes_reset
+
+    axes_reset(username=username)
+    expires_at = default_token_expiry()
     raw, token_hash, prefix = generate_api_token()
     token = ApiToken.objects.create(
         user=user,
@@ -214,9 +229,10 @@ def obtain_token(request):
         token_prefix=prefix,
         token_hash=token_hash,
         scopes=list(DEFAULT_MOBILE_SCOPES),
+        expires_at=expires_at,
     )
     audit(user, membership.station, "api.token_created", token, {
-        "fields": ["label", "scopes"],
+        "fields": ["label", "scopes", "expires_at"],
         "via": "api.token",
     })
     return JsonResponse({
@@ -224,7 +240,8 @@ def obtain_token(request):
         "token": raw,
         "token_prefix": prefix,
         "api_version": API_VERSION,
-        "expires_in": None,
+        "expires_in": DEFAULT_TOKEN_TTL_DAYS * 24 * 3600,
+        "expires_at": expires_at.isoformat(),
         "has_membership": True,
         "station": membership.station.name,
         "role": membership.role,
@@ -235,6 +252,8 @@ def obtain_token(request):
 @require_GET
 @api_token_required
 def me(request):
+    if not _scope_allowed(request.api_token, "read:me"):
+        return _json_error("Scope read:me fehlt.", status=403)
     membership = request.membership
     station = membership.station
     return JsonResponse({
@@ -368,12 +387,21 @@ def api_status(request):
 @api_token_required
 def overview(request):
     """Dashboard summary (German alias: /uebersicht/)."""
+    if not _scope_allowed(request.api_token, "read:me"):
+        return _json_error("Scope read:me fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
         return _json_error("Rolle hat keinen Zugriff auf die Übersicht.", status=403)
     station = request.membership.station
-    open_qs = HandoverEntry.objects.filter(station=station).exclude(
-        status=HandoverEntry.Status.DONE
-    )
+    handovers = {"open_count": 0, "urgent_count": 0, "items": []}
+    if _scope_allowed(request.api_token, "read:handovers"):
+        open_qs = HandoverEntry.objects.filter(station=station).exclude(
+            status=HandoverEntry.Status.DONE
+        )
+        handovers = {
+            "open_count": open_qs.count(),
+            "urgent_count": open_qs.filter(priority=HandoverEntry.Priority.URGENT).count(),
+            "items": [_handover_json(item) for item in open_qs.order_by("-updated_at")[:5]],
+        }
     return JsonResponse({
         "ok": True,
         "api_version": API_VERSION,
@@ -390,11 +418,7 @@ def overview(request):
             "holidays": station.holidays_enabled,
             "checklists": station.checklists_enabled,
         },
-        "handovers": {
-            "open_count": open_qs.count(),
-            "urgent_count": open_qs.filter(priority=HandoverEntry.Priority.URGENT).count(),
-            "items": [_handover_json(item) for item in open_qs.order_by("-updated_at")[:5]],
-        },
+        "handovers": handovers,
     })
 
 
@@ -421,7 +445,9 @@ def handover_detail(request, pk):
         return _json_error("Scope read:handovers fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
         return _json_error("Rolle hat keinen Zugriff auf Übergaben.", status=403)
-    handover = get_object_or_404(HandoverEntry, pk=pk, station=request.membership.station)
+    handover, err = _api_get_or_404(HandoverEntry, pk=pk, station=request.membership.station)
+    if err:
+        return err
     return JsonResponse({"ok": True, **_handover_json(handover, detail=True)})
 
 
@@ -433,7 +459,9 @@ def handover_set_status(request, pk):
         return _json_error("Scope write:handovers fehlt.", status=403)
     if request.membership.role not in WRITE_ROLES:
         return _json_error("Rolle darf den Status nicht ändern.", status=403)
-    handover = get_object_or_404(HandoverEntry, pk=pk, station=request.membership.station)
+    handover, err = _api_get_or_404(HandoverEntry, pk=pk, station=request.membership.station)
+    if err:
+        return err
     body = _parse_json(request) or {}
     form = HandoverStatusForm(body, instance=handover)
     if not form.is_valid():
@@ -608,7 +636,9 @@ def checklist_complete_api(request, pk):
         return _json_error("Scope write:checklists fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
         return _json_error("Rolle darf Checklisten nicht abschließen.", status=403)
-    checklist = get_object_or_404(Checklist, pk=pk, station=station, is_active=True)
+    checklist, err = _api_get_or_404(Checklist, pk=pk, station=station, is_active=True)
+    if err:
+        return err
     body = _parse_json(request) or {}
     note = str(body.get("note") or "")[:300]
     with transaction.atomic():

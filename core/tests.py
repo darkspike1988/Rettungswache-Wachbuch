@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.14.0")
+        self.assertEqual(response.json()["version"], "0.14.1")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.14.0")
+        self.assertContains(response, "Version 0.14.1")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -1576,6 +1576,103 @@ class ApiUnifiedContractTests(PilotTestCase):
         html = self.client.get(reverse("checklists"))
         self.assertEqual(html.status_code, 200)
         self.assertContains(html, "Fahrzeugcheck")
+
+    def test_me_and_overview_require_read_me_scope(self):
+        raw = self._token(scopes=["read:handovers"])
+        me = self.client.get(reverse("api_v1_me"), **self._auth(raw))
+        self.assertEqual(me.status_code, 403)
+        overview = self.client.get(reverse("api_v1_overview"), **self._auth(raw))
+        self.assertEqual(overview.status_code, 403)
+
+    def test_overview_hides_handovers_without_scope(self):
+        HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.STATION,
+            priority=HandoverEntry.Priority.URGENT,
+            title="Geheim",
+            details="x",
+            author=self.user,
+        )
+        raw = self._token(scopes=["read:me"])
+        overview = self.client.get(reverse("api_v1_overview"), **self._auth(raw))
+        self.assertEqual(overview.status_code, 200)
+        self.assertEqual(overview.json()["handovers"]["items"], [])
+        self.assertEqual(overview.json()["handovers"]["open_count"], 0)
+
+    def test_revoked_token_is_rejected(self):
+        from .models import ApiToken
+
+        raw = self._token()
+        ApiToken.objects.filter(user=self.user).update(is_active=False)
+        response = self.client.get(reverse("api_v1_me"), **self._auth(raw))
+        self.assertEqual(response.status_code, 401)
+
+    def test_password_change_revokes_api_tokens(self):
+        from .models import ApiToken
+
+        password = "StrongPass-12345"
+        self.user.set_password(password)
+        self.user.save()
+        # Password hash change invalidates the prior force_login session.
+        self.client.force_login(self.user)
+        raw = self._token()
+        self.assertTrue(ApiToken.objects.filter(user=self.user, is_active=True).exists())
+        changed = self.client.post(reverse("account_home"), {
+            "action": "password",
+            "password-old_password": password,
+            "password-new_password1": "Completely-New-Pass-99",
+            "password-new_password2": "Completely-New-Pass-99",
+        })
+        self.assertRedirects(changed, reverse("account_home"))
+        self.assertFalse(ApiToken.objects.filter(user=self.user, is_active=True).exists())
+        denied = self.client.get(reverse("api_v1_me"), **self._auth(raw))
+        self.assertEqual(denied.status_code, 401)
+
+    def test_cross_station_handover_returns_json_404(self):
+        other = Station.objects.create(name="Andere", slug="andere")
+        foreign = HandoverEntry.objects.create(
+            station=other,
+            category=HandoverEntry.Category.STATION,
+            priority=HandoverEntry.Priority.NORMAL,
+            title="Fremd",
+            details="x",
+            author=self.user,
+        )
+        raw = self._token()
+        response = self.client.get(
+            reverse("api_v1_handover_detail", args=[foreign.pk]),
+            **self._auth(raw),
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response["Content-Type"].split(";")[0], "application/json")
+        self.assertFalse(response.json()["ok"])
+
+    def test_checklist_completion_rejects_wrong_station(self):
+        from django.core.exceptions import ValidationError
+
+        from .models import Checklist, ChecklistCompletion
+
+        other = Station.objects.create(name="West", slug="west")
+        checklist = Checklist.objects.create(station=other, title="Fremdcheck")
+        with self.assertRaises(ValidationError):
+            ChecklistCompletion.objects.create(
+                station=self.station,
+                checklist=checklist,
+                completed_by=self.user,
+            )
+
+    def test_token_exchange_sets_expiry(self):
+        password = "StrongPass-12345"
+        self.user.set_password(password)
+        self.user.save()
+        response = self.client.post(
+            reverse("api_v1_anmeldung"),
+            data=json.dumps({"username": self.user.username, "password": password}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["expires_in"], 90 * 24 * 3600)
+        self.assertTrue(response.json()["expires_at"])
 
 
 class CryptoAtRestTests(TestCase):

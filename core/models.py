@@ -706,9 +706,15 @@ class ChecklistCompletion(models.Model):
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["station", "-created_at"])]
 
+    def clean(self):
+        super().clean()
+        if self.checklist_id and self.station_id and self.checklist.station_id != self.station_id:
+            raise ValidationError("Checkliste gehört nicht zu dieser Wache.")
+
     def save(self, *args, **kwargs):
         if self.pk:
             raise ValidationError("Checklisten-Abschlüsse dürfen nicht verändert werden.")
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):

@@ -5,6 +5,12 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.14.1 - 2026-08-02
+
+- Review-Haertung API: Passwortwechsel widerruft App-Tokens; Scope-Checks auf `/me/` und `/uebersicht/`
+- App-Tokens mit Default-Ablauf (90 Tage); Axes-Reset nach Token-Mint; API-404 als JSON
+- Checklisten-Abschluss prueft Stationskonsistenz; Compose-Log-Rotation fuer web/worker/backup
+
 ## 0.14.0 - 2026-08-01
 
 - API v1 vereinheitlicht: widerrufbare `wb_`-App-Tokens plus deutsche Alias-Pfade

@@ -1,6 +1,6 @@
 # API für Mobile- und Drittclients
 
-Stand: 1. August 2026. Versionierte REST-API unter `/api/v1/` für den
+Stand: 2. August 2026 (Server ≥ **0.14.1**). Versionierte REST-API unter `/api/v1/` für den
 AGPL-Client ([Wachbuch-Client](https://github.com/darkspike1988/Wachbuch-Client)),
 angelehnt an Paperless-ngx und Nextcloud.
 
@@ -34,14 +34,15 @@ Authorization: Bearer <geheim>
 { "username": "user@example.org", "password": "…", "label": "Android App" }
 ```
 
-Antwort enthält `token` **einmal**. Bei aktivem MFA muss der Weg über `/konto/api/`
-genutzt werden. Standard-Scopes umfassen Lesen und Schreiben der Mobile-Ressourcen
-(Rollenregeln bleiben zusätzlich serverseitig erzwungen).
+Antwort enthält `token` **einmal** sowie `expires_at` / `expires_in` (Standard: **90 Tage**).
+Bei aktivem MFA muss der Weg über `/konto/api/` genutzt werden. Standard-Scopes
+umfassen Lesen und Schreiben der Mobile-Ressourcen (Rollenregeln bleiben zusätzlich
+serverseitig erzwungen). `/me/` und `/uebersicht/` brauchen `read:me`.
 
 ### Widerruf
 
-Unter `/konto/api/` oder durch Deaktivieren des Tokens. Passwortwechsel widerruft
-Tokens derzeit **nicht** automatisch.
+Unter `/konto/api/` oder durch Deaktivieren des Tokens. **Passwortwechsel widerruft
+alle aktiven App-Tokens** des Kontos automatisch.
 
 ## Endpunkte (v1)
 

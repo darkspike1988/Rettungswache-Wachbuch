@@ -6,7 +6,7 @@ Dieses Client-Repo gehört zu:
 
 | Client | Server |
 | --- | --- |
-| App 0.2.x | API `/api/v1/` ab Server **0.14.0** |
+| App 0.2.x | API `/api/v1/` ab Server **0.14.1** |
 | Adresse / QR → Login | Discovery `GET /api/v1/` |
 | User / Passwort | `POST /api/v1/token/` (Alias `/anmeldung/`) |
 | MFA | App-Token unter `/konto/api/` |

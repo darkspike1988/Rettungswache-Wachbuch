@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .models import AuditEvent, BirthdayPreference, FeedItem, HandoverEntry, HandoverRevision
+from .models import ApiToken, AuditEvent, BirthdayPreference, FeedItem, HandoverEntry, HandoverRevision
 
 
 def audit(actor, station, action, obj, metadata=None):
@@ -16,6 +16,11 @@ def audit(actor, station, action, obj, metadata=None):
         object_id=str(obj.pk),
         metadata=metadata or {},
     )
+
+
+def revoke_api_tokens_for_user(user) -> int:
+    """Deactivate all active app tokens for a user (e.g. after password change)."""
+    return ApiToken.objects.filter(user=user, is_active=True).update(is_active=False)
 
 
 def structure_changes(before, after):

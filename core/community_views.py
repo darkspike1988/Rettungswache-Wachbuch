@@ -19,7 +19,7 @@ from .access import CONTENT_ROLES, get_membership, membership_required, station_
 from .avatars import initials_for
 from .forms import AvatarForm, ChatMessageForm, ProfileForm, RegistrationForm
 from .models import ChatMessage, Membership, RegistrationRequest, UserProfile
-from .services import audit
+from .services import audit, revoke_api_tokens_for_user
 
 
 def registration_enabled():
@@ -110,8 +110,19 @@ def account_home(request):
         password_form = PasswordChangeForm(request.user, request.POST, prefix="password")
         if password_form.is_valid():
             user = password_form.save()
+            revoked = revoke_api_tokens_for_user(user)
             update_session_auth_hash(request, user)
-            messages.success(request, "Passwort wurde geändert.")
+            if revoked:
+                audit(user, membership.station if membership else None, "api.tokens_revoked_password", user, {
+                    "fields": ["is_active"],
+                    "count": revoked,
+                })
+                messages.success(
+                    request,
+                    "Passwort wurde geändert. Alle App-Tokens wurden widerrufen – bitte neu erzeugen.",
+                )
+            else:
+                messages.success(request, "Passwort wurde geändert.")
             return redirect("account_home")
     elif action == "avatar":
         profile_form = ProfileForm(instance=request.user, prefix="profile")

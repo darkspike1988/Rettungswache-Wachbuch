@@ -6,7 +6,7 @@ Stand: 31. Juli 2026.
 
 | | |
 | --- | --- |
-| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch (≥ **0.14.0**) |
+| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch (≥ **0.14.1**) |
 | **Client** | https://github.com/darkspike1988/Wachbuch-Client (App **0.2.x**) |
 | **Spiegel im Server** | `clients/wachbuch-mobile/` |
 | **Push Server → Client** | `./scripts/publish-mobile-client-repo.sh` |

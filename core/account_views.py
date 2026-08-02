@@ -345,7 +345,7 @@ def api_tokens_manage(request):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create":
-            from .api.views import DEFAULT_MOBILE_SCOPES
+            from .api.views import DEFAULT_MOBILE_SCOPES, default_token_expiry
 
             raw, token_hash, prefix = generate_api_token()
             token = ApiToken.objects.create(
@@ -354,9 +354,10 @@ def api_tokens_manage(request):
                 token_prefix=prefix,
                 token_hash=token_hash,
                 scopes=list(DEFAULT_MOBILE_SCOPES),
+                expires_at=default_token_expiry(),
             )
             audit(request.user, membership.station, "api.token_created", token, {
-                "fields": ["label", "scopes"],
+                "fields": ["label", "scopes", "expires_at"],
                 "via": "account",
             })
             plaintext = raw

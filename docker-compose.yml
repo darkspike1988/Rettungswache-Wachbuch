@@ -69,6 +69,7 @@ services:
     build: .
     image: rettungswache-wachbuch:local
     restart: unless-stopped
+    logging: *default-logging
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
@@ -122,6 +123,7 @@ services:
   feed-worker:
     image: rettungswache-wachbuch:local
     restart: unless-stopped
+    logging: *default-logging
     command: ["/app/scripts/start-worker.sh"]
     environment:
       DJANGO_SECRET_KEY: ${FEED_WORKER_SECRET_KEY}
@@ -149,6 +151,7 @@ services:
   backup:
     image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     restart: unless-stopped
+    logging: *default-logging
     user: "${BACKUP_UID:-70}:${BACKUP_GID:-70}"
     entrypoint: ["/bin/sh", "/backup/backup-loop.sh"]
     environment:
