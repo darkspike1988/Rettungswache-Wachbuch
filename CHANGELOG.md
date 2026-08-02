@@ -5,6 +5,12 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.14.2 - 2026-08-02
+
+- Datenschutzseite nennt Rechtsgrundlage, reale Laufzeiten und HTTPS-Attribute
+  der ausschließlich technisch notwendigen Session- und CSRF-Cookies
+- Login verlinkt die Cookie-Information transparent, ohne irreführendes Opt-in
+
 ## 0.14.1 - 2026-08-02
 
 - Review-Haertung API: Passwortwechsel widerruft App-Tokens; Scope-Checks auf `/me/` und `/uebersicht/`

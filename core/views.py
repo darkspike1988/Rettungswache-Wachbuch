@@ -173,6 +173,7 @@ def privacy_notice(request):
         "session_cookie": settings.SESSION_COOKIE_NAME,
         "csrf_cookie": settings.CSRF_COOKIE_NAME,
         "session_age_hours": settings.SESSION_COOKIE_AGE // 3600,
+        "csrf_age_days": settings.CSRF_COOKIE_AGE // 86400,
     })
 
 

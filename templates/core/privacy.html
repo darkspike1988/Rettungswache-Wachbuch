@@ -11,13 +11,14 @@
   <h2>Zweck der Anwendung</h2>
   <p>Das Wachbuch unterstützt die interne Organisation einer Rettungswache (Übergaben, Termine, optionale Tagesaufgaben, Kaffeekasse, Teamrollen, Audit). Patienten-, Einsatz- und Alarmierungsdaten gehören nicht hinein.</p>
 
-  <h2>Cookies (TDDDG / DSGVO)</h2>
-  <p>Es werden keine Analyse-, Marketing- oder Tracking-Cookies gesetzt. Deshalb gibt es keinen Cookie-Banner mit Opt-in für Drittanbieter. Folgende technisch notwendige Cookies können gesetzt werden:</p>
+  <h2>Cookies und lokale Speicherung (TDDDG / DSGVO)</h2>
+  <p>Die Anwendung verwendet keine Analyse-, Marketing-, Tracking- oder Drittanbieter-Cookies. Ein Opt-in-Banner ist nicht erforderlich, weil ausschließlich technisch notwendige Cookies gemäß <a href="https://www.gesetze-im-internet.de/ttdsg/__25.html" rel="noopener noreferrer">§ 25 Abs. 2 Nr. 2 TDDDG</a> eingesetzt werden. Diese Cookies ermöglichen Anmeldung und Formularschutz; sie werden ausschließlich über HTTPS übertragen.</p>
   <dl class="summary-list">
-    <div><dt>{{ session_cookie }}</dt><dd>Sitzungs-Cookie für die Anmeldung. HttpOnly, SameSite=Lax{% if session_age_hours %}, Laufzeit bis {{ session_age_hours }} Stunden{% endif %}.</dd></div>
-    <div><dt>{{ csrf_cookie }}</dt><dd>CSRF-Schutz für Formulare. HttpOnly, SameSite=Lax.</dd></div>
+    <div><dt>{{ session_cookie }}</dt><dd>Sitzungs-Cookie für Anmeldung und angemeldete Nutzung. Secure, HttpOnly, SameSite=Lax{% if session_age_hours %}; maximale Speicherdauer {{ session_age_hours }} Stunden{% endif %}.</dd></div>
+    <div><dt>{{ csrf_cookie }}</dt><dd>Sicherheits-Cookie zum Schutz von Formularen vor websiteübergreifenden Anfragen (CSRF). Secure, HttpOnly, SameSite=Lax{% if csrf_age_days %}; maximale Speicherdauer {{ csrf_age_days }} Tage{% endif %}.</dd></div>
   </dl>
-  <p>Zusätzlich kann der Browser lokal den Installationshinweis der PWA und einen Lese-Cache des Service Workers speichern. Das dient der Offline-Anzeige bereits geladener Seiten und enthält keine Werbe-ID.</p>
+  <p>Die notwendigen Cookies können nicht einzeln abgewählt werden, solange Anmeldung und geschützte Formulare genutzt werden. Es gibt keine freiwilligen Cookies und daher keine Auswahl- oder Einwilligungsoberfläche.</p>
+  <p>Zusätzlich kann der Browser den Installationshinweis der PWA und einen Lese-Cache des Service Workers lokal auf dem Endgerät speichern. Das dient der Offline-Anzeige bereits geladener Seiten und enthält keine Werbe-ID.</p>
 
   <h2>Beschäftigtendaten und öffentlicher Dienst NRW</h2>
   <p>Login, Rollen, Audit-Ereignisse und optionale Module verarbeiten Beschäftigtendaten. Für Stellen des öffentlichen Dienstes in NRW sind typischerweise DSG NRW, LPVG NRW und die Beteiligung der Personalvertretung zu prüfen. Auswertungen zur Leistungs- oder Verhaltenskontrolle sind produktseitig nicht vorgesehen und organisatorisch zu untersagen.</p>

@@ -11,6 +11,7 @@
     {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
     <button class="button primary" type="submit">Anmelden</button>
   </form>
+  <p class="hint">Für die Anmeldung werden ausschließlich technisch notwendige Sicherheitscookies verwendet. <a href="{% url 'privacy' %}">Datenschutz- und Cookie-Informationen</a></p>
   {% if registration_enabled %}
   <p><a class="text-action" href="{% url 'register' %}">Neues Konto registrieren</a></p>
   {% endif %}
