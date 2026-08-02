@@ -5,6 +5,11 @@
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
+## 0.15.0 - 2026-08-02
+
+- Demo-Modus mit Musterbefüllung (`DEMO_MODE=true`, `load_demo_data`)
+- Demo-Konten, Banner, Landing-Hinweise; Doku `docs/DEMO.md`
+
 ## 0.14.1 - 2026-08-02
 
 - Review-Haertung API: Passwortwechsel widerruft App-Tokens; Scope-Checks auf `/me/` und `/uebersicht/`

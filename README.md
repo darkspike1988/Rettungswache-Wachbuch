@@ -71,6 +71,19 @@ Technische Systemkonten bleiben unter `/django-admin/`. `createsuperuser` erzeug
 einen globalen technischen Administrator; die stationsbezogene Master-Admin-Rolle
 allein vergibt keine Django-Superuser-Rechte.
 
+### Demo-Modus (Musterdaten)
+
+Zum lokalen Testen und Vorführen in `.env` setzen:
+
+```bash
+DEMO_MODE=true
+MFA_ENABLED=false
+DEFAULT_STATION_NAME=Demo-Wache Musterstadt
+```
+
+Beim Start befüllt `migrate` automatisch Demo-Konten (`demo-admin`, `demo-schicht`, …)
+mit Passwort `Demo-Passwort-12345`. Details: [`docs/DEMO.md`](docs/DEMO.md).
+
 Tests:
 
 ```bash

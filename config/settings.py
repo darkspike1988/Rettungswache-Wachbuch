@@ -170,6 +170,11 @@ RETENTION_FEED_DAYS = int(os.getenv("RETENTION_FEED_DAYS", "90") or "0")
 RETENTION_AUDIT_DAYS = int(os.getenv("RETENTION_AUDIT_DAYS", "0") or "0")
 MFA_ENABLED = env_bool("MFA_ENABLED", default=True)
 MFA_REQUIRED = env_bool("MFA_REQUIRED", default=False)
+DEMO_MODE = env_bool("DEMO_MODE", default=False)
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "Demo-Passwort-12345").strip() or "Demo-Passwort-12345"
+if DEMO_MODE:
+    # Presentations should not require MFA setup on every demo account.
+    MFA_REQUIRED = False
 REGISTRATION_ENABLED = env_bool("REGISTRATION_ENABLED", default=False)
 REGISTRATION_RATE_LIMIT = int(os.getenv("REGISTRATION_RATE_LIMIT", "5") or "5")
 WEBAUTHN_ENABLED = env_bool("WEBAUTHN_ENABLED", default=True)

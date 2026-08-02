@@ -52,6 +52,10 @@ services:
       FEED_DB_USER: ${FEED_DB_USER}
       DEFAULT_STATION_NAME: ${DEFAULT_STATION_NAME:-Rettungswache}
       DEFAULT_STATION_SLUG: ${DEFAULT_STATION_SLUG:-rettungswache}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-Demo-Passwort-12345}
+      MFA_ENABLED: ${MFA_ENABLED:-true}
+      MFA_REQUIRED: ${MFA_REQUIRED:-false}
     depends_on:
       db:
         condition: service_healthy
@@ -89,6 +93,8 @@ services:
       RETENTION_AUDIT_DAYS: ${RETENTION_AUDIT_DAYS:-0}
       MFA_ENABLED: ${MFA_ENABLED:-true}
       MFA_REQUIRED: ${MFA_REQUIRED:-false}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-Demo-Passwort-12345}
       REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-false}
       REGISTRATION_RATE_LIMIT: ${REGISTRATION_RATE_LIMIT:-5}
       WEBAUTHN_ENABLED: ${WEBAUTHN_ENABLED:-true}

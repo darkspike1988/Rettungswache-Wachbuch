@@ -28,4 +28,18 @@
   <p class="lead">Der Master-Admin legt Nutzer an und gibt den Wachenzugang frei. Danach: Passwort, Zwei-Faktor und Profilbild unter Mein Konto; kurze Nachrichten im Wachenchat.</p>
   <p><a class="button primary" href="{% url 'login' %}">Zur Anmeldung</a>{% if registration_enabled %} <a class="button secondary" href="{% url 'register' %}">Konto anfragen</a>{% endif %}</p>
 </section>
+
+{% if demo_mode %}
+<section class="landing-scope demo-accounts" aria-labelledby="landing-demo">
+  <h2 id="landing-demo">Demo-Zugang</h2>
+  <p class="lead">Diese Instanz ist mit fiktiven Musterdaten befüllt. Passwort für alle Konten:
+    <code>{{ demo_password }}</code></p>
+  <ul class="landing-points">
+    {% for account in demo_accounts %}
+    <li><strong>{{ account.username }}</strong> – {{ account.label }}</li>
+    {% endfor %}
+  </ul>
+  <p><a class="button primary" href="{% url 'login' %}">Mit Demo-Konto anmelden</a></p>
+</section>
+{% endif %}
 {% endblock %}

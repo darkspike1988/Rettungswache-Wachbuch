@@ -194,6 +194,28 @@ button, a { -webkit-tap-highlight-color: transparent; }
   text-align: center;
   font-weight: 700;
 }
+.demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: .5rem 1rem;
+  padding: .55rem 1rem;
+  text-align: center;
+  color: #3d2a08;
+  background: linear-gradient(90deg, #f3e0a8, #f7edd0 45%, #f3e0a8);
+  border-bottom: 1px solid #d4b86a;
+  font-size: .92rem;
+}
+.demo-banner strong { font-weight: 700; letter-spacing: .02em; }
+.demo-banner span { color: #5a4314; }
+.demo-accounts code {
+  display: inline-block;
+  padding: .1rem .4rem;
+  border-radius: .3rem;
+  background: rgba(23, 52, 61, .08);
+  font-size: .95em;
+}
 .install-banner {
   width: min(var(--content), calc(100% - 2rem));
   display: flex;

@@ -63,7 +63,7 @@ pro Station. Feiertage sind unabhaengig davon nutzbar.
 2. Feiertage im fortlaufenden Kalender   (umgesetzt)
 3. Muellkalender: manueller ICS-URL-Fallback je Station
 4. Muellkalender: Ort/Strasse-Auswahl Kreis GT + Sync
-5. API v1 / AGPL-Client ausbauen (E2EE-Chat über API, Stores/F-Droid; Schreiben für Übergaben/Kalender/Kasse/Checklisten ist in 0.14)
+5. API v1 / AGPL-Client ausbauen (E2EE-Chat über API, Stores/F-Droid; Schreiben für Übergaben/Kalender/Kasse/Checklisten ist in 0.14; Demo-Modus in 0.15)
 6. Feinschliff UX (Dashboard, Kopieren-Buttons)
 ```
 ### 4. Bewusst weiterhin ausserhalb

@@ -97,7 +97,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.14.1")
+        self.assertEqual(response.json()["version"], "0.15.0")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -109,7 +109,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "rwsth_csrf")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.14.1")
+        self.assertContains(response, "Version 0.15.0")
         self.assertNotContains(response, "Google Analytics")
 
     def test_landing_presents_project_before_login(self):
@@ -1717,3 +1717,51 @@ class MigrationDefaultTests(TestCase):
         migration.disable_feeds_for_existing_stations(apps, None)
         station.refresh_from_db()
         self.assertFalse(station.feeds_enabled)
+
+
+class DemoModeTests(TestCase):
+    @override_settings(DEMO_MODE=True, DEMO_PASSWORD="Demo-Passwort-12345", MFA_REQUIRED=True)
+    def test_load_demo_data_creates_accounts_and_sample_content(self):
+        from django.core.management import call_command
+
+        from .demo import DEMO_MARKER, load_demo_data
+        from .models import Checklist, CoffeeEntry
+
+        result = load_demo_data()
+        self.assertFalse(result.skipped)
+        self.assertTrue(User.objects.filter(username="demo-admin").exists())
+        self.assertTrue(User.objects.filter(username="demo-mitglied").exists())
+        admin = User.objects.get(username="demo-admin")
+        self.assertTrue(admin.check_password("Demo-Passwort-12345"))
+        membership = Membership.objects.get(user=admin, is_active=True)
+        self.assertEqual(membership.role, Membership.Role.ADMIN)
+        self.assertTrue(membership.station.checklists_enabled)
+        self.assertGreaterEqual(
+            HandoverEntry.objects.filter(title__startswith=DEMO_MARKER).count(), 3
+        )
+        self.assertTrue(CoffeeEntry.objects.filter(reason__startswith=DEMO_MARKER).exists())
+        self.assertTrue(Checklist.objects.filter(title__startswith=DEMO_MARKER).exists())
+
+        again = load_demo_data()
+        self.assertTrue(again.skipped)
+        count = HandoverEntry.objects.filter(title__startswith=DEMO_MARKER).count()
+        load_demo_data(reset=True)
+        self.assertEqual(
+            HandoverEntry.objects.filter(title__startswith=DEMO_MARKER).count(), count
+        )
+
+        call_command("load_demo_data")
+        landing = self.client.get(reverse("landing"))
+        self.assertContains(landing, "Demo-Modus")
+        self.assertContains(landing, "demo-admin")
+        self.assertContains(landing, "Demo-Passwort-12345")
+
+    def test_load_demo_data_requires_demo_mode_or_force(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        with self.assertRaises(CommandError):
+            call_command("load_demo_data")
+        with override_settings(DEBUG=True, DEMO_MODE=False):
+            call_command("load_demo_data", force=True)
+        self.assertTrue(User.objects.filter(username="demo-admin").exists())
