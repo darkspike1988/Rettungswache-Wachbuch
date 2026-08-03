@@ -25,6 +25,14 @@ from django.db import transaction
 from django.db.models import Sum
 
 from ..access import CONTENT_ROLES, get_membership
+from ..errors import (
+    ERROR_CODE_AUTH_REQUIRED,
+    ERROR_CODE_FORBIDDEN,
+    ERROR_CODE_NOT_FOUND,
+    ERROR_CODE_RATE_LIMIT,
+    ERROR_CODE_VALIDATION,
+    json_error,
+)
 from ..forms import CalendarEventForm, CoffeeEntryForm, HandoverForm, HandoverStatusForm
 from ..models import (
     ApiToken,
@@ -70,17 +78,35 @@ def default_token_expiry():
     return timezone.now() + timedelta(days=DEFAULT_TOKEN_TTL_DAYS)
 
 
-def _json_error(message, status=400, **extra):
-    payload = {"ok": False, "error": message}
-    payload.update(extra)
-    return JsonResponse(payload, status=status)
+def _json_error(request, message, status=400, code=None, **extra):
+    """Liefert eine kanonische JSON-Fehlerantwort mit Korrelations-ID.
+
+    Bestehende Aufrufer verwenden ``message`` als Klartext. Der ``code``
+    wird aus dem HTTP-Statuscode abgeleitet, wenn er fehlt.
+    """
+    status_to_code = {
+        400: ERROR_CODE_VALIDATION,
+        401: ERROR_CODE_AUTH_REQUIRED,
+        403: ERROR_CODE_FORBIDDEN,
+        404: ERROR_CODE_NOT_FOUND,
+        422: ERROR_CODE_VALIDATION,
+        429: ERROR_CODE_RATE_LIMIT,
+    }
+    resolved_code = code or status_to_code.get(status, "server_error")
+    return json_error(
+        request,
+        resolved_code,
+        message=message,
+        status=status,
+        extra=extra or None,
+    )
 
 
-def _api_get_or_404(model, **kwargs):
+def _api_get_or_404(request, model, **kwargs):
     """Return (obj, None) or (None, JsonResponse 404) for API clients."""
     obj = model.objects.filter(**kwargs).first()
     if obj is None:
-        return None, _json_error("Nicht gefunden.", status=404)
+        return None, _json_error(request, "Nicht gefunden.", status=404)
     return obj, None
 
 
@@ -127,13 +153,13 @@ def api_token_required(view):
     def wrapped(request, *args, **kwargs):
         raw = _extract_bearer_token(request)
         if not raw:
-            return _json_error("Authentifizierung erforderlich.", status=401)
+            return _json_error(request, "Authentifizierung erforderlich.", status=401)
         token = resolve_api_token(raw)
         if token is None:
-            return _json_error("Ungültiges oder widerrufenes API-Token.", status=401)
+            return _json_error(request, "Ungültiges oder widerrufenes API-Token.", status=401)
         membership = get_membership(token.user)
         if membership is None:
-            return _json_error("Kein aktiver Wachenzugang.", status=403)
+            return _json_error(request, "Kein aktiver Wachenzugang.", status=403)
         ApiToken.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
         request.user = token.user
         request.membership = membership
@@ -203,17 +229,17 @@ def obtain_token(request):
         password = str(body.get("password") or "")
         label = str(body.get("label") or "Mobile App").strip()[:120]
     if not username or not password:
-        return _json_error("Benutzername und Passwort erforderlich.")
+        return _json_error(request, "Benutzername und Passwort erforderlich.")
     user = authenticate(request, username=username, password=password)
     if user is None or not user.is_active:
-        return _json_error("Anmeldung fehlgeschlagen.", status=401)
+        return _json_error(request, "Anmeldung fehlgeschlagen.", status=401)
     membership = get_membership(user)
     if membership is None:
-        return _json_error("Kein aktiver Wachenzugang.", status=403)
+        return _json_error(request, "Kein aktiver Wachenzugang.", status=403)
     from ..mfa import user_has_confirmed_mfa
 
     if user_has_confirmed_mfa(user):
-        return _json_error(
+        return _json_error(request, 
             "Für dieses Konto ist MFA aktiv. Bitte ein App-Token unter /konto/api/ erzeugen.",
             status=403,
             code="mfa_required",
@@ -253,7 +279,7 @@ def obtain_token(request):
 @api_token_required
 def me(request):
     if not _scope_allowed(request.api_token, "read:me"):
-        return _json_error("Scope read:me fehlt.", status=403)
+        return _json_error(request, "Scope read:me fehlt.", status=403)
     membership = request.membership
     station = membership.station
     return JsonResponse({
@@ -325,9 +351,9 @@ def handovers_list(request):
     if request.method == "POST":
         return handover_create(request)
     if not _scope_allowed(request.api_token, "read:handovers"):
-        return _json_error("Scope read:handovers fehlt.", status=403)
+        return _json_error(request, "Scope read:handovers fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
-        return _json_error("Rolle hat keinen Zugriff auf Übergaben.", status=403)
+        return _json_error(request, "Rolle hat keinen Zugriff auf Übergaben.", status=403)
     qs = (
         HandoverEntry.objects.filter(station=request.membership.station)
         .exclude(status=HandoverEntry.Status.DONE)
@@ -388,9 +414,9 @@ def api_status(request):
 def overview(request):
     """Dashboard summary (German alias: /uebersicht/)."""
     if not _scope_allowed(request.api_token, "read:me"):
-        return _json_error("Scope read:me fehlt.", status=403)
+        return _json_error(request, "Scope read:me fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
-        return _json_error("Rolle hat keinen Zugriff auf die Übersicht.", status=403)
+        return _json_error(request, "Rolle hat keinen Zugriff auf die Übersicht.", status=403)
     station = request.membership.station
     handovers = {"open_count": 0, "urgent_count": 0, "items": []}
     if _scope_allowed(request.api_token, "read:handovers"):
@@ -424,15 +450,20 @@ def overview(request):
 
 def handover_create(request):
     if not _scope_allowed(request.api_token, "write:handovers"):
-        return _json_error("Scope write:handovers fehlt.", status=403)
+        return _json_error(request, "Scope write:handovers fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
-        return _json_error("Rolle darf keine Übergaben anlegen.", status=403)
+        return _json_error(request, "Rolle darf keine Übergaben anlegen.", status=403)
     body = _parse_json(request)
     if body is None:
-        return _json_error("JSON-Körper erwartet.")
+        return _json_error(request, "JSON-Körper erwartet.")
     form = HandoverForm(body)
     if not form.is_valid():
-        return JsonResponse({"ok": False, "error": "Eingaben sind ungültig.", "fields": form.errors}, status=422)
+        return _json_error(
+            request,
+            "Eingaben sind ungültig.",
+            status=422,
+            fields=form.errors,
+        )
     handover = create_handover(form, request.membership)
     return JsonResponse({"ok": True, **_handover_json(handover, detail=True)}, status=201)
 
@@ -442,10 +473,10 @@ def handover_create(request):
 @api_token_required
 def handover_detail(request, pk):
     if not _scope_allowed(request.api_token, "read:handovers"):
-        return _json_error("Scope read:handovers fehlt.", status=403)
+        return _json_error(request, "Scope read:handovers fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
-        return _json_error("Rolle hat keinen Zugriff auf Übergaben.", status=403)
-    handover, err = _api_get_or_404(HandoverEntry, pk=pk, station=request.membership.station)
+        return _json_error(request, "Rolle hat keinen Zugriff auf Übergaben.", status=403)
+    handover, err = _api_get_or_404(request, HandoverEntry, pk=pk, station=request.membership.station)
     if err:
         return err
     return JsonResponse({"ok": True, **_handover_json(handover, detail=True)})
@@ -456,16 +487,21 @@ def handover_detail(request, pk):
 @api_token_required
 def handover_set_status(request, pk):
     if not _scope_allowed(request.api_token, "write:handovers"):
-        return _json_error("Scope write:handovers fehlt.", status=403)
+        return _json_error(request, "Scope write:handovers fehlt.", status=403)
     if request.membership.role not in WRITE_ROLES:
-        return _json_error("Rolle darf den Status nicht ändern.", status=403)
-    handover, err = _api_get_or_404(HandoverEntry, pk=pk, station=request.membership.station)
+        return _json_error(request, "Rolle darf den Status nicht ändern.", status=403)
+    handover, err = _api_get_or_404(request, HandoverEntry, pk=pk, station=request.membership.station)
     if err:
         return err
     body = _parse_json(request) or {}
     form = HandoverStatusForm(body, instance=handover)
     if not form.is_valid():
-        return JsonResponse({"ok": False, "error": "Status ungültig.", "fields": form.errors}, status=422)
+        return _json_error(
+            request,
+            "Status ungültig.",
+            status=422,
+            fields=form.errors,
+        )
     updated = change_handover_status(handover, form.cleaned_data["status"], request.membership)
     return JsonResponse({"ok": True, **_handover_json(updated, detail=True)})
 
@@ -476,18 +512,23 @@ def handover_set_status(request, pk):
 def calendar_api(request):
     station = request.membership.station
     if not station.calendar_enabled:
-        return _json_error("Modul ist nicht aktiviert.", status=404)
+        return _json_error(request, "Modul ist nicht aktiviert.", status=404)
     if request.method == "POST":
         if not _scope_allowed(request.api_token, "write:calendar"):
-            return _json_error("Scope write:calendar fehlt.", status=403)
+            return _json_error(request, "Scope write:calendar fehlt.", status=403)
         if request.membership.role not in WRITE_ROLES:
-            return _json_error("Rolle darf keine Termine anlegen.", status=403)
+            return _json_error(request, "Rolle darf keine Termine anlegen.", status=403)
         body = _parse_json(request)
         if body is None:
-            return _json_error("JSON-Körper erwartet.")
+            return _json_error(request, "JSON-Körper erwartet.")
         form = CalendarEventForm(body)
         if not form.is_valid():
-            return JsonResponse({"ok": False, "error": "Termin ist ungültig.", "fields": form.errors}, status=422)
+            return _json_error(
+                request,
+                "Termin ist ungültig.",
+                status=422,
+                fields=form.errors,
+            )
         try:
             with transaction.atomic():
                 event = form.save(commit=False)
@@ -499,9 +540,11 @@ def calendar_api(request):
                     "fields": ["title", "description", "starts_at", "ends_at"],
                 })
         except DjangoValidationError as exc:
-            return JsonResponse(
-                {"ok": False, "error": "Termin ist ungültig.", "fields": getattr(exc, "message_dict", {"__all__": exc.messages})},
+            return _json_error(
+                request,
+                "Termin ist ungültig.",
                 status=422,
+                fields=getattr(exc, "message_dict", {"__all__": exc.messages}),
             )
         return JsonResponse({
             "ok": True,
@@ -512,9 +555,9 @@ def calendar_api(request):
         }, status=201)
 
     if not _scope_allowed(request.api_token, "read:calendar"):
-        return _json_error("Scope read:calendar fehlt.", status=403)
+        return _json_error(request, "Scope read:calendar fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
-        return _json_error("Rolle hat keinen Zugriff auf den Kalender.", status=403)
+        return _json_error(request, "Rolle hat keinen Zugriff auf den Kalender.", status=403)
     events = (
         CalendarEvent.objects.filter(station=station, starts_at__gte=timezone.now())
         .order_by("starts_at")[:30]
@@ -539,18 +582,23 @@ def calendar_api(request):
 def coffee_api(request):
     station = request.membership.station
     if not station.coffee_enabled:
-        return _json_error("Modul ist nicht aktiviert.", status=404)
+        return _json_error(request, "Modul ist nicht aktiviert.", status=404)
     if request.method == "POST":
         if not _scope_allowed(request.api_token, "write:coffee"):
-            return _json_error("Scope write:coffee fehlt.", status=403)
+            return _json_error(request, "Scope write:coffee fehlt.", status=403)
         if request.membership.role not in CASHIER_ROLES:
-            return _json_error("Rolle darf die Kasse nicht buchen.", status=403)
+            return _json_error(request, "Rolle darf die Kasse nicht buchen.", status=403)
         body = _parse_json(request)
         if body is None:
-            return _json_error("JSON-Körper erwartet.")
+            return _json_error(request, "JSON-Körper erwartet.")
         form = CoffeeEntryForm(body, station=station)
         if not form.is_valid():
-            return JsonResponse({"ok": False, "error": "Buchung ist ungültig.", "fields": form.errors}, status=422)
+            return _json_error(
+                request,
+                "Buchung ist ungültig.",
+                status=422,
+                fields=form.errors,
+            )
         with transaction.atomic():
             entry = CoffeeEntry.objects.create(
                 station=station,
@@ -572,9 +620,9 @@ def coffee_api(request):
         }, status=201)
 
     if not _scope_allowed(request.api_token, "read:coffee"):
-        return _json_error("Scope read:coffee fehlt.", status=403)
+        return _json_error(request, "Scope read:coffee fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
-        return _json_error("Rolle hat keinen Zugriff auf die Kaffeekasse.", status=403)
+        return _json_error(request, "Rolle hat keinen Zugriff auf die Kaffeekasse.", status=403)
     qs = CoffeeEntry.objects.filter(station=station).select_related("member")
     if request.membership.role not in CASHIER_ROLES:
         qs = qs.filter(member=request.user)
@@ -598,11 +646,11 @@ def coffee_api(request):
 def checklists_api(request):
     station = request.membership.station
     if not station.checklists_enabled:
-        return _json_error("Modul ist nicht aktiviert.", status=404)
+        return _json_error(request, "Modul ist nicht aktiviert.", status=404)
     if not _scope_allowed(request.api_token, "read:checklists"):
-        return _json_error("Scope read:checklists fehlt.", status=403)
+        return _json_error(request, "Scope read:checklists fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
-        return _json_error("Rolle hat keinen Zugriff auf Checklisten.", status=403)
+        return _json_error(request, "Rolle hat keinen Zugriff auf Checklisten.", status=403)
     lists = Checklist.objects.filter(station=station, is_active=True).prefetch_related("items")
     latest = {}
     for completion in (
@@ -631,12 +679,12 @@ def checklists_api(request):
 def checklist_complete_api(request, pk):
     station = request.membership.station
     if not station.checklists_enabled:
-        return _json_error("Modul ist nicht aktiviert.", status=404)
+        return _json_error(request, "Modul ist nicht aktiviert.", status=404)
     if not _scope_allowed(request.api_token, "write:checklists"):
-        return _json_error("Scope write:checklists fehlt.", status=403)
+        return _json_error(request, "Scope write:checklists fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
-        return _json_error("Rolle darf Checklisten nicht abschließen.", status=403)
-    checklist, err = _api_get_or_404(Checklist, pk=pk, station=station, is_active=True)
+        return _json_error(request, "Rolle darf Checklisten nicht abschließen.", status=403)
+    checklist, err = _api_get_or_404(request, Checklist, pk=pk, station=station, is_active=True)
     if err:
         return err
     body = _parse_json(request) or {}

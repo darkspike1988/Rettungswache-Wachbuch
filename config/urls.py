@@ -5,15 +5,26 @@ from django.urls import include, path
 from core import account_views, community_views, secure_views
 from core.auth_views import PasswordLoginView
 from core.views import (
+    bad_request,
     healthz,
     mfa_disable,
     mfa_setup,
     mfa_verify,
     offline,
+    page_not_found,
+    permission_denied,
     privacy_notice,
+    rate_limited,
+    server_error,
     service_worker,
     web_manifest,
 )
+
+handler400 = "core.views.bad_request"
+handler403 = "core.views.permission_denied"
+handler404 = "core.views.page_not_found"
+handler429 = "core.views.rate_limited"
+handler500 = "core.views.server_error"
 
 
 urlpatterns = [

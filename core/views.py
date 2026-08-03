@@ -19,6 +19,19 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
+from .errors import (
+    ERROR_CODE_FORBIDDEN,
+    ERROR_CODE_NOT_FOUND,
+    ERROR_CODE_RATE_LIMIT,
+    ERROR_CODE_SERVER_ERROR,
+    ERROR_CODE_VALIDATION,
+    RESPONSE_CORRELATION_HEADER,
+    correlation_id_for_request,
+    is_api_request,
+    json_error,
+    label_for_code,
+    log_exception,
+)
 
 from .forms import (
     BirthdayForm,
@@ -81,6 +94,77 @@ def healthz(request):
         cursor.execute("SELECT 1")
         cursor.fetchone()
     return JsonResponse({"status": "ok", "version": settings.APP_VERSION})
+
+
+def _render_error(request, *, status, code, template_name):
+    """Rendert eine Fehlerseite oder liefert JSON fuer API-Anfragen."""
+    if is_api_request(request):
+        return json_error(request, code, status=status)
+    correlation_id = correlation_id_for_request(request)
+    context = {
+        "status_code": status,
+        "error_code": code,
+        "correlation_id": correlation_id,
+        "error_label": label_for_code(code),
+    }
+    response = render(request, template_name, context, status=status)
+    response[RESPONSE_CORRELATION_HEADER] = correlation_id
+    return response
+
+
+def bad_request(request, exception=None):
+    return _render_error(
+        request,
+        status=400,
+        code=ERROR_CODE_VALIDATION,
+        template_name="errors/400.html",
+    )
+
+
+def permission_denied(request, exception=None):
+    return _render_error(
+        request,
+        status=403,
+        code=ERROR_CODE_FORBIDDEN,
+        template_name="errors/403.html",
+    )
+
+
+def page_not_found(request, exception=None):
+    return _render_error(
+        request,
+        status=404,
+        code=ERROR_CODE_NOT_FOUND,
+        template_name="errors/404.html",
+    )
+
+
+def rate_limited(request, exception=None):
+    return _render_error(
+        request,
+        status=429,
+        code=ERROR_CODE_RATE_LIMIT,
+        template_name="errors/429.html",
+    )
+
+
+def server_error(request):
+    correlation_id = log_exception(request, message="handler500")
+    if is_api_request(request):
+        return json_error(request, ERROR_CODE_SERVER_ERROR, status=500)
+    response = render(
+        request,
+        "errors/500.html",
+        {
+            "status_code": 500,
+            "error_code": ERROR_CODE_SERVER_ERROR,
+            "correlation_id": correlation_id,
+            "error_label": label_for_code(ERROR_CODE_SERVER_ERROR),
+        },
+        status=500,
+    )
+    response[RESPONSE_CORRELATION_HEADER] = correlation_id
+    return response
 
 
 def _static_url(path):
