@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/auth/session_store.dart';
+import 'package:wachbuch_mobile/ui/error_banner.dart';
 import 'package:wachbuch_mobile/ui/layout.dart';
 
 /// Second screen: username + password against the chosen server.
@@ -12,12 +13,21 @@ class LoginScreen extends StatefulWidget {
     required this.serverUrl,
     required this.onLoggedIn,
     required this.onChangeServer,
+    this.notice,
+    this.apiFactory = defaultWachbuchApiFactory,
   });
 
   final SessionStore store;
   final String serverUrl;
-  final Future<void> Function(String serverUrl, String token) onLoggedIn;
+  final String? notice;
+  final Future<void> Function(
+    String serverUrl,
+    String token, {
+    DateTime? expiresAt,
+  })
+  onLoggedIn;
   final Future<void> Function() onChangeServer;
+  final WachbuchApiFactory apiFactory;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -34,6 +44,20 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _error = widget.notice;
+  }
+
+  @override
+  void didUpdateWidget(covariant LoginScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.notice != oldWidget.notice && widget.notice != null) {
+      _error = widget.notice;
+    }
+  }
+
+  @override
   void dispose() {
     _userCtrl.dispose();
     _passCtrl.dispose();
@@ -47,35 +71,55 @@ class _LoginScreenState extends State<LoginScreen> {
       _busy = true;
       _error = null;
     });
+    WachbuchApi? api;
     try {
-      final api = WachbuchApi(baseUrl: widget.serverUrl);
+      api = widget.apiFactory(widget.serverUrl);
       late final String token;
+      DateTime? expiresAt;
       if (_useTokenPaste) {
         token = _tokenCtrl.text.trim();
         if (token.isEmpty) {
-          throw ApiException(400, 'Bitte App-Token einfügen (aus /konto/api/).');
+          throw ApiException(
+            400,
+            'Bitte App-Token einfügen (aus /konto/api/).',
+          );
         }
         await api.copyWithToken(token).me();
       } else {
-        token = await api.obtainToken(
+        final auth = await api.obtainToken(
           username: _userCtrl.text.trim(),
           password: _passCtrl.text,
           label: 'Wachbuch Mobile',
         );
+        token = auth.value;
+        expiresAt = auth.expiresAt;
       }
-      await widget.onLoggedIn(widget.serverUrl, token);
+      TextInput.finishAutofillContext(shouldSave: true);
+      _passCtrl.clear();
+      _tokenCtrl.clear();
+      await widget.onLoggedIn(
+        widget.serverUrl,
+        token,
+        expiresAt: expiresAt,
+      );
     } on ApiException catch (error) {
+      if (!mounted) return;
       setState(() {
         _error = error.message;
-        if (error.statusCode == 403 && error.message.contains('MFA')) {
+        if (error.isMfaRequired) {
           _error =
               '${error.message}\n\nBei Zwei-Faktor: App-Token im Web unter Mein Konto → App-Tokens erzeugen.';
           _useTokenPaste = true;
         }
       });
     } catch (error) {
-      setState(() => _error = error.toString());
+      if (!mounted) return;
+      final message = error is ArgumentError
+          ? (error.message?.toString() ?? 'Ungültige Eingabe.')
+          : error.toString();
+      setState(() => _error = message);
     } finally {
+      api?.close();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -107,16 +151,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Text(
                       'Anmeldung',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       widget.serverUrl,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 28),
                     if (_useTokenPaste)
@@ -126,11 +169,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           labelText: 'App-Token (wb_…)',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.key_outlined),
-                          helperText: 'Aus dem Web unter /konto/api/ – nötig bei MFA',
+                          helperText:
+                              'Aus dem Web unter /konto/api/ – nötig bei MFA',
                         ),
                         obscureText: true,
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Token erforderlich' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Token erforderlich'
+                            : null,
                       )
                     else ...[
                       TextFormField(
@@ -147,8 +192,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         inputFormatters: [
                           FilteringTextInputFormatter.deny(RegExp(r'\s')),
                         ],
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Benutzername erforderlich' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Benutzername erforderlich'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -159,8 +205,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
                             tooltip: _obscure ? 'Anzeigen' : 'Verbergen',
-                            onPressed: () => setState(() => _obscure = !_obscure),
-                            icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
                           ),
                         ),
                         obscureText: _obscure,
@@ -169,38 +220,38 @@ class _LoginScreenState extends State<LoginScreen> {
                         onFieldSubmitted: (_) {
                           if (!_busy) _submit();
                         },
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? 'Passwort erforderlich' : null,
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Passwort erforderlich'
+                            : null,
                       ),
                     ],
                     if (_error != null) ...[
                       const SizedBox(height: 16),
-                      Text(_error!, style: TextStyle(color: scheme.error)),
+                      ErrorBanner(message: _error!),
                     ],
                     const SizedBox(height: 24),
                     FilledButton(
                       onPressed: _busy ? null : _submit,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: _busy
-                            ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Anmelden'),
-                      ),
+                      child: _busy
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Anmelden'),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: _busy
                           ? null
                           : () => setState(() {
-                                _useTokenPaste = !_useTokenPaste;
-                                _error = null;
-                              }),
+                              _useTokenPaste = !_useTokenPaste;
+                              _error = null;
+                            }),
                       child: Text(
-                        _useTokenPaste ? 'Mit Benutzername und Passwort' : 'Stattdessen App-Token nutzen',
+                        _useTokenPaste
+                            ? 'Mit Benutzername und Passwort'
+                            : 'Stattdessen App-Token nutzen',
                       ),
                     ),
                   ],

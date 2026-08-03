@@ -3,6 +3,7 @@ import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/api/server_address.dart';
 import 'package:wachbuch_mobile/auth/session_store.dart';
 import 'package:wachbuch_mobile/screens/qr_scan_screen.dart';
+import 'package:wachbuch_mobile/ui/error_banner.dart';
 import 'package:wachbuch_mobile/ui/layout.dart';
 
 /// First screen: only server address (typed or QR) + confirm.
@@ -12,10 +13,12 @@ class ServerSetupScreen extends StatefulWidget {
     super.key,
     required this.store,
     required this.onServerReady,
+    this.apiFactory = defaultWachbuchApiFactory,
   });
 
   final SessionStore store;
   final Future<void> Function(String serverUrl) onServerReady;
+  final WachbuchApiFactory apiFactory;
 
   @override
   State<ServerSetupScreen> createState() => _ServerSetupScreenState();
@@ -49,16 +52,20 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
       _busy = true;
       _error = null;
     });
+    WachbuchApi? api;
     try {
       final url = parseServerAddress(_addressCtrl.text);
-      final api = WachbuchApi(baseUrl: url);
+      api = widget.apiFactory(url);
       await api.discover();
       await widget.onServerReady(url);
     } on ApiException catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.message);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
+      api?.close();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -90,24 +97,24 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                     'Wachbuch',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Server-Adresse Ihrer Wache',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Geben Sie die Adresse ein oder scannen Sie den QR-Code aus dem Web.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   TextFormField(
@@ -151,30 +158,27 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 16),
-                    Text(_error!, style: TextStyle(color: scheme.error)),
+                    ErrorBanner(message: _error!),
                   ],
                   const SizedBox(height: 24),
                   FilledButton(
                     onPressed: _busy ? null : _confirm,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: _busy
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Bestätigen'),
-                    ),
+                    child: _busy
+                        ? const SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Bestätigen'),
                   ),
                   const SizedBox(height: 24),
                   Text(
                     'Play-Store-Client: Verbindung nur zu Ihrem selbst gehosteten Server. '
                     'Produktion: HTTPS erforderlich.',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

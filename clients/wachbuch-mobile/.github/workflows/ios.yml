@@ -1,0 +1,55 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Toolchain information
+        run: |
+          xcodebuild -version
+          flutter --version
+          flutter doctor -v
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build for iOS Simulator
+        run: flutter build ios --simulator --debug
+
+      - name: Build unsigned iOS release
+        run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned release artifact
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/iphoneos/Runner.app \
+            dist/Wachbuch-iOS-unsigned.zip
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: wachbuch-ios-unsigned
+          path: dist/Wachbuch-iOS-unsigned.zip
+          if-no-files-found: error
+          retention-days: 14

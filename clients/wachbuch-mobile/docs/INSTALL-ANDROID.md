@@ -1,84 +1,117 @@
-# Android-APK installieren (FOSS Sideload)
+# Android installieren und intern testen
 
-Stand: 31. Juli 2026.
+Stand: 3. August 2026
 
-Die Wachbuch-Client-App ist **AGPL** und wird als selbst gebaute bzw. CI-APK
-auf Smartphone und Tablet installiert. Für einen späteren Play-Store-Release siehe
-[PLAY-STORE.md](PLAY-STORE.md).
+Für die öffentliche Google-Play-Freigabe gilt zusätzlich
+[`PLAY-STORE.md`](PLAY-STORE.md). Der Fortschritt steht in
+[`ROADMAP.md`](../ROADMAP.md).
 
-## Voraussetzungen auf dem Gerät
+## Varianten
 
-1. Android 7.0+ (API 24), Smartphone oder Tablet
-2. Installation aus unbekannten Quellen / „App installieren“ für den Datei-Manager erlauben
-3. Laufender Wachbuch-Server mit `/api/v1/` und **HTTPS**-URL (Release-APK erlaubt kein Cleartext-HTTP)
+| Variante | Paket-ID | Anzeige | Verwendung |
+| --- | --- | --- | --- |
+| Internal | `de.wachbuch.mobile.internal` | Wachbuch Internal | Entwicklung, CI und kontrolliertes Sideloading |
+| Production | `de.wachbuch.mobile` | Wachbuch | signierte Freigaben und Google Play |
 
-## Fertige APK nutzen
+Die interne APK ist zwar mit dem Android-Debug-Key signiert, trägt aber eine
+eigene Paket-ID, einen eindeutigen Namen und das Deep-Link-Schema
+`wachbuch-internal://`. Sie wird niemals als produktive oder Play-fähige APK
+bezeichnet.
 
-Wenn eine Release-APK vorliegt (z. B. GitHub Actions Artifact `wachbuch-mobile.apk`
-oder `dist/wachbuch-mobile.apk` nach lokalem Build):
+## Voraussetzungen
 
-1. APK aufs Gerät kopieren (USB, Download, Nextcloud, …)
-2. Datei antippen → installieren
-3. App **Wachbuch** starten:
-   - nur **Adresse** eingeben **oder** Kamera-Symbol / „QR-Code scannen“ → **Bestätigen**
-   - danach **Benutzername** und **Passwort**
-4. QR im Web: Mein Konto → App-Tokens
+1. Android 7.0 oder neuer
+2. laufender Wachbuch-Server mit `/api/v1/`
+3. für nicht debuggbare Builds eine gültige HTTPS-Adresse
+4. für Sideloading die Installation aus der verwendeten Datei-App erlauben
 
-Package-ID: `de.wachbuch.mobile`
+## CI-Artefakt installieren
 
-## Selbst bauen
+1. In GitHub Actions den erfolgreichen Workflow **Flutter CI** öffnen.
+2. Artefakt `wachbuch-internal-apks` laden.
+3. Die zu deinem Gerät passende APK auswählen:
+   - `arm64-v8a`: praktisch alle aktuellen Android-Geräte
+   - `armeabi-v7a`: ältere 32-Bit-Geräte
+   - `x86_64`: Emulatoren und wenige Spezialgeräte
+4. Den Hash aus `SHA256SUMS` prüfen.
+5. APK übertragen und installieren.
+6. Die App **Wachbuch Internal** starten.
 
-```bash
-cd clients/wachbuch-mobile   # bzw. Clone von Wachbuch-Client
-flutter pub get
-flutter test
-flutter build apk --release
-```
-
-Ausgabe:
-
-`build/app/outputs/flutter-apk/app-release.apk`
-
-Optional kopieren:
+Beispiel für die Hashprüfung:
 
 ```bash
-mkdir -p dist
-cp build/app/outputs/flutter-apk/app-release.apk dist/wachbuch-mobile.apk
+sha256sum -c SHA256SUMS
 ```
 
-Für LAN-HTTP-Tests (nur Entwicklung): `flutter build apk --debug` – Cleartext ist
-ausschließlich in debuggbaren Builds erlaubt.
+## Interne APKs selbst bauen
 
-### Signatur (FOSS-Sideload)
+```bash
+./scripts/build-apk.sh
+```
 
-Der Release-Build ist vorerst mit dem **Debug-Keystore** signiert, damit jede
-Person die APK ohne eigenen Release-Key bauen und sideloaden kann. Für den
-**Play Store** eigenen Upload-Key setzen (siehe PLAY-STORE.md).
+Das Skript führt Tests aus und erstellt obfuskierte, R8-optimierte Split-APKs:
 
-## Tablet & Smartphone
+```text
+dist/internal-apk/
+├── app-...-armeabi-v7a-...apk
+├── app-...-arm64-v8a-...apk
+├── app-...-x86_64-...apk
+└── SHA256SUMS
+```
 
-- **Smartphone:** untere `NavigationBar`
-- **Tablet (≥ 720 dp Breite):** seitliche `NavigationRail`, Übergaben als Grid
-- Portrait und Landscape; `supports-screens` für small–xlarge
+## Produktions-AAB bauen
 
-## Anmeldung
+Produktionsartefakte benötigen einen eigenen Upload-Key. Es gibt keinen
+Debug-Key-Fallback.
 
-| Situation | Vorgehen |
+```bash
+cp android/key.properties.example android/key.properties
+# private Werte eintragen
+BUILD_NAME=0.5.2 BUILD_NUMBER=11 ./scripts/build-aab.sh
+```
+
+Alternativ den geschützten GitHub-Workflow **Android Signed Release** verwenden.
+Details und Secret-Namen stehen in [`PLAY-STORE.md`](PLAY-STORE.md).
+
+## Erster Start
+
+1. Serveradresse eingeben oder QR-Code scannen.
+2. Die erkannte HTTPS-Adresse kontrollieren und bestätigen.
+3. Benutzername und Passwort verwenden; bei MFA einen App-Token einsetzen.
+4. Kamera nur beim QR-Scan freigeben.
+5. Ungefähren Standort nur für das automatische Tag-/Nacht-Design freigeben;
+   bei Ablehnung bleibt die App vollständig nutzbar.
+
+QR im Server-Web: **Mein Konto → App-Tokens**.
+
+## Deep Links
+
+| Variante | Schema |
 | --- | --- |
-| Ohne MFA | Benutzername + Passwort → `POST /api/v1/token/` |
-| Mit MFA | Im Web unter `/konto/api/` App-Token erzeugen und auf dem Login-Screen „App-Token“ wählen |
+| Production | `wachbuch://connect?url=…` |
+| Internal | `wachbuch-internal://connect?url=…` |
+
+Die App akzeptiert nur den Host `connect`, keinen zusätzlichen Pfad, genau einen
+`url`-Parameter und keine eingebetteten Zugangsdaten. Eine neue Serveradresse
+muss in der App bestätigt werden.
+
+## Sicherheitseigenschaften
+
+- kein Klartext-HTTP in nicht debuggbaren Builds
+- Token über Secure Storage beziehungsweise Android Keystore
+- keine Cloud-Sicherung und keine Geräteübertragung der App-Daten
+- kein Zugriff auf Kontakte, Medien, Mikrofon oder Hintergrundstandort
+- interne und produktive Installationen überschreiben einander nicht
+- Produktionsbuilds werden ohne privaten Schlüssel nicht signiert
 
 ## Troubleshooting
 
-| Problem | Hilfe |
+| Problem | Lösung |
 | --- | --- |
-| Cleartext / HTTP blockiert | Release braucht HTTPS; Debug-APK für LAN |
-| Kamera verweigert | Adresse manuell eingeben; Rationale erklärt den Zweck |
-| 403 MFA | App-Token statt Passwort |
-| 401 nach Update | Abmelden, Token neu erzeugen |
-| Installation blockiert | Unbekannte Apps für den Datei-Manager erlauben |
-
-## Quellcode
-
-- Client: `clients/wachbuch-mobile/` bzw. https://github.com/darkspike1988/Wachbuch-Client
-- Server: https://github.com/darkspike1988/Rettungswache-Wachbuch
+| APK lässt sich nicht installieren | passende ABI wählen und Installation aus dieser Quelle erlauben |
+| „App nicht installiert“ bei Update | Signatur muss zur bereits installierten Variante passen; gegebenenfalls Internal deinstallieren |
+| HTTP wird blockiert | für Internal/Release HTTPS verwenden; nur echter Debug-Build erlaubt LAN-HTTP |
+| Kamera verweigert | Serveradresse manuell eingeben |
+| Standort verweigert | Systemtheme wird verwendet |
+| 403 bei MFA | App-Token statt Passwort verwenden |
+| 401 nach Tokenablauf | erneut anmelden beziehungsweise Token erneuern |
