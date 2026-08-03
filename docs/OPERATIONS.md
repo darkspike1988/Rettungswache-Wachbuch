@@ -118,6 +118,52 @@ Das Skript setzt neue Zufallswerte in PostgreSQL und `.env`, startet `web` und
 Owner-Passwort (`POSTGRES_PASSWORD`) nur mit Dump/Restore und Neuinitialisierung
 rotieren.
 
+## Krypto-Schluesselrotation (TOTP-Secrets)
+
+Die TOTP-Geheimnisse liegen AES-256-GCM-verschluesselt in der Datenbank. Der
+Master-Key stammt Vorgabe aus `HKDF(SECRET_KEY)`. Da eine `SECRET_KEY`-Rotation
+damit alle Umschlaege unlesbar machen wuerde, kann der Master-Key unabhaengig
+von `SECRET_KEY` konfiguriert und rotiert werden:
+
+- `CRYPTO_MASTER_KEY` – 32 Byte hex-codiert (z. B. `openssl rand -hex 32`).
+  Wenn gesetzt, ersetzt er die `HKDF(SECRET_KEY)`-Ableitung. Wenn nicht gesetzt,
+  gilt das alte Verfahren (Rueckwaertskompatibilitaet).
+- `CRYPTO_PREVIOUS_MASTER_KEY` – optionaler Fallback-Schluessel, der waehrend
+  eines Rotationsfensters **zusätzlich** zum Entschluesseln akzeptiert wird.
+  Er erlaubt das Betreiben der App mit dem neuen Key, waehrend noch alte
+  Umschlaege in der Datenbank stehen.
+
+### Rotationsablauf
+
+```bash
+# 0. Backup erstellen und App weiterhin mit dem ALTEN Key betreiben.
+
+# 1. Den aktuell aktiven Master-Key als Hex anzeigen (fuer den Fallback):
+docker compose exec -T web python manage.py rotate_crypto_key --show-current-key
+#   -> <alter-key-hex>
+
+# 2. Neuen Key erzeugen:
+NEW_KEY=$(openssl rand -hex 32)
+
+# 3. In .env eintragen (app danach neu starten):
+#    CRYPTO_MASTER_KEY=$NEW_KEY
+#    CRYPTO_PREVIOUS_MASTER_KEY=<alter-key-hex aus Schritt 1>
+
+# 4. App neu starten, dann Re-Verschluesselung testen und ausfuehren:
+docker compose up -d web
+docker compose exec -T web python manage.py rotate_crypto_key --dry-run
+docker compose exec -T web python manage.py rotate_crypto_key
+
+# 5. Nach erfolgreicher Rotation CRYPTO_PREVIOUS_MASTER_KEY aus .env entfernen
+#    und erneut neu starten. Healthcheck und TOTP-Anmeldung verifizieren.
+```
+
+`--dry-run` aendert nichts, zaehlt aber wie viele Datensaetze neu
+verschluesselt wuerden. Waehrend des Rotationsfensters (Schritt 3–4) kann die
+App sowohl alte als auch neue Umschlaege lesen, sodass TOTP-Anmeldungen nicht
+ausfallen. Erst nach Entfernen von `CRYPTO_PREVIOUS_MASTER_KEY` (Schritt 5)
+akzeptiert das System ausschliesslich den neuen Key.
+
 ## Versionierung und Updates
 
 Canonical Version steht in `core/version.py` und kann mit `APP_VERSION` in `.env`

@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from io import StringIO
 from unittest.mock import patch
 import json
 
@@ -440,6 +441,42 @@ class StationTaskBoardTests(PilotTestCase):
         self.station.save(update_fields=["tasks_enabled"])
         self.assertEqual(self.client.get(reverse("tasks_today")).status_code, 404)
         self.assertNotContains(self.client.get(reverse("more")), "Tagesaufgaben")
+
+    def _toggle(self, next_value):
+        self.client.get(reverse("tasks_today"))
+        task = StationTask.objects.get(station=self.station, title="Fahrzeugcheck")
+        return self.client.post(reverse("task_toggle", args=[task.pk]), {
+            "tag": timezone.localdate().isoformat(),
+            "erledigt": "1",
+            "next": next_value,
+        })
+
+    def test_task_toggle_accepts_safe_local_next_url(self):
+        safe = reverse("tasks_week")
+        self.assertRedirects(self._toggle(safe), safe)
+
+    def test_task_toggle_rejects_external_next_url(self):
+        self.assertRedirects(
+            self._toggle("https://evil.example.com/"),
+            reverse("tasks_today"),
+            fetch_redirect_response=False,
+        )
+
+    def test_task_toggle_rejects_scheme_relative_next_url(self):
+        self.assertRedirects(
+            self._toggle("//evil.example.com"),
+            reverse("tasks_today"),
+            fetch_redirect_response=False,
+        )
+
+    def test_task_toggle_defaults_when_next_missing(self):
+        self.client.get(reverse("tasks_today"))
+        task = StationTask.objects.get(station=self.station, title="Fahrzeugcheck")
+        response = self.client.post(reverse("task_toggle", args=[task.pk]), {
+            "tag": timezone.localdate().isoformat(),
+            "erledigt": "1",
+        })
+        self.assertRedirects(response, reverse("tasks_today"))
 
 
 class BirthdayAndCoffeeTests(PilotTestCase):
@@ -1716,6 +1753,126 @@ class CryptoAtRestTests(TestCase):
         user.set_password("another-correct-password-1")
         user.save()
         self.assertEqual(identify_hasher(user.password).algorithm, "argon2")
+
+
+class CryptoMasterKeyRotationTests(TestCase):
+    """Issue #20: SECRET_KEY-Rotation darf TOTP-Secrets nicht unlesbar machen."""
+
+    def setUp(self):
+        # Force HKDF(SECRET_KEY) baseline by clearing any env override.
+        self._env = patch.dict("os.environ", {}, clear=False)
+        self._env.__enter__()
+        self.addCleanup(self._env.__exit__, None, None, None)
+
+    def test_crypto_master_key_env_takes_precedence_over_secret_key(self):
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+        from .crypto_at_rest import derive_master_key, encrypt_secret
+
+        new_key = bytes.fromhex("ab" * 32)
+        plaintext = "JBSWY3DPEHPK3PXP"
+        with patch.dict("os.environ", {"CRYPTO_MASTER_KEY": new_key.hex()}):
+            self.assertEqual(derive_master_key(), new_key)
+            envelope = encrypt_secret(plaintext)
+            _, nonce_b64, data_b64 = envelope.split(".", 2)
+            import base64
+
+            nonce = base64.urlsafe_b64decode(nonce_b64 + "=" * (-len(nonce_b64) % 4))
+            blob = base64.urlsafe_b64decode(data_b64 + "=" * (-len(data_b64) % 4))
+            self.assertEqual(AESGCM(new_key).decrypt(nonce, blob, None).decode(), plaintext)
+
+    def test_decrypt_falls_back_to_previous_master_key(self):
+        from .crypto_at_rest import decrypt_secret, derive_master_key, encrypt_secret
+
+        old_key = bytes.fromhex("11" * 32)
+        new_key = bytes.fromhex("22" * 32)
+        with patch.dict("os.environ", {"CRYPTO_MASTER_KEY": old_key.hex()}):
+            envelope = encrypt_secret("SECRET-OLD-KEY")
+        # Rotate: now the active key changes; previous key keeps it readable.
+        with patch.dict(
+            "os.environ",
+            {"CRYPTO_MASTER_KEY": new_key.hex(), "CRYPTO_PREVIOUS_MASTER_KEY": old_key.hex()},
+        ):
+            self.assertEqual(decrypt_secret(envelope), "SECRET-OLD-KEY")
+
+    def test_decrypt_raises_when_no_key_matches(self):
+        from .crypto_at_rest import decrypt_secret, encrypt_secret
+
+        with patch.dict("os.environ", {"CRYPTO_MASTER_KEY": bytes.fromhex("11" * 32).hex()}):
+            envelope = encrypt_secret("LOST")
+        with patch.dict("os.environ", {"CRYPTO_MASTER_KEY": bytes.fromhex("22" * 32).hex()}):
+            with self.assertRaises(ValueError):
+                decrypt_secret(envelope)
+
+    def test_rotate_command_reencrypts_totp_secrets(self):
+        from .crypto_at_rest import derive_master_key, encrypt_secret, try_decrypt_with_key
+        from .mfa import create_pending_device, totp_plaintext
+        from .models import TotpDevice
+
+        old_key = bytes.fromhex("33" * 32)
+        new_key = bytes.fromhex("44" * 32)
+
+        user = User.objects.create_user("rot@example.org", password="correct-password-1")
+        # Create device encrypted with the OLD key.
+        with patch.dict("os.environ", {"CRYPTO_MASTER_KEY": old_key.hex()}):
+            device = create_pending_device(user)
+            plaintext_before = totp_plaintext(device)
+        self.assertIsNotNone(try_decrypt_with_key(device.secret, old_key))
+
+        # Rotate: active=new, previous=old.
+        with patch.dict(
+            "os.environ",
+            {"CRYPTO_MASTER_KEY": new_key.hex(), "CRYPTO_PREVIOUS_MASTER_KEY": old_key.hex()},
+        ):
+            out = StringIO()
+            call_command("rotate_crypto_key", stdout=out)
+            device.refresh_from_db()
+            # Now decryptable with the new (active) key only.
+            self.assertIsNotNone(try_decrypt_with_key(device.secret, new_key))
+            self.assertEqual(totp_plaintext(device), plaintext_before)
+        self.assertIn("Re-verschlüsselt: 1", out.getvalue())
+
+    def test_rotate_command_dry_run_makes_no_changes(self):
+        from .mfa import create_pending_device
+        from .models import TotpDevice
+
+        user = User.objects.create_user("dry@example.org", password="correct-password-1")
+        device = create_pending_device(user)
+        secret_before = device.secret
+
+        out = StringIO()
+        call_command("rotate_crypto_key", "--dry-run", stdout=out)
+        device.refresh_from_db()
+        self.assertEqual(device.secret, secret_before)
+        self.assertIn("keine Änderungen gespeichert", out.getvalue())
+
+    def test_rotate_command_show_current_key(self):
+        from .crypto_at_rest import derive_master_key
+
+        out = StringIO()
+        call_command("rotate_crypto_key", "--show-current-key", stdout=out)
+        self.assertEqual(out.getvalue().strip(), derive_master_key().hex())
+
+    def test_totp_verification_survives_rotation(self):
+        import pyotp
+
+        from .mfa import create_pending_device, totp_plaintext, verify_totp
+        from .models import TotpDevice
+
+        old_key = bytes.fromhex("55" * 32)
+        new_key = bytes.fromhex("66" * 32)
+
+        user = User.objects.create_user("totp@example.org", password="correct-password-1")
+        with patch.dict("os.environ", {"CRYPTO_MASTER_KEY": old_key.hex()}):
+            device = create_pending_device(user)
+            token = pyotp.TOTP(totp_plaintext(device)).now()
+        with patch.dict(
+            "os.environ",
+            {"CRYPTO_MASTER_KEY": new_key.hex(), "CRYPTO_PREVIOUS_MASTER_KEY": old_key.hex()},
+        ):
+            call_command("rotate_crypto_key", stdout=StringIO())
+            device.refresh_from_db()
+            self.assertTrue(verify_totp(device, token))
 
 
 class MigrationDefaultTests(TestCase):
