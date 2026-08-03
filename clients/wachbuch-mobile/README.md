@@ -27,6 +27,7 @@ QR im Server-Web: Mein Konto → App-Tokens.
 - Volltextsuche, kombinierbare Status-/Prioritätsfilter und lokalisierte Chips
 - antippbare Übergabekarten mit Detailansicht über `GET /api/v1/handovers/{id}/`
 - kompakte Status- und Dringlichkeitsübersicht auf dem Dashboard
+- Schnellzugriff auf aktivierte Module: Kalender (`/api/v1/kalender/`), Kaffeekasse (`/api/v1/kaffeekasse/`) und Checklisten (`/api/v1/checklisten/`)
 - Phone: Bottom-Navigation · Tablet: NavigationRail + Grid
 - Material Design 3 mit responsivem Smartphone-/Tablet-Layout
 - automatisches Tag-/Nacht-Design nach lokal berechnetem Sonnenaufgang und Sonnenuntergang

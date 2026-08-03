@@ -2,6 +2,26 @@
 
 Alle wesentlichen Änderungen an Wachbuch Mobile werden hier dokumentiert.
 
+## Unreleased – Module API (Kalender, Kaffeekasse, Checklisten)
+
+### Neu
+
+- `GET /api/v1/kalender/` – Wachenkalender mit Terminen (Titel, Beschreibung, Start/Ende, Ganztag, Ort).
+- `GET /api/v1/kaffeekasse/` – Kassenstand, Zahlungshinweise und letzte Buchungen (Ledger).
+- `GET /api/v1/checklisten/` – Checklisten mit Punkten und Abhak-Status.
+- `POST /api/v1/checklisten/{id}/abschluss/` – Checklisten serverseitig abschließen (append-only) mit optimistischer UI und Rollback bei Fehler.
+- Getypte Datenmodelle für die drei neuen Bereiche mit defensiver JSON-Serialisierung.
+- Schnellzugriff-Kacheln auf dem Übersicht-Dashboard, die nur für aktivierte Module erscheinen und per Navigator die jeweiligen Screens öffnen.
+- Responsive Material-3-Screens mit Ladefehler-/Leerzustand, `RefreshIndicator` und Fehler-Banner.
+- Bottom-Navigation (Phone) und NavigationRail (Tablet) bleiben erhalten; die neuen Screens werden zusätzlich über tappbare Kacheln erreichbar.
+
+### Tests
+
+- Modell-Tests (JSON-Serialisierung, Alias-Felder, fehlerhafte Eingaben).
+- API-Service-Tests mit Mock-Responses für alle vier Endpunkte.
+- Widget-Tests für die drei neuen Screens inkl. Abschluss- und Fehlerrollback-Flow.
+- Dashboard-Test für die Modul-Kacheln und die Navigation in die neuen Screens.
+
 ## Unreleased – Android Release Hardening
 
 ### Sicherheit und Auslieferung

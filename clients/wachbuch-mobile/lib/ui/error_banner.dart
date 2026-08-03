@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
 
 /// High-contrast error feedback with icon and live-region semantics.
 class ErrorBanner extends StatelessWidget {
@@ -12,7 +13,7 @@ class ErrorBanner extends StatelessWidget {
     return Semantics(
       container: true,
       liveRegion: true,
-      label: 'Fehler: $message',
+      label: AppLocalizations.of(context)!.errorSemanticsLabel(message),
       child: Material(
         color: scheme.errorContainer,
         shape: RoundedRectangleBorder(
