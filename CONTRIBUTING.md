@@ -31,6 +31,34 @@ Pull Requests sollen Zweck, Verhaltensaenderung, Tests und moegliche
 Datenschutz- oder Migrationsfolgen beschreiben. Neue Abhaengigkeiten brauchen
 eine Begruendung und kompatible Lizenz (Server und Client: AGPL-kompatibel).
 
+## Abhaengigkeiten und Hashes
+
+`requirements.txt` enthaelt die gepinnten Top-Level-Pakete. Zusaetzlich gibt es
+`requirements.lock`, einen mit Integritaets-Hashes (SHA256) angereicherten
+Lockfile fuer alle Pakete inklusive transitiver Abhaengigkeiten.
+
+### Hashes aktualisieren
+
+Nach jeder Aenderung an `requirements.txt` (oder regelmaessig fuer Updates) den
+Lockfile neu erzeugen und committen:
+
+```bash
+pip install pip-tools
+./scripts/update-hashes.sh
+git diff requirements.lock    # Review der neuen/entfernten Pakete und Hashes
+git add requirements.lock
+```
+
+`scripts/update-hashes.sh` ruft `pip-compile --generate-hashes` auf und
+ueberschreibt `requirements.lock`. Solange der Lockfile nur den Header-Kommentar
+und keine `--hash`-Zeilen enthaelt, ist der Hash-Check in CI deaktiviert. Sobald
+echte Eintraege vorhanden sind, prueft CI
+`pip install --require-hashes -r requirements.lock` und schlaegt fehl, wenn die
+hinterlegten Versionen/Hashes nicht zum Wheel auf PyPI passen. Damit werden
+unkontrollierte Aenderungen an transitiven Abhaengigkeiten sichtbar.
+
+`.gitignore` nicht anpassen – `requirements.lock` wird versioniert.
+
 ## Datenschutz
 
 Issues, Tests, Screenshots und Commits duerfen keine personenbezogenen Daten,

@@ -42,6 +42,19 @@ upload_offsite() {
     echo "Offsite-Upload nach $BACKUP_OFF_TARGET abgeschlossen ($payload)."
 }
 
+prune_old_dumps() {
+    retention_days="${BACKUP_RETENTION_DAYS:-7}"
+    if [ "$retention_days" -le 0 ] 2>/dev/null; then
+        echo "BACKUP_RETENTION_DAYS=$retention_days <= 0 - Pruning deaktiviert." >&2
+        return 0
+    fi
+    # find -mtime +N loescht Dateien, die strikt aelter als N*24h sind. Mit
+    # BACKUP_RETENTION_DAYS=7 ergibt +6 denselben Sieben-Tage-Ring wie bisher.
+    find /backups -type f \
+        \( -name 'rwsth-*.dump' -o -name 'rwsth-*.dump.gpg' \) \
+        -mtime "+$((retention_days - 1))" -delete
+}
+
 while true; do
     timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
     temporary="/backups/.rwsth-${timestamp}.dump.tmp"
@@ -56,6 +69,6 @@ while true; do
         --file "$temporary"
     mv "$temporary" "$target"
     upload_offsite "$target"
-    find /backups -type f \( -name 'rwsth-*.dump' -o -name 'rwsth-*.dump.gpg' \) -mtime +6 -delete
+    prune_old_dumps
     sleep 86400
 done

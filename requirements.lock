@@ -1,0 +1,13 @@
+#
+# requirements.lock – von pip-compile generierter Lockfile mit Integritaets-Hashes.
+#
+# Dieser Datei wird von `scripts/update-hashes.sh` (pip-compile --generate-hashes)
+# aus `requirements.txt` neu erzeugt. Sie ist nicht von Hand zu pflegen.
+#
+# Solange die Datei nur Kommentare (keine --hash-Zeilen) enthaelt, ist der
+# Hash-Check in CI deaktiviert. Sobald echte Eintraege vorhanden sind, prueft CI
+# mit `pip install --require-hashes -r requirements.lock`.
+#
+# Wie man die Lockdatei aktualisiert, steht in CONTRIBUTING.md
+# (Abschnitt "Abhaengigkeiten und Hashes").
+#

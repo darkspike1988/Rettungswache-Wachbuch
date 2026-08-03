@@ -158,6 +158,21 @@ sudo chown 70:70 backups
 `pg_dump` laeuft mit `--no-owner --no-acl --format custom`. Der lokale
 Sieben-Tage-Ring bleibt im Container-Volume `backups/`.
 
+#### Lokale Aufbewahrung (`BACKUP_RETENTION_DAYS`)
+
+- `BACKUP_RETENTION_DAYS` (Standard `7`): Anzahl Tage, die lokale Dumps
+  (`rwsth-*.dump` und `rwsth-*.dump.gpg`) behalten werden. Aeltere Dateien
+  werden nach jedem Lauf geloescht.
+- `0` deaktiviert das Pruning (alle lokalen Dumps bleiben stehen – nur fuer
+  Debug/Wartung, nicht fuer den Dauerbetrieb).
+- Der Wert gilt **nur lokal** im `backups/`-Volume; der Offsite-Upload
+  (`BACKUP_OFF_TARGET`) und die Verschluesselung sind davon unberuehrt.
+
+```bash
+# in .env – z. B. 14 Tage lokal behalten
+BACKUP_RETENTION_DAYS=14
+```
+
 ### Offsite-Verschluesselung
 
 Wenn `BACKUP_ENCRYPT_REMOTE=true` gesetzt ist, wird jeder Dump vor dem

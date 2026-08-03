@@ -212,6 +212,7 @@ services:
       BACKUP_ENCRYPT_REMOTE: ${BACKUP_ENCRYPT_REMOTE:-false}
       BACKUP_GPG_RECIPIENT: ${BACKUP_GPG_RECIPIENT:-}
       BACKUP_OFF_TARGET: ${BACKUP_OFF_TARGET:-}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
     depends_on:
       db:
         condition: service_healthy

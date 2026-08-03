@@ -19,6 +19,14 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r requirements.txt
+      - name: Verify dependency hashes (require-hashes)
+        run: |
+          if grep -q -- '--hash=' requirements.lock; then
+            echo "requirements.lock enthaelt Hashes - pruefe --require-hashes."
+            pip install --require-hashes -r requirements.lock
+          else
+            echo "requirements.lock enthaelt noch keine Hashes - Hash-Check uebersprungen (siehe CONTRIBUTING.md)."
+          fi
       - name: Compile Python sources
         run: python -m compileall -q config core
       - name: Check JavaScript syntax
