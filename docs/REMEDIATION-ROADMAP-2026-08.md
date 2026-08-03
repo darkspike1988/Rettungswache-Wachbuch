@@ -41,7 +41,7 @@ erzeugt. Das Inline-Skript wurde entfernt.
 **Dateien:** `templates/core/secure_mail_inbox.html`,
 `core/static/core/json_data.js`, `templates/base.html`.
 
-### [~] R-002 Sichere JSON-Einbettung
+### [x] R-002 Sichere JSON-Einbettung
 
 **Problem:** `|safe` in JSON-Scriptbloecken ermoeglichte HTML-/Stored-XSS-Risiken.
 
@@ -55,12 +55,12 @@ Context-Werten wird ohne HTML-Parsing hergestellt.
 - kein `innerHTML` fuer Benutzer-, Nachrichten- oder Empfaengerdaten
 - Testdaten mit `</script><img src=x onerror=alert(1)>` bleiben Text/JSON
 
-### [~] R-003 Sicherheitsregressionstests
+### [x] R-003 Sicherheitsregressionstests
 
 **Umsetzung:** `core/test_security_regressions.py` prueft JSON-Sinks, CSP,
 Script-Reihenfolge, Navigation und Redirect-Schutz.
 
-**Abnahme:** normaler Django-Testlauf ist gruen.
+**Abnahme:** Django- und Docker-CI auf Commit `6af6689` (Run 59) gruen.
 
 ## Wave 1 – Anwendung und UX
 
@@ -81,9 +81,9 @@ Wiedereroeffnung sperrt die Aufgabenzeile, auch wenn noch keine Completion exist
 **Abnahme:** parallele Erstaufrufe erzeugen eine Standardvorlage; paralleles
 Abhaken erzeugt maximal einen Abschluss und keinen 500-Fehler.
 
-### [~] R-006 Scheme-relative Redirects blockieren
+### [x] R-006 Scheme-relative Redirects blockieren
 
-**Umsetzung:** Security-Middleware ersetzt `Location: //...` durch `/`.
+**Umsetzung:** Security-Middleware ersetzt `Location: //...` durch `/`; Regressionstest und CI sind gruen.
 
 **Folgearbeit:** Direkte Zielvalidierung mit `url_has_allowed_host_and_scheme`
 bei jeder nutzerbeeinflussten Weiterleitung bleibt bevorzugt, sobald die betroffene
