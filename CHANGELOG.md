@@ -6,6 +6,10 @@
   `wero_link`, `iban`, `bic`, `payment_note` in den Stationseinstellungen;
   Anzeige als Links (`target="_blank" rel="noopener"`), kopierbare IBAN und
   Datenschutzhinweis auf der Kaffeeseite; HTTPS-/IBAN-/BIC-Validierung
+- Krypto-Schlüsselrotation: optionaler `CRYPTO_MASTER_KEY` (Hex, 32 Byte)
+  entkoppelt die TOTP-Verschlüsselung von `SECRET_KEY`; neuer Management-Befehl
+  `rotate_crypto_key` re-verschlüsselt alle TOTP-Secrets, `CRYPTO_PREVIOUS_MASTER_KEY`
+  sichert das Migrationsfenster (#20)
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 
