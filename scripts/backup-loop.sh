@@ -3,6 +3,45 @@ set -eu
 
 mkdir -p /backups
 
+encrypt_dump() {
+    input="$1"
+    output="$2"
+    if [ -z "${BACKUP_GPG_RECIPIENT:-}" ]; then
+        echo "BACKUP_ENCRYPT_REMOTE=true erfordert BACKUP_GPG_RECIPIENT." >&2
+        exit 1
+    fi
+    gpg --batch --yes --trust-model always \
+        --compress-algo none \
+        --cipher-algo AES256 \
+        --recipient "$BACKUP_GPG_RECIPIENT" \
+        --output "$output" \
+        --encrypt "$input"
+}
+
+upload_offsite() {
+    dump_path="$1"
+    payload="$dump_path"
+    encrypted_path="${dump_path}.gpg"
+    if [ "${BACKUP_ENCRYPT_REMOTE:-false}" = "true" ]; then
+        encrypt_dump "$dump_path" "$encrypted_path"
+        payload="$encrypted_path"
+    fi
+    if [ -z "${BACKUP_OFF_TARGET:-}" ]; then
+        echo "Kein BACKUP_OFF_TARGET gesetzt - ueberspringe Offsite-Upload." >&2
+        return 0
+    fi
+    case "$BACKUP_OFF_TARGET" in
+        file://*)
+            cp "$payload" "${BACKUP_OFF_TARGET#file://}"
+            ;;
+        *)
+            echo "Unbekanntes BACKUP_OFF_TARGET-Schema: $BACKUP_OFF_TARGET" >&2
+            exit 1
+            ;;
+    esac
+    echo "Offsite-Upload nach $BACKUP_OFF_TARGET abgeschlossen ($payload)."
+}
+
 while true; do
     timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
     temporary="/backups/.rwsth-${timestamp}.dump.tmp"
@@ -16,6 +55,7 @@ while true; do
         --no-acl \
         --file "$temporary"
     mv "$temporary" "$target"
-    find /backups -type f -name 'rwsth-*.dump' -mtime +6 -delete
+    upload_offsite "$target"
+    find /backups -type f \( -name 'rwsth-*.dump' -o -name 'rwsth-*.dump.gpg' \) -mtime +6 -delete
     sleep 86400
 done

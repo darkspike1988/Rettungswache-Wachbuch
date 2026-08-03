@@ -2080,3 +2080,120 @@ class DemoModeTests(TestCase):
         with override_settings(DEBUG=True, DEMO_MODE=False):
             call_command("load_demo_data", force=True)
         self.assertTrue(User.objects.filter(username="demo-admin").exists())
+
+
+class DatabaseRoleLeastPrivilegeTests(TestCase):
+    """Stellt sicher, dass die Backup-Rolle nur Leserechte bekommt (R-010)."""
+
+    def _run_grant(self, env, executed):
+        env_patcher = patch.dict(
+            "os.environ",
+            {
+                "APP_DB_USER": "rwsth_app",
+                "FEED_DB_USER": "rwsth_feed",
+                "BACKUP_DB_USER": "rwsth_backup",
+                "POSTGRES_USER": "rwsth_owner",
+                "POSTGRES_DB": "rwsth",
+                **env,
+            },
+        )
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
+
+        class _CollectingCursor:
+            def __init__(self):
+                self.statements = []
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, statement):
+                executed.append(statement)
+
+        with patch("core.management.commands.grant_database_access.connection.cursor") as cursor_factory:
+            cursor_factory.return_value = _CollectingCursor()
+            call_command("grant_database_access")
+        return executed
+
+    def test_backup_role_receives_only_select_on_public_tables(self):
+        executed = self._run_grant({}, [])
+        self.assertTrue(
+            any(
+                statement.startswith("GRANT SELECT ON ALL TABLES IN SCHEMA public TO rwsth_backup")
+                for statement in executed
+            ),
+            executed,
+        )
+        self.assertTrue(
+            any("GRANT pg_read_all_data TO rwsth_backup" in statement for statement in executed),
+            executed,
+        )
+        self.assertTrue(
+            any(
+                "ALTER DEFAULT PRIVILEGES FOR ROLE rwsth_owner IN SCHEMA public "
+                "GRANT SELECT ON TABLES TO rwsth_backup" == statement
+                for statement in executed
+            ),
+            executed,
+        )
+        for forbidden in ("INSERT", "UPDATE", "DELETE"):
+            self.assertFalse(
+                any(
+                    f"GRANT {forbidden}" in statement and "TO rwsth_backup" in statement
+                    for statement in executed
+                ),
+                f"Backup-Rolle darf kein {forbidden} bekommen: {executed}",
+            )
+
+    def test_app_role_retains_readwrite_except_append_only_tables(self):
+        executed = self._run_grant({}, [])
+        self.assertTrue(
+            any(
+                statement
+                == "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO rwsth_app"
+                for statement in executed
+            ),
+            executed,
+        )
+        self.assertTrue(
+            any(
+                statement
+                == "REVOKE UPDATE, DELETE ON core_coffeeentry, core_auditevent, core_handoverrevision, "
+                "core_checklistcompletion FROM rwsth_app"
+                for statement in executed
+            ),
+            executed,
+        )
+
+    def test_backup_role_privilege_assertions_match_intent(self):
+        """Dokumentiert die in der Roadmap hinterlegten harten Abnahmebedingungen."""
+        from django.db import connection
+
+        vendor = connection.vendor
+        if vendor != "postgresql":
+            self.skipTest(
+                "Live-Privileg-Pruefung nur gegen PostgreSQL aussagekraeftig; "
+                f"vendor={vendor}."
+            )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM information_schema.roles WHERE role_name = 'rwsth_backup'"
+            )
+            row = cursor.fetchone()
+        if not row:
+            self.skipTest("Backup-Rolle ist nur in der PostgreSQL-Live-Umgebung vorhanden.")
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT has_table_privilege('rwsth_backup', 'core_handoverentry', 'SELECT'),"
+                " has_table_privilege('rwsth_backup', 'core_handoverentry', 'INSERT'),"
+                " has_table_privilege('rwsth_backup', 'core_handoverentry', 'UPDATE'),"
+                " has_table_privilege('rwsth_backup', 'core_handoverentry', 'DELETE')"
+            )
+            select_priv, insert_priv, update_priv, delete_priv = cursor.fetchone()
+        self.assertTrue(select_priv)
+        self.assertFalse(insert_priv)
+        self.assertFalse(update_priv)
+        self.assertFalse(delete_priv)

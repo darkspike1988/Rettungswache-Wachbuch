@@ -83,17 +83,73 @@ leere Allowlist deaktiviert Abrufe absichtlich.
 
 ## Backup und Restore
 
-Der Backup-Container laeuft standardmaessig als PostgreSQL-UID/GID 70. Vor dem
-Start muss `./backups` fuer dieses Konto schreibbar sein. Abweichende Images
-koennen `BACKUP_UID` und `BACKUP_GID` in `.env` anpassen.
+### Rollenmodell (R-010, Least-Privilege)
+
+Die Datenbank unterscheidet vier Rollen mit klar getrennten Aufgaben:
+
+- `rwsth_owner` (entspricht `POSTGRES_USER`): ausschliesslich fuer Init,
+  Migration, manuelle Restore-Skripte und die Passwortrotation. Wird im
+  laufenden Betrieb von keinem dauerhaften Container benutzt.
+- `rwsth_app` (entspricht `APP_DB_USER`): Web- und Migrationscontainer. Volle
+  CRUD-Rechte auf das Schema, aber kein `UPDATE`/`DELETE` auf den
+  append-only-Tabellen `core_coffeeentry`, `core_auditevent`,
+  `core_handoverrevision` und `core_checklistcompletion`.
+- `rwsth_feed` (entspricht `FEED_DB_USER`): ausschliesslich `FeedSource`-
+  Status- und `FeedItem`-CRUD.
+- `rwsth_backup` (entspricht `BACKUP_DB_USER`): ausschliesslich `SELECT` plus
+  `pg_read_all_data`. Wird vom dauerhaften `backup`-Container fuer
+  `pg_dump` benutzt. Kann weder `INSERT`, `UPDATE` noch `DELETE` auf
+  Fach-Tabellen ausfuehren.
+
+### Tagesbackup
+
+Der `backup`-Container laeuft standardmaessig als PostgreSQL-UID/GID 70 und
+nutzt die `rwsth_backup`-Rolle. Vor dem Start muss `./backups` fuer dieses
+Konto schreibbar sein. Abweichende Images koennen `BACKUP_UID` und
+`BACKUP_GID` in `.env` anpassen.
 
 ```bash
 sudo chown 70:70 backups
-docker compose exec -T backup /bin/sh /backup/restore-test.sh
 ```
 
-Der Restore-Test erstellt kurzzeitig `rwsth_restore_test`, spielt den neuesten
-Dump ein, prueft Schluesseltabellen und entfernt die Testdatenbank wieder.
+`pg_dump` laeuft mit `--no-owner --no-acl --format custom`. Der lokale
+Sieben-Tage-Ring bleibt im Container-Volume `backups/`.
+
+### Offsite-Verschluesselung
+
+Wenn `BACKUP_ENCRYPT_REMOTE=true` gesetzt ist, wird jeder Dump vor dem
+Offsite-Upload symmetrisch mit GnuPG gegen `BACKUP_GPG_RECIPIENT`
+(AES-256, Empfaenger-Fingerprint oder E-Mail) verschluesselt. Der Klartext
+verlaesst den Container nie. `BACKUP_OFF_TARGET` akzeptiert `file://`-Ziele
+und ist die einzige Stelle, an der das verschluesselte Artefakt abgelegt
+wird. Eine leerer Wert fuehrt das lokale Backup weiter aus, unterdrueckt
+aber den Offsite-Schritt.
+
+```bash
+# in .env
+BACKUP_ENCRYPT_REMOTE=true
+BACKUP_GPG_RECIPIENT=ops-backup@example.org
+BACKUP_OFF_TARGET=file:///srv/wachbuch-offsite
+```
+
+### Restore-Test
+
+Der Restore-Test benoetigt Owner-Rechte (`createdb`/`dropdb`) und wird daher
+explizit mit `RESTORE_OWNER=1` und den Owner-Credentials gestartet. Der
+dauerhafte `backup`-Container fuehrt ihn **nicht** automatisch aus.
+
+```bash
+sudo chown 70:70 backups
+docker compose exec -T -e RESTORE_OWNER=1 \
+    -e PGUSER=rwsth_owner -e PGPASSWORD="$POSTGRES_PASSWORD" \
+    backup /bin/sh /backup/restore-test.sh
+```
+
+Der Restore-Test erstellt kurzzeitig `rwsth_restore_test`, spielt den
+neuesten Dump ein, prueft Schluesseltabellen und entfernt die Testdatenbank
+wieder. Mit der Backup-Rolle laesst sich stattdessen nur die Dump-Struktur
+verifizieren (`pg_restore --list`) und ein Read-only-SELECT auf
+`django_migrations`/`core_station` ausfuehren.
 
 ## Aufbewahrung (Retention)
 

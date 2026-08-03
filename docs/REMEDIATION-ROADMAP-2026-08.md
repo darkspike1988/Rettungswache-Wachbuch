@@ -112,15 +112,20 @@ Abbrechen, Fokusmanagement und „jetzt sperren“. `window.prompt` komplett ent
 
 ## Wave 2 – Betrieb und Lieferkette
 
-### [ ] R-010 Least-Privilege-Backuprolle
+### [~] R-010 Least-Privilege-Backuprolle
 
 **Plan:** dauerhaften Backup-Container vom DB-Owner trennen. Eigene Login-Rolle
 mit nur fuer `pg_dump` benoetigten Rechten; Owner-Zugang nur fuer kurzlebige,
 manuell gestartete Restore-/Migrationsschritte.
 
-**Abnahme:** Backup gelingt; Backuprolle kann keine Fachzeile aendern/loeschen;
-Restore-Test in isolierter DB ist gruen; Offsite-Ziel ist verschluesselt.
+**Umsetzung:** dauerhafte Rolle `rwsth_backup` mit ausschliesslich `SELECT` und
+`pg_read_all_data` auf das App-Schema. Der `backup`-Service verbindet sich mit
+dieser Rolle; der `web`-Service bleibt auf `rwsth_app`. Restore-Tests muessen
+explizit mit `docker compose run --rm -e RESTORE_OWNER=1` und Owner-Credentials
+gestartet werden, damit der dauerhafte Container keinen Owner-Zugang besitzt.
 
+**Abnahme:** Backup gelingt; Backuprolle kann keine Fachzeile aendern/loeschen;
+Restore-Test in isolierter DB ist gruen; Offsite-Ziel ist verschluessert.
 ### [ ] R-011 Gemeinsames Rate Limiting und Proxy-Vertrauen
 
 **Plan:** registrierungsbezogene Limits in Redis oder transaktionaler DB-Tabelle,
