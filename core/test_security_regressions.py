@@ -2,6 +2,7 @@ from pathlib import Path
 
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase
+from django.utils.html import json_script
 
 from .middleware import SecurityHeadersMiddleware
 
@@ -26,6 +27,13 @@ class TemplateSecurityRegressionTests(SimpleTestCase):
                 source = self.source(relative_path)
                 self.assertIn("|json_script:", source)
                 self.assertNotIn("|safe", source)
+
+    def test_json_script_escapes_script_tag_breakout(self):
+        payload = "</script><img src=x onerror=alert(1)>"
+        rendered = str(json_script(payload, "hostile-json"))
+        self.assertNotIn(payload, rendered)
+        self.assertIn("\\u003C/script\\u003E", rendered)
+        self.assertIn("\\u003Cimg", rendered)
 
     def test_secure_mail_has_no_executable_inline_script(self):
         source = self.source("templates/core/secure_mail_inbox.html")
