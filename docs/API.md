@@ -63,6 +63,7 @@ alle aktiven App-Tokens** des Kontos automatisch.
 | GET/POST | `/api/v1/kaffeekasse/` | Token + Scope | Kasse lesen / buchen (Modul) |
 | GET | `/api/v1/checklisten/` | Token + Scope | Checklisten (Modul) |
 | POST | `/api/v1/checklisten/<id>/erledigt/` | Token + Scope | Abschluss (append-only) |
+| POST | `/api/v1/checklisten/<id>/abschluss/` | Token + Scope | Alias von `/erledigt/` (Wachbuch-Client) |
 
 ### Scopes
 

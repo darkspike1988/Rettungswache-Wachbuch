@@ -1737,6 +1737,41 @@ class ApiUnifiedContractTests(PilotTestCase):
         self.assertEqual(html.status_code, 200)
         self.assertContains(html, "Fahrzeugcheck")
 
+    def test_checklist_abschluss_alias_matches_erledigt(self):
+        from .models import Checklist, ChecklistCompletion, ChecklistItem
+
+        raw = self._token(scopes=["write:checklists"])
+        self.station.checklists_enabled = True
+        self.station.save(update_fields=["checklists_enabled"])
+        checklist = Checklist.objects.create(
+            station=self.station,
+            title="Wachbuch-Client-Test",
+            is_active=True,
+        )
+        ChecklistItem.objects.create(checklist=checklist, text="Item", position=0)
+
+        done = self.client.post(
+            reverse("api_v1_checkliste_abschluss", args=[checklist.pk]),
+            data=json.dumps({"note": "Via /abschluss/ Alias"}),
+            content_type="application/json",
+            **self._auth(raw),
+        )
+        self.assertEqual(done.status_code, 201)
+        self.assertEqual(ChecklistCompletion.objects.filter(checklist=checklist).count(), 1)
+
+        erledigt_count = ChecklistCompletion.objects.filter(checklist=checklist).count()
+        erledigt = self.client.post(
+            reverse("api_v1_checkliste_erledigt", args=[checklist.pk]),
+            data=json.dumps({"note": "Via /erledigt/"}),
+            content_type="application/json",
+            **self._auth(raw),
+        )
+        self.assertEqual(erledigt.status_code, 201)
+        self.assertEqual(
+            ChecklistCompletion.objects.filter(checklist=checklist).count(),
+            erledigt_count + 1,
+        )
+
     def test_me_and_overview_require_read_me_scope(self):
         raw = self._token(scopes=["read:handovers"])
         me = self.client.get(reverse("api_v1_me"), **self._auth(raw))
