@@ -22,4 +22,5 @@ urlpatterns = [
     path("kaffeekasse/", views.coffee_api, name="api_v1_kaffeekasse"),
     path("checklisten/", views.checklists_api, name="api_v1_checklisten"),
     path("checklisten/<int:pk>/erledigt/", views.checklist_complete_api, name="api_v1_checkliste_erledigt"),
+    path("checklisten/<int:pk>/abschluss/", views.checklist_complete_api, name="api_v1_checkliste_abschluss"),
 ]
