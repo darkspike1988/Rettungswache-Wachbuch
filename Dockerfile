@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # --- Build: dependencies + collectstatic ---
-FROM python:3.13.14-slim-bookworm@sha256:9d7f287598e1a5a978c015ee176d8216435aaf335ed69ac3c38dd1bbb10e8d64 AS builder
+FROM python:3.14.6-slim-bookworm@sha256:86f975aca15cf04a40b399eebede9aea7c82eae084d1f1a0a6ef6bcaae871a30 AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -25,7 +25,7 @@ RUN SECRET_KEY=build-only-secret-key-not-used-at-runtime \
     python manage.py collectstatic --noinput
 
 # --- Runtime: slim image ---
-FROM python:3.13.14-slim-bookworm@sha256:9d7f287598e1a5a978c015ee176d8216435aaf335ed69ac3c38dd1bbb10e8d64 AS runtime
+FROM python:3.14.6-slim-bookworm@sha256:86f975aca15cf04a40b399eebede9aea7c82eae084d1f1a0a6ef6bcaae871a30 AS runtime
 
 LABEL org.opencontainers.image.title="Rettungswache-Wachbuch" \
       org.opencontainers.image.description="Selbst gehostetes Wachbuch fuer Rettungswachen" \
