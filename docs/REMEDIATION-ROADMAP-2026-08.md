@@ -23,7 +23,7 @@ Wave 4  Staerkeres E2EE-Vertrauensmodell
 
 ## Wave 0 – P0 Web-Sicherheit
 
-### [x] R-001 CSP-kompatible verschluesselte Post
+### [~] R-001 CSP-kompatible verschluesselte Post
 
 **Problem:** Die Empfaengerauswahl wurde durch ein Inline-Skript erzeugt, waehrend
 `script-src 'self'` Inline-Skripte blockiert.
@@ -41,7 +41,7 @@ erzeugt. Das Inline-Skript wurde entfernt.
 **Dateien:** `templates/core/secure_mail_inbox.html`,
 `core/static/core/json_data.js`, `templates/base.html`.
 
-### [x] R-002 Sichere JSON-Einbettung
+### [~] R-002 Sichere JSON-Einbettung
 
 **Problem:** `|safe` in JSON-Scriptbloecken ermoeglichte HTML-/Stored-XSS-Risiken.
 
@@ -55,7 +55,7 @@ Context-Werten wird ohne HTML-Parsing hergestellt.
 - kein `innerHTML` fuer Benutzer-, Nachrichten- oder Empfaengerdaten
 - Testdaten mit `</script><img src=x onerror=alert(1)>` bleiben Text/JSON
 
-### [x] R-003 Sicherheitsregressionstests
+### [~] R-003 Sicherheitsregressionstests
 
 **Umsetzung:** `core/test_security_regressions.py` prueft JSON-Sinks, CSP,
 Script-Reihenfolge, Navigation und Redirect-Schutz.
@@ -73,7 +73,7 @@ dass der Server generell keine Klartexte erlangen koenne.
 **Restgrenze:** Fingerprints, Key Transparency und unabhaengig signierte Clients
 sind R-020.
 
-### [x] R-005 Aufgaben-Race-Conditions schliessen
+### [~] R-005 Aufgaben-Race-Conditions schliessen
 
 **Umsetzung:** Initialisierung sperrt die stabile Stationszeile; Abschluss/
 Wiedereroeffnung sperrt die Aufgabenzeile, auch wenn noch keine Completion existiert.
@@ -81,7 +81,7 @@ Wiedereroeffnung sperrt die Aufgabenzeile, auch wenn noch keine Completion exist
 **Abnahme:** parallele Erstaufrufe erzeugen eine Standardvorlage; paralleles
 Abhaken erzeugt maximal einen Abschluss und keinen 500-Fehler.
 
-### [x] R-006 Scheme-relative Redirects blockieren
+### [~] R-006 Scheme-relative Redirects blockieren
 
 **Umsetzung:** Security-Middleware ersetzt `Location: //...` durch `/`.
 
@@ -89,13 +89,13 @@ Abhaken erzeugt maximal einen Abschluss und keinen 500-Fehler.
 bei jeder nutzerbeeinflussten Weiterleitung bleibt bevorzugt, sobald die betroffene
 View refaktoriert wird.
 
-### [x] R-007 Vier globale Navigationsziele
+### [~] R-007 Vier globale Navigationsziele
 
 **Umsetzung:** Mobile/desktop Hauptnavigation folgt wieder der Designregel
 `Uebersicht`, `Uebergaben`, `Kalender`, `Mehr`. Chat bleibt unter `Mehr` erreichbar;
 Chatseiten markieren `Mehr` als aktiv.
 
-### [x] R-008 Fokus und mobile Wochenansicht
+### [~] R-008 Fokus und mobile Wochenansicht
 
 **Umsetzung:** zweifarbiger Fokusindikator, Forced-Colors-Fallback, 44-Pixel-
 Chat-/Empfaengerziele und einspaltige Wochenliste unter 48 rem.
@@ -130,16 +130,18 @@ Aufbewahrung dokumentieren.
 **Abnahme:** mehrere Gunicorn-Worker teilen denselben Zaehler; gefaelschtes
 `X-Forwarded-For` umgeht das Limit nicht.
 
-### [ ] R-012 CI-/Supply-Chain-Gates
+### [~] R-012 CI-/Supply-Chain-Gates
 
-**Plan in getrennten kleinen PRs:**
+**Begonnen:** Python-Compile, JavaScript-Syntax und `check --deploy` wurden in den
+bestehenden CI-Workflow aufgenommen.
 
-1. `manage.py check --deploy` und Compile-Check
-2. Ruff Format/Lint mit dokumentierter Baseline
-3. Dependency-Audit und Container-Scan
-4. CodeQL/SAST und Secret Scan
-5. SBOM plus Build-Provenance
-6. Browser-Smoke-Test, CSP-Konsole und Axe-Core
+**Weitere Schritte in getrennten kleinen PRs:**
+
+1. Ruff Format/Lint mit dokumentierter Baseline
+2. Dependency-Audit und Container-Scan
+3. CodeQL/SAST und Secret Scan
+4. SBOM plus Build-Provenance
+5. Browser-Smoke-Test, CSP-Konsole und Axe-Core
 
 Actions und Images weiterhin auf unveraenderliche SHAs/Digests pinnen.
 
