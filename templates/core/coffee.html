@@ -6,6 +6,25 @@
   {% if can_book %}<a class="button primary" href="{% url 'coffee_create' %}">Buchung erfassen</a>{% endif %}
 </header>
 <div class="balance-row"><div><span>Mein Stand</span><strong>{{ own_euros|floatformat:2 }} €</strong></div>{% if can_book %}<div><span>Gesamtsaldo</span><strong>{{ total_euros|floatformat:2 }} €</strong></div>{% endif %}</div>
+{% if station.paypal_me_url or station.wero_link or station.iban or station.payment_note %}
+<section class="payment-hints" aria-label="Zahlungswege">
+  <h2>Einzahlen an die Gemeinschaftskasse</h2>
+  {% if station.payment_note %}<p class="payment-note">{{ station.payment_note }}</p>{% endif %}
+  <ul class="payment-options">
+    {% if station.paypal_me_url %}<li><a class="payment-link" href="{{ station.paypal_me_url }}" target="_blank" rel="noopener">PayPal.me öffnen</a></li>{% endif %}
+    {% if station.wero_link %}<li><a class="payment-link" href="{{ station.wero_link }}" target="_blank" rel="noopener">Wero öffnen</a></li>{% endif %}
+    {% if station.iban %}
+    <li>
+      <span class="iban-label">IBAN:</span>
+      <code class="iban-value" id="coffee-iban">{{ station.iban }}</code>
+      {% if station.bic %}<span class="iban-label">BIC:</span> <code>{{ station.bic }}</code>{% endif %}
+      <button class="copy-iban" type="button" data-target="coffee-iban" aria-label="IBAN kopieren">Kopieren</button>
+    </li>
+    {% endif %}
+  </ul>
+  <p class="payment-privacy">Diese Zahlungsdaten sind im Team oeffentlich sichtbar (Zweck: Gemeinschaftskasse). Es werden keine Transaktionsdaten Dritter gespeichert.</p>
+</section>
+{% endif %}
 <div class="table-wrap" tabindex="0" role="region" aria-label="Kassenbuch, horizontal scrollbar auf kleinen Bildschirmen">
   <table class="responsive-table">
     <caption>Kassenbuchungen</caption>
@@ -14,4 +33,21 @@
   </table>
 </div>
 {% include "core/pagination.html" %}
+{% if station.iban %}
+<script>
+document.addEventListener("click", function (event) {
+  var btn = event.target.closest && event.target.closest(".copy-iban");
+  if (!btn) return;
+  var el = document.getElementById(btn.dataset.target);
+  if (!el) return;
+  var text = el.textContent.trim().replace(/\s+/g, "");
+  navigator.clipboard.writeText(text).then(function () {
+    var old = btn.textContent;
+    btn.textContent = "Kopiert";
+    btn.classList.add("copied");
+    setTimeout(function () { btn.textContent = old; btn.classList.remove("copied"); }, 2000);
+  });
+});
+</script>
+{% endif %}
 {% endblock %}

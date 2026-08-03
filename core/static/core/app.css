@@ -487,6 +487,19 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .balance-row span { color: var(--muted); font-size: .9rem; }
 .balance-row strong { margin-top: .15rem; font-size: 1.5rem; }
 
+.payment-hints { margin-bottom: 1rem; padding: 1rem 1.25rem; background: var(--surface-soft); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+.payment-hints h2 { margin: 0 0 .5rem; font-size: 1.05rem; }
+.payment-hints .payment-note { margin: 0 0 .5rem; color: var(--text); }
+.payment-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.payment-options li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.payment-link { min-height: 44px; display: inline-flex; align-items: center; gap: .35rem; font-weight: 700; color: var(--accent-dark); }
+.iban-label { color: var(--muted); font-size: .85rem; font-weight: 700; }
+.iban-value, .payment-options code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+.copy-iban { min-height: 36px; padding: .35rem .75rem; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); font-weight: 700; cursor: pointer; }
+.copy-iban:hover { background: var(--bg-accent); }
+.copy-iban.copied { color: var(--success); border-color: var(--success); }
+.payment-privacy { margin: .75rem 0 0; color: var(--muted); font-size: .82rem; }
+
 .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
 .responsive-table { width: 100%; border-collapse: collapse; }
 .responsive-table caption { padding: .8rem 1rem; text-align: left; font-weight: 750; }

@@ -21,6 +21,11 @@ class Station(models.Model):
     chat_enabled = models.BooleanField(default=True, verbose_name="Wachenchat aktiviert")
     holidays_enabled = models.BooleanField(default=True, verbose_name="Feiertage (NRW) im Kalender")
     checklists_enabled = models.BooleanField(default=False, verbose_name="Checklisten aktiviert")
+    paypal_me_url = models.URLField(blank=True, default="", verbose_name="PayPal.me-Link")
+    wero_link = models.URLField(blank=True, default="", verbose_name="Wero-Link")
+    iban = models.CharField(max_length=34, blank=True, default="", verbose_name="IBAN")
+    bic = models.CharField(max_length=12, blank=True, default="", verbose_name="BIC")
+    payment_note = models.TextField(blank=True, default="", verbose_name="Zahlungshinweis")
 
     class Meta:
         ordering = ["name"]

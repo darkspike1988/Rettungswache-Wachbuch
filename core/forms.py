@@ -202,8 +202,51 @@ class StationSettingsForm(forms.ModelForm):
             "chat_enabled",
             "holidays_enabled",
             "checklists_enabled",
+            "paypal_me_url",
+            "wero_link",
+            "iban",
+            "bic",
+            "payment_note",
         ]
-        labels = {"name": "Name der Rettungswache"}
+        labels = {
+            "name": "Name der Rettungswache",
+            "paypal_me_url": "PayPal.me-Link",
+            "wero_link": "Wero-Link",
+            "iban": "IBAN",
+            "bic": "BIC",
+            "payment_note": "Zahlungshinweis",
+        }
+        help_texts = {
+            "paypal_me_url": "Vollstaendige https://paypal.me/…-URL.",
+            "wero_link": "Vollstaendige https://…-URL zum Wero-Profil.",
+            "iban": "Deutsche IBAN (DE + 20 Ziffern), nur fuer die Anzeige.",
+            "bic": "Optional, 8 oder 11 Zeichen.",
+            "payment_note": "Freitext, z. B. Verwendungszweck oder Ansprechpartner.",
+        }
+
+    def clean_paypal_me_url(self):
+        value = (self.cleaned_data.get("paypal_me_url") or "").strip()
+        if value and not value.startswith("https://"):
+            raise forms.ValidationError("PayPal.me-Links muessen mit https:// beginnen.")
+        return value
+
+    def clean_wero_link(self):
+        value = (self.cleaned_data.get("wero_link") or "").strip()
+        if value and not value.startswith("https://"):
+            raise forms.ValidationError("Wero-Links muessen mit https:// beginnen.")
+        return value
+
+    def clean_iban(self):
+        value = (self.cleaned_data.get("iban") or "").replace(" ", "").upper()
+        if value and not (value.startswith("DE") and len(value) == 22 and value[2:].isdigit()):
+            raise forms.ValidationError("Bitte eine gueltige deutsche IBAN (DE + 20 Ziffern) angeben.")
+        return value
+
+    def clean_bic(self):
+        value = (self.cleaned_data.get("bic") or "").replace(" ", "").upper()
+        if value and (not value.isalnum() or len(value) not in (8, 11)):
+            raise forms.ValidationError("BIC muss 8 oder 11 alphanumerische Zeichen haben.")
+        return value
 
 
 class RegistrationForm(forms.Form):
