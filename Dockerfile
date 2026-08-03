@@ -31,7 +31,7 @@ LABEL org.opencontainers.image.title="Rettungswache-Wachbuch" \
       org.opencontainers.image.description="Selbst gehostetes Wachbuch fuer Rettungswachen" \
       org.opencontainers.image.source="https://github.com/Darkspike1988/Rettungswache-Wachbuch" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later" \
-      org.opencontainers.image.version="0.14.2"
+      org.opencontainers.image.version="0.15.0"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
