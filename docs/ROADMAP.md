@@ -1,19 +1,40 @@
 # Roadmap
 
-Stand: 31. Juli 2026.
+Stand: 3. August 2026.
 
-## Erreicht (Basis bis 0.11.0)
+## Sicherheits-, Betriebs- und Design-Remediation
+
+Die verbindliche Folgeplanung aus der Review vom 3. August 2026 steht in
+[`REMEDIATION-ROADMAP-2026-08.md`](REMEDIATION-ROADMAP-2026-08.md).
+Arbeitsregeln fuer weitere Coding-Agenten stehen in [`../AGENTS.md`](../AGENTS.md).
+
+Aktueller Stand der ersten Welle:
+
+- [x] CSP-kompatible Empfaengerauswahl fuer verschluesselte Post
+- [x] sichere JSON-Einbettung ohne `|safe`/`innerHTML`
+- [x] Sicherheitsregressionstests
+- [x] E2EE-Texte an das reale Vertrauensmodell angepasst
+- [x] Race-Condition-Schutz fuer Tagesaufgaben
+- [x] scheme-relative Redirects blockiert
+- [x] vierteilige Hauptnavigation, Fokus- und mobile Wochenansicht verbessert
+- [ ] Least-Privilege-Backuprolle
+- [ ] gemeinsames Rate Limiting hinter explizit vertrautem Proxy
+- [ ] CI-/Supply-Chain-Gates, Push-Outbox und zugaenglicher Entsperrdialog
+- [ ] externe ASVS-, Penetrations-, Last-, Restore- und Accessibility-Abnahme
+
+## Erreicht (Basis bis 0.14.2)
 
 - Docker, lokaler Login, Rollen, Uebergaben, Tagesaufgaben, Geburtstage, Kasse-Ledger
 - PWA, oeffentliche Startseite, persoenlicher Bereich, Wachenchat
 - Master-Admin legt Nutzer an/gibt frei; optionale Selbstregistrierung
 - Profilbild, Passwort und Zwei-Faktor im persoenlichen Bereich
-- E2EE fuer Wachenchat, private Chats und interne Post (Admin sieht keine Klartexte)
+- clientseitig verschluesselte Speicherung fuer Wachenchat, private Chats und
+  interne Post; Webclient und Server bleiben Teil des Vertrauensmodells
 - Krypto an BSI TR-02102 angelehnt (AES-256-GCM, ECDH P-256, Argon2id, TLS 1.3)
 - **API-Fundament** `/api/v1/` mit App-Tokens fuer Mobile-Clients
 - **AGPL Flutter-Client** https://github.com/darkspike1988/Wachbuch-Client (Spiegel `clients/wachbuch-mobile/`)
 - **Android-APK** sideloadbar (Phone/Tablet-Layout, FOSS-Build)
-- Mobile-Onboarding: Server-Adresse/QR → Login; Play-Richtlinien-Doku; Repos aufeinander abgestimmt
+- Mobile-Onboarding: Server-Adresse/QR -> Login; Play-Richtlinien-Doku; Repos aufeinander abgestimmt
 - optionale MFA (TOTP/Passkeys), Web-Push, Wachen-ICS-Abos, Retention, Audit-Diffs
 - gesetzliche Feiertage NRW im fortlaufenden Kalender/ICS (`holidays_enabled`)
 - Compliance- und ASVS-L2-Matrix dokumentiert
@@ -21,7 +42,8 @@ Stand: 31. Juli 2026.
 ## Naechste Fachbausteine (Fahrplan)
 
 Priorisierte Umsetzung der noch offenen Wuensche. Keine Kalenderzeit-Schaetzung;
-Reihenfolge nach Nutzen und Abhaengigkeiten.
+Reihenfolge nach Nutzen und Abhaengigkeiten. Sicherheits- und Betriebsblocker aus
+der Remediation-Roadmap haben Vorrang vor neuen Fachmodulen.
 
 ### 1. Kaffeekasse: Zahlungsweg-Hinweise (PayPal.me, Wero, IBAN)
 
@@ -48,8 +70,8 @@ ohne Zahlungsabwicklung oder Gebuehrenlogik im Produkt.
 | 2.0 | **Feiertage NRW** im fortlaufenden Kalender + ICS (Modul `holidays_enabled`) – erledigt in 0.6.1 |
 | 2.1 | Recherche/Freigabe der offiziellen Muell-Quelle (AbfallNavi / RegioIT-iCal) |
 | 2.2 | Stationsfelder: Gemeinde/Ort, Strasse bzw. Quellen-ID, gewaehlte Fraktionen |
-| 2.3 | Admin-UI: Auswahl Ort → Strasse/Standort |
-| 2.4 | Sync → Abfuhren im selben fortlaufenden Kalender/ICS |
+| 2.3 | Admin-UI: Auswahl Ort -> Strasse/Standort |
+| 2.4 | Sync -> Abfuhren im selben fortlaufenden Kalender/ICS |
 | 2.5 | Token-Abo analog Wachenkalender |
 | 2.6 | Dashboard: naechste Abfuhren; Kennzeichnung externe Quelle |
 
@@ -59,13 +81,16 @@ pro Station. Feiertage sind unabhaengig davon nutzbar.
 ### 3. Empfohlene Reihenfolge
 
 ```text
+0. Review-Remediation Wave 0-2
 1. Kaffeekasse-Zahlungshinweise
 2. Feiertage im fortlaufenden Kalender   (umgesetzt)
 3. Muellkalender: manueller ICS-URL-Fallback je Station
 4. Muellkalender: Ort/Strasse-Auswahl Kreis GT + Sync
-5. API v1 / AGPL-Client ausbauen (E2EE-Chat über API, Stores/F-Droid; Schreiben für Übergaben/Kalender/Kasse/Checklisten ist in 0.14)
+5. API v1 / AGPL-Client ausbauen
 6. Feinschliff UX (Dashboard, Kopieren-Buttons)
+7. Review-Remediation Wave 3 und formale Produktionsfreigabe
 ```
+
 ### 4. Bewusst weiterhin ausserhalb
 
 - Patientendaten, Einsatz-/Alarmierung, Dienstplanung
@@ -78,20 +103,22 @@ pro Station. Feiertage sind unabhaengig davon nutzbar.
 
 - reale Arbeitsablaeufe mit Testdaten
 - MFA/Passkeys und Push im Team erproben
-- ASVS-Matrix abhaken; Backup/Restore und Updates testen
-- Fachbausteine 1–2 parallel oder direkt nach Stabilisierung
+- Remediation Wave 0–2 und ASVS-Matrix abarbeiten
+- Backup/Restore und Updates testen
 
 ## Phase 2 - formaler Pilot
 
 - Datenschutz-/Mitbestimmung, MFA-Pflicht ggf. aktivieren
 - Audit-Export, Barrierearmut / Wachenterminals
 - Muellkalender-Quelle schriftlich freigeben
-- erste AGPL-Mobile-Clients gegen `/api/v1/` (Lesen, spaeter Schreiben)
+- erste AGPL-Mobile-Clients gegen `/api/v1/`
 
 ## Phase 3 - Produktion
 
+- Remediation Wave 3
 - unabhaengige ASVS-L2-Pruefung und Lasttest
 - Go-live-Checkliste; erst danach oeffentlicher DNS-Name
 
 Siehe auch [`AUDIT-2026-07.md`](AUDIT-2026-07.md), [`COMPLIANCE.md`](COMPLIANCE.md),
-[`ASVS-L2.md`](ASVS-L2.md).
+[`ASVS-L2.md`](ASVS-L2.md) und
+[`REMEDIATION-ROADMAP-2026-08.md`](REMEDIATION-ROADMAP-2026-08.md).
