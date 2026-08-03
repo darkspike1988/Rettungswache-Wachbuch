@@ -4,6 +4,14 @@ class SecurityHeadersMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
+
+        # Scheme-relative redirects such as //example.org are interpreted as
+        # external destinations by browsers. The Wachbuch has no intentional
+        # cross-origin redirects, so fail closed to the local root.
+        location = response.headers.get("Location")
+        if location and location.startswith("//"):
+            response.headers["Location"] = "/"
+
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; img-src 'self' data:; style-src 'self'; "
             "script-src 'self'; font-src 'self'; connect-src 'self' https:; "
