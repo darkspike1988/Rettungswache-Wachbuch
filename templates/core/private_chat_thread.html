@@ -5,7 +5,7 @@
 <header class="page-heading narrow">
   <p class="context-line">Privat · E2EE</p>
   <h1>{{ other.first_name|default:other.username }}</h1>
-  <p class="lead">Nur ihr beide habt Schlüsselumschläge. Der Master-Admin kann diesen Verlauf nicht einsehen.</p>
+  <p class="lead">Der Browser verschlüsselt den Verlauf für euch beide. Die Datenbank speichert Ciphertext; ausgelieferter Webclient und Server bleiben Teil des Vertrauensmodells.</p>
 </header>
 <nav class="chat-tabs" aria-label="Nachrichtenbereiche">
   <a href="{% url 'chat' %}">Wache</a>
@@ -17,8 +17,8 @@
 {% else %}
 <section class="chat-thread" data-e2ee-private data-viewer-id="{{ viewer_id }}">
   <p class="hint" data-crypto-status hidden></p>
-  <script type="application/json" data-feed-json>{{ feed_json|safe }}</script>
-  <script type="application/json" data-members-json>{{ peer_keys_json|safe }}</script>
+  {{ feed_json|json_script:"private-feed-json" }}
+  {{ peer_keys_json|json_script:"private-members-json" }}
   {% for item in feed %}
     <article class="chat-bubble {% if item.is_own %}is-own{% endif %}">
       <div class="chat-avatar" aria-hidden="true"><span>{{ other_initials }}</span></div>
