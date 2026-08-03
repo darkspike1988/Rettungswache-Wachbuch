@@ -19,6 +19,8 @@ services:
       APP_DB_PASSWORD: ${APP_DB_PASSWORD}
       FEED_DB_USER: ${FEED_DB_USER}
       FEED_DB_PASSWORD: ${FEED_DB_PASSWORD}
+      BACKUP_DB_USER: ${BACKUP_DB_USER}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -50,6 +52,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       APP_DB_USER: ${APP_DB_USER}
       FEED_DB_USER: ${FEED_DB_USER}
+      BACKUP_DB_USER: ${BACKUP_DB_USER}
       DEFAULT_STATION_NAME: ${DEFAULT_STATION_NAME:-Rettungswache}
       DEFAULT_STATION_SLUG: ${DEFAULT_STATION_SLUG:-rettungswache}
       DEMO_MODE: ${DEMO_MODE:-false}
@@ -163,8 +166,11 @@ services:
     environment:
       PGHOST: db
       PGDATABASE: ${POSTGRES_DB}
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGUSER: ${BACKUP_DB_USER}
+      PGPASSWORD: ${BACKUP_DB_PASSWORD}
+      BACKUP_ENCRYPT_REMOTE: ${BACKUP_ENCRYPT_REMOTE:-false}
+      BACKUP_GPG_RECIPIENT: ${BACKUP_GPG_RECIPIENT:-}
+      BACKUP_OFF_TARGET: ${BACKUP_OFF_TARGET:-}
     depends_on:
       db:
         condition: service_healthy
