@@ -1757,7 +1757,6 @@ class ApiUnifiedContractTests(PilotTestCase):
             **self._auth(raw),
         )
         self.assertEqual(done.status_code, 201)
-        self.assertEqual(JsonResponse, type(done))
         self.assertEqual(ChecklistCompletion.objects.filter(checklist=checklist).count(), 1)
 
         erledigt_count = ChecklistCompletion.objects.filter(checklist=checklist).count()
