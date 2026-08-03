@@ -1,0 +1,149 @@
+{
+  "@@locale": "de",
+
+  "appName": "Wachbuch",
+  "errorSemanticsLabel": "Fehler: {message}",
+  "@errorSemanticsLabel": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+  "commonCancel": "Abbrechen",
+  "commonSwitch": "Wechseln",
+
+  "noticeSessionExpired": "Ihre Anmeldung ist abgelaufen. Bitte erneut anmelden.",
+  "noticeSessionEnded": "Sitzung beendet. Bitte erneut anmelden.",
+  "serverSwitchTitle": "Server wechseln?",
+  "serverSwitchMessage": "Ein Link möchte die App auf\n{url}\numstellen. Die aktuelle Anmeldung wird dabei beendet.",
+  "@serverSwitchMessage": {
+    "placeholders": {
+      "url": {"type": "String"}
+    }
+  },
+
+  "navOverview": "Übersicht",
+  "navHandovers": "Übergaben",
+  "navAccount": "Konto",
+  "refreshTooltip": "Aktualisieren",
+  "stationFallback": "Wachbuch",
+  "sessionExpiredError": "Anmeldung abgelaufen oder widerrufen.",
+
+  "overviewActiveHandovers": "Aktive Übergaben",
+  "metricOpen": "offen",
+  "metricInProgress": "in Bearbeitung",
+  "metricUrgent": "dringend",
+  "overviewModulesTitle": "Module dieser Wache",
+  "overviewModulesHint": "Ihre Wache und die verfügbaren Module werden automatisch aus Ihrem Benutzerkonto geladen.",
+  "moduleCalendarTitle": "Kalender",
+  "moduleCalendarSubtitle": "Wachentermine und Dienste",
+  "moduleCoffeeTitle": "Kaffeekasse",
+  "moduleCoffeeSubtitle": "Kassenstand und Buchungen",
+  "moduleChecklistsTitle": "Checklisten",
+  "moduleChecklistsSubtitle": "Punkte abhaken und abschließen",
+  "quickAccessTitle": "Schnellzugriff",
+
+  "handoverSearchHint": "Übergaben durchsuchen",
+  "handoverSearchClear": "Suche löschen",
+  "filterStatus": "Status",
+  "filterPriority": "Priorität",
+  "handoversCount": "{count} von {total} Übergaben",
+  "@handoversCount": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "filterSectionLabel": "{title} filtern",
+  "@filterSectionLabel": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "handoversNoneActive": "Keine aktiven Übergaben.",
+  "handoversNoneForFilter": "Keine Übergaben für diese Filter.",
+  "handoverUntitled": "ohne Titel",
+  "handoverFallback": "Übergabe",
+  "handoverOpenSemantics": "Übergabe {title} öffnen",
+  "@handoverOpenSemantics": {
+    "placeholders": {
+      "title": {"type": "String"}
+    }
+  },
+  "detailsLoadFailed": "Details konnten nicht geladen werden.",
+  "detailsNoFurtherInfo": "Keine weiteren Angaben.",
+  "detailsUpdatedAt": "Aktualisiert {timestamp}",
+  "@detailsUpdatedAt": {
+    "placeholders": {
+      "timestamp": {"type": "String"}
+    }
+  },
+  "detailsVersion": "Version {version}",
+  "@detailsVersion": {
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+
+  "accountLoggedInAs": "Angemeldet als",
+  "accountServer": "Server",
+  "accountLicense": "Lizenz",
+  "accountLicenseValue": "AGPL-3.0-or-later · Quellcode offen",
+  "accountRefreshProfile": "Profil aktualisieren",
+  "accountLogout": "Abmelden",
+  "accountChangeServer": "Anderen Server einrichten",
+
+  "kalenderTitle": "Kalender",
+  "kalenderEmpty": "Keine anstehenden Termine.",
+  "kalenderEntryFallback": "Termin",
+  "kalenderTimeTbd": "Zeit folgt",
+  "kalenderAllDay": "Ganztägig",
+
+  "kaffeekasseTitle": "Kaffeekasse",
+  "kaffeekasseBalanceLabel": "Aktueller Kassenstand",
+  "kaffeekasseNegative": "Die Kasse ist im Minus – bitte nachzahlen.",
+  "kaffeekasseLastTransactions": "Letzte Buchungen",
+  "kaffeekasseEmptyLedger": "Noch keine Buchungen.",
+  "kaffeekasseEntryFallback": "Buchung",
+
+  "checklistenTitle": "Checklisten",
+  "checklistenEmpty": "Keine Checklisten verfügbar.",
+  "checklistFallback": "Checkliste",
+  "checklistNoItems": "Keine Punkte.",
+  "checklistCompleteButton": "Checkliste abschließen",
+  "checklistItemFallback": "Punkt",
+  "checklistCompletedAt": "Abgeschlossen {timestamp}",
+  "@checklistCompletedAt": {
+    "placeholders": {
+      "timestamp": {"type": "String"}
+    }
+  },
+
+  "loginAppBarTitle": "Anmelden",
+  "loginChangeServer": "Server ändern",
+  "loginHeading": "Anmeldung",
+  "loginTokenLabel": "App-Token (wb_…)",
+  "loginTokenHelper": "Aus dem Web unter /konto/api/ – nötig bei MFA",
+  "loginTokenRequired": "Token erforderlich",
+  "loginUsername": "Benutzername",
+  "loginUsernameRequired": "Benutzername erforderlich",
+  "loginPassword": "Passwort",
+  "loginPasswordRequired": "Passwort erforderlich",
+  "loginShow": "Anzeigen",
+  "loginHide": "Verbergen",
+  "loginSubmit": "Anmelden",
+  "loginUseCredentials": "Mit Benutzername und Passwort",
+  "loginUseToken": "Stattdessen App-Token nutzen",
+  "loginTokenPasteHint": "Bitte App-Token einfügen (aus /konto/api/).",
+  "loginMfaHint": "Bei Zwei-Faktor: App-Token im Web unter Mein Konto → App-Tokens erzeugen.",
+  "loginInvalidInput": "Ungültige Eingabe.",
+
+  "setupServerAddressTitle": "Server-Adresse Ihrer Wache",
+  "setupHint": "Geben Sie die Adresse ein oder scannen Sie den QR-Code aus dem Web.",
+  "setupAddressLabel": "Adresse",
+  "setupAddressHint": "https://wache.example.org",
+  "setupScanQr": "QR-Code scannen",
+  "setupAddressRequired": "Adresse eingeben",
+  "setupAddressInvalid": "Ungültige Adresse",
+  "setupConfirm": "Bestätigen",
+  "setupFooter": "Play-Store-Client: Verbindung nur zu Ihrem selbst gehosteten Server. Produktion: HTTPS erforderlich."
+}

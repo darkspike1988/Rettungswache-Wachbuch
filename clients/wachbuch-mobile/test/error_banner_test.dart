@@ -3,12 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wachbuch_mobile/theme/app_theme.dart';
 import 'package:wachbuch_mobile/ui/error_banner.dart';
 
+import 'test_localization.dart';
+
 void main() {
   testWidgets('error banner is readable and announced as a live region', (
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         theme: buildWachbuchTheme(Brightness.light),
         home: const Scaffold(
           body: ErrorBanner(message: 'Verbindung fehlgeschlagen'),

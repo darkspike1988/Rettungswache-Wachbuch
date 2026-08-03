@@ -5,11 +5,42 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:wachbuch_mobile/models/checkliste.dart';
+import 'package:wachbuch_mobile/models/kaffeekasse.dart';
+import 'package:wachbuch_mobile/models/kalender_entry.dart';
 
 typedef WachbuchApiFactory = WachbuchApi Function(String baseUrl);
 
 WachbuchApi defaultWachbuchApiFactory(String baseUrl) {
   return WachbuchApi(baseUrl: baseUrl);
+}
+
+/// Retries [fn] on transient network failures (timeouts, connection errors,
+/// 5xx responses) with exponential backoff. Non-retryable errors are rethrown
+/// immediately.
+Future<T> _withRetry<T>(
+  Future<T> Function() fn, {
+  int maxAttempts = 3,
+  Duration initialDelay = const Duration(milliseconds: 500),
+}) async {
+  Duration delay = initialDelay;
+  for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } on TimeoutException {
+      if (attempt == maxAttempts) rethrow;
+    } on http.ClientException {
+      if (attempt == maxAttempts) rethrow;
+    } on ApiException catch (error) {
+      final isConnectionError = error.statusCode == 0;
+      final isServerError = error.statusCode >= 500;
+      if (!isConnectionError && !isServerError) rethrow;
+      if (attempt == maxAttempts) rethrow;
+    }
+    await Future.delayed(delay);
+    delay *= 2;
+  }
+  throw Exception('Unreachable');
 }
 
 class ApiException implements Exception {
@@ -114,12 +145,14 @@ class WachbuchApi {
 
   /// GET /api/v1/ – discovery without auth.
   Future<Map<String, dynamic>> discover() async {
-    final response = await _send(
-      _client.get(_uri('/api/v1/'), headers: _headers(auth: false)),
-    );
-    final body = _decode(response);
-    ensureWachbuchDiscovery(body);
-    return body;
+    return _withRetry(() async {
+      final response = await _send(
+        _client.get(_uri('/api/v1/'), headers: _headers(auth: false)),
+      );
+      final body = _decode(response);
+      ensureWachbuchDiscovery(body);
+      return body;
+    });
   }
 
   /// POST /api/v1/token/
@@ -128,58 +161,127 @@ class WachbuchApi {
     required String password,
     String label = 'Mobile App',
   }) async {
-    final response = await _send(
-      _client.post(
-        _uri('/api/v1/token/'),
-        headers: _headers(auth: false),
-        body: jsonEncode({
-          'username': username,
-          'password': password,
-          'label': label,
-        }),
-      ),
-    );
-    final body = _decode(response);
-    final value = body['token'] as String?;
-    if (value == null || value.isEmpty) {
-      throw ApiException(response.statusCode, 'Kein Token in der Antwort.');
-    }
-    return AuthToken(
-      value: value,
-      expiresAt: _parseExpiresAt(body['expires_at']),
-    );
+    return _withRetry(() async {
+      final response = await _send(
+        _client.post(
+          _uri('/api/v1/token/'),
+          headers: _headers(auth: false),
+          body: jsonEncode({
+            'username': username,
+            'password': password,
+            'label': label,
+          }),
+        ),
+      );
+      final body = _decode(response);
+      final value = body['token'] as String?;
+      if (value == null || value.isEmpty) {
+        throw ApiException(response.statusCode, 'Kein Token in der Antwort.');
+      }
+      return AuthToken(
+        value: value,
+        expiresAt: _parseExpiresAt(body['expires_at']),
+      );
+    });
   }
 
   /// GET /api/v1/me/
   Future<Map<String, dynamic>> me() async {
-    final response = await _send(
-      _client.get(_uri('/api/v1/me/'), headers: _headers()),
-    );
-    return _decode(response);
+    return _withRetry(() async {
+      final response = await _send(
+        _client.get(_uri('/api/v1/me/'), headers: _headers()),
+      );
+      return _decode(response);
+    });
   }
 
   /// GET /api/v1/handovers/
   Future<List<Map<String, dynamic>>> handovers() async {
-    final response = await _send(
-      _client.get(_uri('/api/v1/handovers/'), headers: _headers()),
-    );
-    final body = _decode(response);
-    final results = body['results'];
-    if (results is! List) {
-      return [];
-    }
-    return results
-        .whereType<Map>()
-        .map((entry) => Map<String, dynamic>.from(entry))
-        .toList();
+    return _withRetry(() async {
+      final response = await _send(
+        _client.get(_uri('/api/v1/handovers/'), headers: _headers()),
+      );
+      final body = _decode(response);
+      final results = body['results'];
+      if (results is! List) {
+        return <Map<String, dynamic>>[];
+      }
+      return results
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
+    });
   }
 
   /// GET /api/v1/handovers/{id}/
   Future<Map<String, dynamic>> handoverDetail(int id) async {
-    final response = await _send(
-      _client.get(_uri('/api/v1/handovers/$id/'), headers: _headers()),
-    );
-    return _decode(response);
+    return _withRetry(() async {
+      final response = await _send(
+        _client.get(_uri('/api/v1/handovers/$id/'), headers: _headers()),
+      );
+      return _decode(response);
+    });
+  }
+
+  /// GET /api/v1/kalender/ — Wachenkalender (Modul `calendar`).
+  Future<List<KalenderEntry>> kalender() async {
+    return _withRetry(() async {
+      final response = await _send(
+        _client.get(_uri('/api/v1/kalender/'), headers: _headers()),
+      );
+      final body = _decode(response);
+      return _readList(body)
+          .map(KalenderEntry.fromJson)
+          .toList(growable: false);
+    });
+  }
+
+  /// GET /api/v1/kaffeekasse/ — Kassenstand und Ledger (Modul `coffee`).
+  Future<Kaffeekasse> kaffeekasse() async {
+    return _withRetry(() async {
+      final response = await _send(
+        _client.get(_uri('/api/v1/kaffeekasse/'), headers: _headers()),
+      );
+      final body = _decode(response);
+      return Kaffeekasse.fromJson(body);
+    });
+  }
+
+  /// GET /api/v1/checklisten/ — Checklisten (Modul `checklists`).
+  Future<List<Checklist>> checklisten() async {
+    return _withRetry(() async {
+      final response = await _send(
+        _client.get(_uri('/api/v1/checklisten/'), headers: _headers()),
+      );
+      final body = _decode(response);
+      return _readList(body).map(Checklist.fromJson).toList(growable: false);
+    });
+  }
+
+  /// POST /api/v1/checklisten/{id}/abschluss/ — Checkliste abschließen (append-only).
+  Future<Checklist> checklisteAbschluss(int id) async {
+    return _withRetry(() async {
+      final response = await _send(
+        _client.post(
+          _uri('/api/v1/checklisten/$id/abschluss/'),
+          headers: _headers(),
+        ),
+      );
+      final body = _decode(response);
+      if (body.isEmpty) {
+        return Checklist(id: id, title: '', completed: true);
+      }
+      return Checklist.fromJson({...body, 'completed': true});
+    });
+  }
+
+  List<Map<String, dynamic>> _readList(Map<String, dynamic> body) {
+    final results = body['results'] ?? body['entries'] ?? body['termine'];
+    if (results is! List) return const [];
+    return results
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList(growable: false);
   }
 
   void close() {

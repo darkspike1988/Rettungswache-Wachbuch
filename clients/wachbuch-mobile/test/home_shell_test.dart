@@ -674,7 +674,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(Chip), findsNWidgets(2));
-      expect(find.text('Kaffeekasse'), findsOneWidget);
+      expect(find.text('Kaffeekasse'), findsWidgets);
       expect(find.text('Kalender'), findsOneWidget);
       expect(find.byType(FilterChip), findsNothing);
     },

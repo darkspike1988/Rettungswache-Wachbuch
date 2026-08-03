@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/api/server_address.dart';
 import 'package:wachbuch_mobile/api/server_links.dart';
@@ -289,6 +290,8 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'Wachbuch',
       navigatorKey: _navigatorKey,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: buildWachbuchTheme(Brightness.light),
       darkTheme: buildWachbuchTheme(Brightness.dark),
       themeMode: _themeMode,

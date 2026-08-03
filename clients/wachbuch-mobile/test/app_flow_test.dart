@@ -132,7 +132,7 @@ void main() {
         home: LoginScreen(
           store: _MemorySessionStore(),
           serverUrl: 'https://wache.example.org',
-          onLoggedIn: (_, __, {DateTime? expiresAt}) async {},
+          onLoggedIn: (_, _, {DateTime? expiresAt}) async {},
           onChangeServer: () async {},
         ),
       ),
@@ -176,7 +176,7 @@ void main() {
           store: _MemorySessionStore(),
           serverUrl: 'https://wache.example.org',
           apiFactory: (_) => api,
-          onLoggedIn: (_, __, {DateTime? expiresAt}) async => loggedIn = true,
+          onLoggedIn: (_, _, {DateTime? expiresAt}) async => loggedIn = true,
           onChangeServer: () async {},
         ),
       ),
