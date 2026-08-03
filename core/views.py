@@ -12,6 +12,7 @@ from django.db.models import Case, IntegerField, Sum, Value, When
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.cache import never_cache
@@ -666,9 +667,9 @@ def task_toggle(request, pk):
         else:
             messages.success(request, "Aufgabe wurde wieder geoeffnet.")
     next_url = request.POST.get("next") or reverse("tasks_today")
-    if next_url.startswith("/"):
-        return redirect(next_url)
-    return redirect("tasks_today")
+    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        next_url = reverse("tasks_today")
+    return redirect(next_url)
 
 
 @membership_required({Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN})
