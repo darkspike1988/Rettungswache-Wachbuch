@@ -49,18 +49,18 @@ Priorisierte Umsetzung der noch offenen Wuensche. Keine Kalenderzeit-Schaetzung;
 Reihenfolge nach Nutzen und Abhaengigkeiten. Sicherheits- und Betriebsblocker aus
 der Remediation-Roadmap haben Vorrang vor neuen Fachmodulen.
 
-### 1. Kaffeekasse: Zahlungsweg-Hinweise (PayPal.me, Wero, IBAN)
+### 1. Kaffeekasse: Zahlungsweg-Hinweise (PayPal.me, Wero, IBAN) — umgesetzt
 
 **Ziel:** Beim Kassenstand klar zeigen, wohin freiwillig eingezahlt werden kann –
 ohne Zahlungsabwicklung oder Gebuehrenlogik im Produkt.
 
-| Schritt | Inhalt |
-| --- | --- |
-| 1.1 | Stationseinstellungen: Felder `paypal_me_url`, `wero_handle`/`wero_link`, `iban`, `bic` (optional), `payment_note` |
-| 1.2 | Anzeige in Kaffeekasse und optional auf „Mehr“: Links / kopierbare IBAN |
-| 1.3 | Nur HTTPS-Links fuer PayPal.me; IBAN-Formatpruefung; keine Speicherung von Transaktions-IDs Dritter |
-| 1.4 | Datenschutzhinweis: oeffentliche Team-Zahlungsdaten, Zweck Gemeinschaftskasse |
-| 1.5 | Tests + Kurz-Doku in OPERATIONS/COMPLIANCE |
+| Schritt | Inhalt | Status |
+| --- | --- | --- |
+| 1.1 | Stationseinstellungen: Felder `paypal_me_url`, `wero_link`, `iban`, `bic` (optional), `payment_note` | ✓ |
+| 1.2 | Anzeige in Kaffeekasse und optional auf „Mehr": Links / kopierbare IBAN | ✓ |
+| 1.3 | Nur HTTPS-Links fuer PayPal.me/Wero; IBAN-Formatpruefung; keine Speicherung von Transaktions-IDs Dritter | ✓ |
+| 1.4 | Datenschutzhinweis: oeffentliche Team-Zahlungsdaten, Zweck Gemeinschaftskasse | ✓ |
+| 1.5 | Tests + Kurz-Doku in OPERATIONS/COMPLIANCE | ✓ |
 
 **Nicht im Scope:** automatischer Abgleich mit PayPal/Wero, QR-Payment-API, SEPA-Mandate.
 

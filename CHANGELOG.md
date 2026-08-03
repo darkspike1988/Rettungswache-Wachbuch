@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Kaffeekasse: Zahlungsweg-Hinweise** – optionale Felder `paypal_me_url`,
+  `wero_link`, `iban`, `bic`, `payment_note` in den Stationseinstellungen;
+  Anzeige als Links (`target="_blank" rel="noopener"`), kopierbare IBAN und
+  Datenschutzhinweis auf der Kaffeeseite; HTTPS-/IBAN-/BIC-Validierung
 - Fahrplan fuer Kaffeekasse-Zahlungshinweise (PayPal.me, Wero, IBAN) und
   Muellkalender Kreis Guetersloh in `docs/ROADMAP.md`
 

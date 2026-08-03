@@ -595,6 +595,113 @@ class BirthdayAndCoffeeTests(PilotTestCase):
         self.assertEqual(CoffeeEntry.objects.filter(correction_of=original).count(), 1)
 
 
+class PaymentHintsTests(PilotTestCase):
+    def _admin_post(self, **fields):
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        data = {
+            "name": self.station.name,
+            "calendar_enabled": "on",
+            "coffee_enabled": "on",
+        }
+        data.update(fields)
+        return self.client.post(reverse("station_settings"), data)
+
+    def test_admin_can_set_payment_fields(self):
+        response = self._admin_post(
+            paypal_me_url="https://paypal.me/teamkasse",
+            wero_link="https://wero.eu/pay/team",
+            iban="DE89370400440532013000",
+            bic="COBADEFFXXX",
+            payment_note="Verwendungszweck: Kaffeekasse",
+        )
+        self.assertRedirects(response, reverse("station_settings"))
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.paypal_me_url, "https://paypal.me/teamkasse")
+        self.assertEqual(self.station.iban, "DE89370400440532013000")
+        self.assertEqual(self.station.payment_note, "Verwendungszweck: Kaffeekasse")
+
+    def test_paypal_me_url_must_be_https(self):
+        from core.forms import StationSettingsForm
+
+        form = StationSettingsForm(
+            data={"name": "W", "paypal_me_url": "http://paypal.me/evil"},
+            instance=self.station,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("paypal_me_url", form.errors)
+
+    def test_wero_link_must_be_https(self):
+        from core.forms import StationSettingsForm
+
+        form = StationSettingsForm(
+            data={"name": "W", "wero_link": "http://wero.eu/evil"},
+            instance=self.station,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("wero_link", form.errors)
+
+    def test_iban_validation_rejects_non_german_and_short(self):
+        from core.forms import StationSettingsForm
+
+        form = StationSettingsForm(
+            data={"name": "W", "iban": "AT611904300234573201"},
+            instance=self.station,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("iban", form.errors)
+
+    def test_iban_normalises_spaces_and_case(self):
+        response = self._admin_post(iban="de89 3704 0044 0532 0130 00")
+        self.assertRedirects(response, reverse("station_settings"))
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.iban, "DE89370400440532013000")
+
+    def test_bic_validation_rejects_wrong_length(self):
+        from core.forms import StationSettingsForm
+
+        form = StationSettingsForm(
+            data={"name": "W", "bic": "ABC123"},
+            instance=self.station,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("bic", form.errors)
+
+    def test_empty_payment_fields_are_valid(self):
+        from core.forms import StationSettingsForm
+
+        form = StationSettingsForm(
+            data={"name": "W", "coffee_enabled": "on"},
+            instance=self.station,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_coffee_page_shows_payment_hints_when_set(self):
+        self.station.paypal_me_url = "https://paypal.me/teamkasse"
+        self.station.iban = "DE89370400440532013000"
+        self.station.payment_note = "Bitte als Zweck 'Kaffee' angeben"
+        self.station.save(update_fields=["paypal_me_url", "iban", "payment_note"])
+        response = self.client.get(reverse("coffee"))
+        self.assertContains(response, "https://paypal.me/teamkasse")
+        self.assertContains(response, "DE89370400440532013000")
+        self.assertContains(response, "Bitte als Zweck")
+        self.assertContains(response, 'target="_blank"')
+        self.assertContains(response, 'rel="noopener"')
+        self.assertContains(response, "copy-iban")
+
+    def test_coffee_page_hides_payment_section_when_empty(self):
+        response = self.client.get(reverse("coffee"))
+        self.assertNotContains(response, "Zahlungswege")
+        self.assertNotContains(response, "copy-iban")
+
+    def test_external_links_use_noopener(self):
+        self.station.wero_link = "https://wero.eu/pay/team"
+        self.station.save(update_fields=["wero_link"])
+        response = self.client.get(reverse("coffee"))
+        self.assertContains(response, 'rel="noopener"')
+        self.assertContains(response, "Wero")
+
+
 class FeedTests(PilotTestCase):
     def setUp(self):
         super().setUp()

@@ -509,6 +509,7 @@ def coffee(request):
         "total_euros": total_cents / 100,
         "own_euros": own_cents / 100,
         "can_book": can_book,
+        "station": station,
     })
 
 
