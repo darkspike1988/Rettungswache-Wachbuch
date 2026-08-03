@@ -106,8 +106,14 @@ def is_upcoming_agenda_item(item, *, now=None, today=None):
     return item.starts_at >= now
 
 
-def station_agenda(station, events, *, past_days=1, future_days=400):
-    """Merge station events with NRW holidays into one chronological agenda."""
+def station_agenda(station, events, *, past_days=1, future_days=400, waste_collections=None):
+    """Merge station events, NRW holidays and optional waste collections.
+
+    ``waste_collections`` ist eine optionale Iterable von WasteCollection- oder
+    duck-typed Objekten mit ``starts_at``, ``ends_at``, ``title`` und ``pk``.
+    Sie werden als externe Quelle (``kind="waste"``) eingeordnet und im
+    fortlaufenden Kalender/ICS zusammen mit den eigenen Terminen ausgegeben.
+    """
     now = timezone.now()
     window_start = now - timedelta(days=past_days)
     window_end = now + timedelta(days=future_days)
@@ -134,5 +140,18 @@ def station_agenda(station, events, *, past_days=1, future_days=400):
                 description="Gesetzlicher Feiertag in Nordrhein-Westfalen",
                 all_day=True,
             ))
+    for waste in waste_collections or []:
+        if waste.ends_at < window_start:
+            continue
+        label = getattr(waste, "source_label", "") or "Müll"
+        items.append(AgendaEntry(
+            starts_at=waste.starts_at,
+            ends_at=waste.ends_at,
+            title=waste.title,
+            kind="waste",
+            description=f"Externe Quelle ({label})",
+            source_pk=getattr(waste, "pk", None),
+            all_day=True,
+        ))
     items.sort(key=lambda item: (item.starts_at, item.title))
     return items

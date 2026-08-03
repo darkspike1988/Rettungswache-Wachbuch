@@ -26,6 +26,12 @@ class Command(BaseCommand):
             f"GRANT SELECT, UPDATE (last_success_at, last_error_at, last_error) ON core_feedsource TO {feed_role}",
             f"GRANT SELECT, INSERT, UPDATE, DELETE ON core_feeditem TO {feed_role}",
             f"GRANT USAGE, SELECT ON SEQUENCE core_feeditem_id_seq TO {feed_role}",
+            # Müllkalender-Sync: der feed-worker liest die konfigurierte ICS-URL
+            # der Station und ersetzt die WasteCollections vollständig.
+            f"GRANT SELECT (slug, is_active, waste_calendar_enabled, waste_calendar_url, waste_calendar_label) "
+            f"ON core_station TO {feed_role}",
+            f"GRANT SELECT, INSERT, UPDATE, DELETE ON core_wastecollection TO {feed_role}",
+            f"GRANT USAGE, SELECT ON SEQUENCE core_wastecollection_id_seq TO {feed_role}",
             f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO {backup_role}",
             f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {backup_role}",
             f"GRANT pg_read_all_data TO {backup_role}",

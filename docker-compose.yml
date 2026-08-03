@@ -147,6 +147,7 @@ services:
       DB_PASSWORD: ${FEED_DB_PASSWORD}
       ALLOWED_HOSTS: localhost
       FEED_ALLOWED_HOSTS: ${FEED_ALLOWED_HOSTS:-}
+      WASTE_CALENDAR_ALLOWED_HOSTS: ${WASTE_CALENDAR_ALLOWED_HOSTS:-}
     depends_on:
       web:
         condition: service_healthy

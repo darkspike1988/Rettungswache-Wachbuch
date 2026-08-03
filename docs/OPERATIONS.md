@@ -81,6 +81,41 @@ Vor dem Upgrade einer 0.2-Installation muessen die Hosts aller bestehenden
 Quellen aus dem Django-Admin in `FEED_ALLOWED_HOSTS` uebernommen werden. Eine
 leere Allowlist deaktiviert Abrufe absichtlich.
 
+## Müllkalender (ICS-URL-Fallback)
+
+Pro Station kann in den Einstellungen (`/einstellungen/`, Master-Admin) eine
+HTTPS-ICS-URL des örtlichen Entsorgers (z. B. AbfallNavi / RegioIT-iCal)
+hinterlegt und das Modul mit `waste_calendar_enabled` aktiviert werden. Der
+`feed-worker` ruft den Feed im selben 15-Minuten-Zyklus wie die Lagequellen ab,
+parst die `VEVENT`s und ersetzt die `WasteCollection`-Eintraege der Station
+komplett (die ICS-Quelle ist die Wahrheit, die Tabelle ist daher bewusst
+nicht append-only).
+
+```bash
+# manueller Synchronlauf (ohne Watch-Loop)
+docker compose exec -T feed-worker python manage.py sync_waste_calendar
+```
+
+**SSRF-Schutz wie bei RSS-Feeds:** Nur HTTPS auf Port 443, DNS wird aufgelöst
+und es werden ausschliesslich globale IP-Adressen akzeptiert, der Connect
+erfolgt direkt zur validierten IP mit aktivierter Zertifikatsprüfung
+(`assert_hostname`/`CERT_REQUIRED`), Weiterleitungen (3xx) werden abgelehnt
+und ein Groessenlimit (`WASTE_CALENDAR_MAX_BYTES`, Default 1 MB) greift.
+
+**Optionale Host-Allowlist:** `WASTE_CALENDAR_ALLOWED_HOSTS` (kommasepariert)
+sperrt Abrufe zusätzlich auf freigegebene Hosts. Bleibt die Liste leer, ist
+jeder öffentliche HTTPS-Host mit SSRF-Schutz zulässig – so bleibt die Kontrolle
+beim Betrieb, ohne jede kommunale Entsorger-URL vorab pflegen zu müssen.
+
+**Least-Privilege-DB:** Der `feed-worker` (Rolle `FEED_DB_USER`) darf nur die
+drei konfigurierten Spalten von `core_station` lesen (`SELECT`) und besitzt
+`SELECT/INSERT/UPDATE/DELETE` auf `core_wastecollection`. Die Grants werden von
+`grant_database_access` nach den Migrationen gesetzt.
+
+Abfuhren erscheinen im fortlaufenden Kalender, im ICS-Abo
+(`/kalender/feed.ics` bzw. Token-Abo) und als Dashboard-Widget „Nächste
+Müllabfuhr“; sie sind dort stets als „Externe Quelle · Müll“ gekennzeichnet.
+
 ## Push-Outbox
 
 Dringende Uebergaben schreiben innerhalb der Handover-Transaktion einen
@@ -138,7 +173,9 @@ Die Datenbank unterscheidet vier Rollen mit klar getrennten Aufgaben:
   append-only-Tabellen `core_coffeeentry`, `core_auditevent`,
   `core_handoverrevision` und `core_checklistcompletion`.
 - `rwsth_feed` (entspricht `FEED_DB_USER`): ausschliesslich `FeedSource`-
-  Status- und `FeedItem`-CRUD.
+  Status- und `FeedItem`-CRUD sowie die Müllkalender-Sync (`SELECT` auf die
+  konfigurierten Spalten von `core_station`, `SELECT/INSERT/UPDATE/DELETE` auf
+  `core_wastecollection`).
 - `rwsth_backup` (entspricht `BACKUP_DB_USER`): ausschliesslich `SELECT` plus
   `pg_read_all_data`. Wird vom dauerhaften `backup`-Container fuer
   `pg_dump` benutzt. Kann weder `INSERT`, `UPDATE` noch `DELETE` auf

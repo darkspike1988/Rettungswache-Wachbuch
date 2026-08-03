@@ -26,6 +26,7 @@ from .models import (
     CalendarFeedToken,
     Membership,
     PushSubscription,
+    WasteCollection,
     WebAuthnCredential,
 )
 from .push import vapid_public_key, web_push_enabled
@@ -89,7 +90,12 @@ def build_station_calendar_ics(station, events):
         "METHOD:PUBLISH",
         f"X-WR-CALNAME:{_ics_escape(station.name)}",
     ]
-    agenda = station_agenda(station, events, past_days=30, future_days=400)
+    waste_qs = []
+    if station.waste_calendar_enabled:
+        waste_qs = WasteCollection.objects.filter(station=station).order_by("starts_at")
+    agenda = station_agenda(
+        station, events, past_days=30, future_days=400, waste_collections=waste_qs
+    )
     for item in agenda:
         if item.kind == "holiday" and item.all_day:
             day = timezone.localtime(item.starts_at).strftime("%Y%m%d")
@@ -97,6 +103,21 @@ def build_station_calendar_ics(station, events):
             lines.extend([
                 "BEGIN:VEVENT",
                 f"UID:wachbuch-holiday-{day}@rettungswache-wachbuch",
+                f"DTSTAMP:{stamp}",
+                f"DTSTART;VALUE=DATE:{day}",
+                f"DTEND;VALUE=DATE:{next_day}",
+                f"SUMMARY:{_ics_escape(item.title)}",
+                f"DESCRIPTION:{_ics_escape(item.description)}",
+                "TRANSP:TRANSPARENT",
+                "END:VEVENT",
+            ])
+            continue
+        if item.kind == "waste":
+            day = timezone.localtime(item.starts_at).strftime("%Y%m%d")
+            next_day = timezone.localtime(item.ends_at).strftime("%Y%m%d")
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"UID:wachbuch-waste-{item.source_pk}@rettungswache-wachbuch",
                 f"DTSTAMP:{stamp}",
                 f"DTSTART;VALUE=DATE:{day}",
                 f"DTEND;VALUE=DATE:{next_day}",

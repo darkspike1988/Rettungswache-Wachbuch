@@ -11,14 +11,16 @@
   <p><a class="text-action" href="{% url 'calendar_feed_ics' %}">Gesamten Kalender als ICS</a></p>
   <div class="agenda">
     {% for event in page_obj %}
-      <article class="agenda-row {% if event.kind == 'holiday' %}agenda-holiday{% endif %}">
+      <article class="agenda-row {% if event.kind == 'holiday' %}agenda-holiday{% endif %}{% if event.kind == 'waste' %} agenda-external{% endif %}">
         <time datetime="{{ event.starts_at|date:'c' }}"><strong>{{ event.starts_at|date:"d.m." }}</strong><span>{% if event.all_day %}ganztägig{% else %}{{ event.starts_at|date:"H:i" }}{% endif %}</span></time>
         <div>
-          <h2>{{ event.title }}{% if event.kind == 'holiday' %} <span class="status-label neutral">Feiertag</span>{% endif %}</h2>
+          <h2>{{ event.title }}{% if event.kind == 'holiday' %} <span class="status-label neutral">Feiertag</span>{% endif %}{% if event.kind == 'waste' %} <span class="status-label neutral">Externe Quelle · Müll</span>{% endif %}</h2>
           {% if event.description %}<p>{{ event.description|linebreaksbr }}</p>{% endif %}
           {% if event.kind == 'event' %}
             <small>Bis {{ event.ends_at|date:"d.m.Y H:i" }}</small>
             {% if event.source_pk %}<p><a class="text-action" href="{% url 'calendar_event_ics' event.source_pk %}">Als ICS speichern</a></p>{% endif %}
+          {% elif event.kind == 'waste' %}
+            <small>{{ event.description }}</small>
           {% else %}
             <small>Gesetzlicher Feiertag NRW</small>
           {% endif %}
@@ -26,6 +28,7 @@
       </article>
     {% empty %}<p class="empty-state">Keine anstehenden Termine.</p>{% endfor %}
   </div>
+  {% if waste_enabled %}<p class="hint">Müllabfuhren werden automatisch aus der hinterlegten ICS-Quelle übernommen und als externe Quelle gekennzeichnet.</p>{% endif %}
 </section>
 {% include "core/pagination.html" %}
 {% endblock %}

@@ -206,6 +206,17 @@ FEED_ALLOWED_HOSTS = {
     if value.strip()
 }
 FEED_MAX_BYTES = 2_000_000
+# Müllkalender (manueller ICS-URL-Fallback pro Station). SSRF-Hardening wie
+# bei FeedSource (HTTPS, Port 443, keine privaten IPs, keine Redirects). Eine
+# optionale Host-Allowlist: leer = jeder öffentliche HTTPS-Host zulässig,
+# sobald gesetzt muss der Host darin stehen. So bleibt die Kontrolle beim
+# Betrieb, ohne jede kommununale Entsorger-URL vorab pflegen zu müssen.
+WASTE_CALENDAR_ALLOWED_HOSTS = {
+    value.strip().lower()
+    for value in os.getenv("WASTE_CALENDAR_ALLOWED_HOSTS", "").split(",")
+    if value.strip()
+}
+WASTE_CALENDAR_MAX_BYTES = 1_000_000
 RETENTION_FEED_DAYS = int(os.getenv("RETENTION_FEED_DAYS", "90") or "0")
 RETENTION_AUDIT_DAYS = int(os.getenv("RETENTION_AUDIT_DAYS", "0") or "0")
 MFA_ENABLED = env_bool("MFA_ENABLED", default=True)

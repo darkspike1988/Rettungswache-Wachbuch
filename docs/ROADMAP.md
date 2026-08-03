@@ -69,18 +69,19 @@ ohne Zahlungsabwicklung oder Gebuehrenlogik im Produkt.
 **Ziel:** Der Wachenkalender zeigt neben eigenen Terminen gesetzliche Feiertage
 (NRW) und spaeter Abfuhrtermine; alles auch als iCal/Abo.
 
-| Schritt | Inhalt |
-| --- | --- |
-| 2.0 | **Feiertage NRW** im fortlaufenden Kalender + ICS (Modul `holidays_enabled`) – erledigt in 0.6.1 |
-| 2.1 | Recherche/Freigabe der offiziellen Muell-Quelle (AbfallNavi / RegioIT-iCal) |
-| 2.2 | Stationsfelder: Gemeinde/Ort, Strasse bzw. Quellen-ID, gewaehlte Fraktionen |
-| 2.3 | Admin-UI: Auswahl Ort -> Strasse/Standort |
-| 2.4 | Sync -> Abfuhren im selben fortlaufenden Kalender/ICS |
-| 2.5 | Token-Abo analog Wachenkalender |
-| 2.6 | Dashboard: naechste Abfuhren; Kennzeichnung externe Quelle |
+| Schritt | Inhalt | Status |
+| --- | --- | --- |
+| 2.0 | **Feiertage NRW** im fortlaufenden Kalender + ICS (Modul `holidays_enabled`) – erledigt in 0.6.1 | ✓ |
+| 2.1 | Recherche/Freigabe der offiziellen Muell-Quelle (AbfallNavi / RegioIT-iCal) | offen |
+| 2.2 | Stationsfelder: ICS-URL (Fallback), Anzeigename, Modulschalter | ✓ (Fallback) |
+| 2.3 | Admin-UI: Auswahl Ort -> Strasse/Standort | offen (vom ICS-Fallback obsolet, kommt mit 2.1) |
+| 2.4 | Sync -> Abfuhren im selben fortlaufenden Kalender/ICS | ✓ |
+| 2.5 | Token-Abo analog Wachenkalender | ✓ (gleiche ICS-Abo-Route, Abfuhren inklusive) |
+| 2.6 | Dashboard: naechste Abfuhren; Kennzeichnung externe Quelle | ✓ |
 
-**Abhaengigkeit Muell:** Freigabe der Datenquelle. Fallback: manuelle ICS-URL
-pro Station. Feiertage sind unabhaengig davon nutzbar.
+**Abhaengigkeit Muell:** Freigabe der Datenquelle. **Fallback (umgesetzt):
+manuelle ICS-URL pro Station** mit SSRF-Schutz wie bei RSS-Feeds. Feiertage
+sind unabhaengig davon nutzbar.
 
 ### 3. Empfohlene Reihenfolge
 
@@ -88,7 +89,7 @@ pro Station. Feiertage sind unabhaengig davon nutzbar.
 0. Review-Remediation Wave 0-2
 1. Kaffeekasse-Zahlungshinweise
 2. Feiertage im fortlaufenden Kalender   (umgesetzt)
-3. Muellkalender: manueller ICS-URL-Fallback je Station
+3. Muellkalender: manueller ICS-URL-Fallback je Station   (umgesetzt)
 4. Muellkalender: Ort/Strasse-Auswahl Kreis GT + Sync
 5. API v1 / AGPL-Client ausbauen (E2EE-Chat über API, Stores/F-Droid; Schreiben für Übergaben/Kalender/Kasse/Checklisten ist in 0.14; Demo-Modus in 0.15)
 6. Feinschliff UX (Dashboard, Kopieren-Buttons)

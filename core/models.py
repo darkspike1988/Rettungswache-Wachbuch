@@ -22,6 +22,22 @@ class Station(models.Model):
     chat_enabled = models.BooleanField(default=True, verbose_name="Wachenchat aktiviert")
     holidays_enabled = models.BooleanField(default=True, verbose_name="Feiertage (NRW) im Kalender")
     checklists_enabled = models.BooleanField(default=False, verbose_name="Checklisten aktiviert")
+    # Müllkalender (optional, manueller ICS-URL-Fallback pro Station).
+    # Die URL wird vom feed-worker abgerufen; SSRF-Schutz wie bei FeedSource.
+    waste_calendar_enabled = models.BooleanField(default=False, verbose_name="Müllkalender aktiv")
+    waste_calendar_url = models.URLField(
+        max_length=600,
+        blank=True,
+        default="",
+        verbose_name="Müllkalender ICS-URL",
+        help_text="HTTPS-ICS-Feed des örtlichen Entsorgers (z. B. AbfallNavi/RegioIT).",
+    )
+    waste_calendar_label = models.CharField(
+        max_length=80,
+        blank=True,
+        default="Müll",
+        verbose_name="Anzeigename der Quelle",
+    )
     paypal_me_url = models.URLField(blank=True, default="", verbose_name="PayPal.me-Link")
     wero_link = models.URLField(blank=True, default="", verbose_name="Wero-Link")
     iban = models.CharField(max_length=34, blank=True, default="", verbose_name="IBAN")
@@ -33,6 +49,24 @@ class Station(models.Model):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        url = (self.waste_calendar_url or "").strip()
+        if url:
+            parsed = urlparse(url)
+            try:
+                port = parsed.port
+            except ValueError as exc:
+                raise ValidationError({"waste_calendar_url": "Die Portangabe ist ungueltig."}) from exc
+            if parsed.scheme != "https" or port not in {None, 443}:
+                raise ValidationError(
+                    {"waste_calendar_url": "Müllkalender-Quellen muessen HTTPS auf Port 443 verwenden."}
+                )
+            if parsed.username or parsed.password:
+                raise ValidationError(
+                    {"waste_calendar_url": "Anmeldedaten in der URL sind nicht erlaubt."}
+                )
 
     @classmethod
     def get_default(cls):
@@ -151,6 +185,34 @@ class CalendarEvent(models.Model):
     def clean(self):
         if self.ends_at and self.starts_at and self.ends_at < self.starts_at:
             raise ValidationError({"ends_at": "Das Ende darf nicht vor dem Beginn liegen."})
+
+    def __str__(self):
+        return self.title
+
+
+class WasteCollection(models.Model):
+    """Einmalige Abfuhr aus dem externen Müllkalender (ICS-URL) einer Station.
+
+    Importiert vom feed-worker ueber `sync_waste_calendar`. Die Eintraege einer
+    Station werden bei jedem erfolgreichen Sync komplett ersetzt (delete +
+    insert in einer Transaktion), weil die ICS-Quelle die zuständige
+    Wahrheit ist. Die Tabelle ist daher bewusst NICHT append-only.
+    """
+
+    station = models.ForeignKey(
+        Station, on_delete=models.CASCADE, related_name="waste_collections"
+    )
+    title = models.CharField(max_length=200)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    source_url = models.URLField(max_length=600, blank=True, default="")
+    source_label = models.CharField(max_length=80, blank=True, default="")
+    external_uid = models.CharField(max_length=300, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["starts_at"]
+        indexes = [models.Index(fields=["station", "starts_at"])]
 
     def __str__(self):
         return self.title

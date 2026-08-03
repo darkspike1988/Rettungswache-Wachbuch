@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Müllkalender (Roadmap Schritt 3): manueller ICS-URL-Fallback** – optionale
+  Felder `waste_calendar_enabled`, `waste_calendar_url`, `waste_calendar_label`
+  in den Stationseinstellungen; neuer Management-Befehl `sync_waste_calendar`
+  importiert Abfuhren pro Station als `WasteCollection`; Anzeige im
+  fortlaufenden Kalender, im ICS-Abo und als Dashboard-Widget, jeweils als
+  „Externe Quelle · Müll“ gekennzeichnet. SSRF-Schutz wie bei RSS-Feeds
+  (HTTPS, Port 443, keine privaten IPs, keine Redirects) plus optionaler
+  Host-Allowlist `WASTE_CALENDAR_ALLOWED_HOSTS`. Der feed-worker ruft beide
+  Syncs pro Zyklus auf; `FEED_DB_USER` erhält Least-Privilege-Grants.
 - Doku-Sync: Versionspaarung Server ↔ Client dokumentiert
 - **Kaffeekasse: Zahlungsweg-Hinweise** – optionale Felder `paypal_me_url`,
   `wero_link`, `iban`, `bic`, `payment_note` in den Stationseinstellungen;

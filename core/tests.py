@@ -2468,3 +2468,192 @@ class PushOutboxRetentionTests(_PushOutboxBase):
         self._create_old(PushOutbox.Status.SENT)
         call_command("cleanup_pushoutbox", "--dry-run")
         self.assertEqual(PushOutbox.objects.count(), 1)
+
+
+class WasteCalendarTests(PilotTestCase):
+    """Roadmap Schritt 3: Müllkalender mit manuellem ICS-URL-Fallback."""
+
+    def _enable_admin(self):
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+
+    def _sample_ics(self):
+        return (
+            b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//DE\r\n"
+            b"BEGIN:VEVENT\r\nUID:rest-1@muell\r\n"
+            b"DTSTART;VALUE=DATE:20260810\r\nSUMMARY:Restmuell\r\nEND:VEVENT\r\n"
+            b"BEGIN:VEVENT\r\nUID:bio-1@muell\r\n"
+            b"DTSTART;VALUE=DATE:20260817\r\nSUMMARY:Bioabfall\r\nEND:VEVENT\r\n"
+            b"END:VCALENDAR\r\n"
+        )
+
+    def _post_settings(self, **extra):
+        data = {
+            "name": self.station.name,
+            "calendar_enabled": "on",
+        }
+        data.update(extra)
+        return self.client.post(reverse("station_settings"), data)
+
+    def test_admin_can_set_waste_calendar_ics_url(self):
+        from core.forms import StationSettingsForm
+
+        self._enable_admin()
+        form = StationSettingsForm(
+            data={
+                "name": self.station.name,
+                "waste_calendar_enabled": "on",
+                "waste_calendar_url": "https://abfall.example.org/ics.ics",
+                "waste_calendar_label": "Abfall GT",
+            },
+            instance=self.station,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        self.station.refresh_from_db()
+        self.assertTrue(self.station.waste_calendar_enabled)
+        self.assertEqual(self.station.waste_calendar_url, "https://abfall.example.org/ics.ics")
+
+    def test_waste_url_must_be_https(self):
+        from core.forms import StationSettingsForm
+
+        form = StationSettingsForm(
+            data={
+                "name": "W",
+                "waste_calendar_url": "http://internal.example.org/ics.ics",
+            },
+            instance=self.station,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("waste_calendar_url", form.errors)
+
+    def test_station_clean_rejects_non_https_url(self):
+        self.station.waste_calendar_url = "ftp://abfall.example.org/ics"
+        with self.assertRaises(ValidationError):
+            self.station.full_clean()
+
+    def test_sync_parses_ics_and_stores_collections(self):
+        from .waste_sync import parse_ics, store_waste_collections
+
+        events = parse_ics(self._sample_ics())
+        self.assertEqual(len(events), 2)
+        count = store_waste_collections(
+            self.station, events, source_url="https://abfall.example.org/ics.ics",
+            source_label="Abfall GT",
+        )
+        self.assertEqual(count, 2)
+        titles = list(self.station.waste_collections.values_list("title", flat=True))
+        # ordering = starts_at: Restmuell (10.08.) vor Bioabfall (17.08.)
+        self.assertEqual(titles, ["Restmuell", "Bioabfall"])
+
+    def test_sync_replaces_previous_collections(self):
+        from .waste_sync import parse_ics, store_waste_collections
+
+        events = parse_ics(self._sample_ics())
+        store_waste_collections(self.station, events, source_url="u", source_label="M")
+        # Zweiter Lauf mit nur noch einer Abfuhr ersetzt den Bestand komplett.
+        single = [e for e in events if e["uid"] == "rest-1@muell"]
+        store_waste_collections(self.station, single, source_url="u", source_label="M")
+        self.assertEqual(self.station.waste_collections.count(), 1)
+        self.assertEqual(self.station.waste_collections.get().title, "Restmuell")
+
+    @patch("core.waste_sync.socket.getaddrinfo")
+    @patch("core.waste_sync.urllib3.HTTPSConnectionPool")
+    def test_sync_uses_validated_global_ip_and_no_redirect(self, pool_class, lookup):
+        response = pool_class.return_value.request.return_value
+        response.status = 200
+        response.stream.return_value = [self._sample_ics()]
+        lookup.return_value = [(2, 1, 6, "", ("93.184.216.34", 443))]
+        self.station.waste_calendar_enabled = True
+        self.station.waste_calendar_url = "https://abfall.example.org/ics.ics"
+        self.station.save()
+
+        from .waste_sync import sync_station_waste
+
+        self.assertEqual(sync_station_waste(self.station), 2)
+        # Verbindungsaufbau erfolgt zur validierten IP, nicht zum Hostnamen.
+        self.assertEqual(pool_class.call_args.args[0], "93.184.216.34")
+        # Redirects werden auf HTTP-Ebene abgeschaltet (SSRF-Schutz).
+        self.assertEqual(
+            pool_class.return_value.request.call_args.kwargs["redirect"], False
+        )
+
+    @patch("core.waste_sync.socket.getaddrinfo")
+    def test_sync_rejects_private_ip_address(self, lookup):
+        lookup.return_value = [(2, 1, 6, "", ("10.0.0.5", 443))]
+        self.station.waste_calendar_enabled = True
+        self.station.waste_calendar_url = "https://abfall.example.org/ics.ics"
+        self.station.save()
+        from .waste_sync import fetch_waste_ics, WasteSyncError
+
+        with self.assertRaises(WasteSyncError):
+            fetch_waste_ics(self.station.waste_calendar_url)
+
+    def test_sync_rejects_http_url(self):
+        from .waste_sync import fetch_waste_ics, WasteSyncError
+
+        with self.assertRaises(WasteSyncError):
+            fetch_waste_ics("http://abfall.example.org/ics.ics")
+
+    @override_settings(WASTE_CALENDAR_ALLOWED_HOSTS={"erlaubt.example.org"})
+    def test_sync_rejects_host_outside_allowlist(self):
+        from .waste_sync import fetch_waste_ics, WasteSyncError
+
+        with self.assertRaises(WasteSyncError):
+            fetch_waste_ics("https://verboten.example.org/ics.ics")
+
+    @patch("core.waste_sync.socket.getaddrinfo")
+    @patch("core.waste_sync.urllib3.HTTPSConnectionPool")
+    def test_sync_rejects_http_redirect(self, pool_class, lookup):
+        response = pool_class.return_value.request.return_value
+        response.status = 302
+        response.stream.return_value = []
+        lookup.return_value = [(2, 1, 6, "", ("93.184.216.34", 443))]
+        from .waste_sync import fetch_waste_ics, WasteSyncError
+
+        with self.assertRaises(WasteSyncError):
+            fetch_waste_ics("https://abfall.example.org/ics.ics")
+
+    def test_dashboard_and_calendar_show_waste_collections(self):
+        from .models import WasteCollection
+
+        self.station.waste_calendar_enabled = True
+        self.station.calendar_enabled = True
+        self.station.save()
+        future = timezone.now() + timedelta(days=3)
+        WasteCollection.objects.create(
+            station=self.station, title="Restmuell", starts_at=future, ends_at=future,
+            source_label="Abfall GT",
+        )
+        dashboard = self.client.get(reverse("dashboard"))
+        self.assertContains(dashboard, "Nächste Müllabfuhr")
+        self.assertContains(dashboard, "Restmuell")
+        self.assertContains(dashboard, "Externe Quelle")
+        calendar = self.client.get(reverse("calendar"))
+        self.assertContains(calendar, "Externe Quelle · Müll")
+        self.assertContains(calendar, "Restmuell")
+
+    def test_calendar_ics_token_abo_includes_waste(self):
+        from .models import CalendarFeedToken, WasteCollection
+
+        self.station.waste_calendar_enabled = True
+        self.station.save()
+        future = timezone.now() + timedelta(days=2)
+        WasteCollection.objects.create(
+            station=self.station, title="Papier", starts_at=future, ends_at=future,
+        )
+        token = CalendarFeedToken.objects.create(
+            station=self.station, token="token123", created_by=self.user,
+        )
+        response = self.client.get(reverse("calendar_feed_token_ics", args=[token.token]))
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode()
+        self.assertIn("wachbuch-waste-", body)
+        self.assertIn("Papier", body)
+
+    def test_sync_waste_calendar_management_command_runs(self):
+        out = StringIO()
+        # Keine aktivierte Station -> Durchlauf ohne Fehler, ohne Netzaufruf.
+        call_command("sync_waste_calendar", stdout=out)
+        self.assertEqual(self.station.waste_collections.count(), 0)
+

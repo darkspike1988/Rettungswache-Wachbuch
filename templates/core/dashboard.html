@@ -43,11 +43,12 @@
     </div>
     <div class="agenda compact-agenda">
       {% for event in events %}
-        <article class="agenda-row {% if event.kind == 'holiday' %}agenda-holiday{% endif %}">
+        <article class="agenda-row {% if event.kind == 'holiday' %}agenda-holiday{% endif %}{% if event.kind == 'waste' %} agenda-external{% endif %}">
           <time datetime="{{ event.starts_at|date:'c' }}"><strong>{{ event.starts_at|date:"d.m." }}</strong><span>{% if event.all_day %}ganztägig{% else %}{{ event.starts_at|date:"H:i" }}{% endif %}</span></time>
           <div>
             <strong>{{ event.title }}</strong>
             {% if event.kind == 'holiday' %}<span class="status-label neutral">Feiertag</span>{% endif %}
+            {% if event.kind == 'waste' %}<span class="status-label neutral">Müll</span>{% endif %}
             {% if event.description %}<p>{{ event.description|truncatechars:90 }}</p>{% endif %}
             {% if event.kind == 'event' and event.source_pk %}<a class="text-action" href="{% url 'calendar_event_ics' event.source_pk %}">In Kalender speichern</a>{% endif %}
           </div>
@@ -56,4 +57,21 @@
     </div>
   </section>{% endif %}
 </div>
+
+{% if waste_enabled %}
+<section class="section-block" aria-labelledby="next-waste">
+  <div class="section-heading">
+    <h2 id="next-waste">Nächste Müllabfuhr</h2>
+    <a href="{% url 'calendar' %}">Kalender</a>
+  </div>
+  <div class="item-list">
+    {% for waste in waste_collections %}
+      <div class="list-row">
+        <time datetime="{{ waste.starts_at|date:'c' }}"><strong>{{ waste.starts_at|date:"d.m." }}</strong></time>
+        <span class="row-content"><strong>{{ waste.title }}</strong><small>Externe Quelle · {{ waste.source_label|default:"Müll" }}</small></span>
+      </div>
+    {% empty %}<p class="empty-state">Keine Abfuhren synchronisiert.</p>{% endfor %}
+  </div>
+</section>
+{% endif %}
 {% endblock %}

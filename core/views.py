@@ -61,6 +61,7 @@ from .models import (
     Membership,
     StationTask,
     TotpDevice,
+    WasteCollection,
     WebAuthnCredential,
 )
 from .mfa import (
@@ -353,6 +354,8 @@ def dashboard(request):
     now = timezone.now()
     active = prioritized_handovers(station)
     events = []
+    waste_events = []
+    waste_enabled = station.waste_calendar_enabled
     if station.calendar_enabled:
         from .holidays import is_upcoming_agenda_item, station_agenda
 
@@ -361,6 +364,12 @@ def dashboard(request):
         ).select_related("created_by").order_by("starts_at")
         agenda = station_agenda(station, qs, past_days=0, future_days=400)
         events = [item for item in agenda if is_upcoming_agenda_item(item, now=now)][:5]
+    if waste_enabled:
+        waste_events = list(
+            WasteCollection.objects.filter(
+                station=station, starts_at__gte=now
+            ).order_by("starts_at")[:3]
+        )
     task_progress = None
     if station.tasks_enabled:
         ensure_default_station_tasks(station)
@@ -373,6 +382,8 @@ def dashboard(request):
         "calendar_enabled": station.calendar_enabled,
         "tasks_enabled": station.tasks_enabled,
         "task_progress": task_progress,
+        "waste_enabled": waste_enabled,
+        "waste_collections": waste_events,
     }
     return render(request, "core/dashboard.html", context)
 
@@ -520,11 +531,18 @@ def calendar_view(request):
         station=station,
         ends_at__gte=timezone.now() - timedelta(days=1),
     ).select_related("created_by")
-    agenda = station_agenda(station, qs)
+    waste_qs = []
+    if station.waste_calendar_enabled:
+        waste_qs = WasteCollection.objects.filter(
+            station=station,
+            ends_at__gte=timezone.now() - timedelta(days=1),
+        ).order_by("starts_at")
+    agenda = station_agenda(station, qs, waste_collections=waste_qs)
     return render(request, "core/calendar.html", {
         "page_obj": page_for(request, agenda, 20),
         "can_create": can_create,
         "holidays_enabled": station.holidays_enabled,
+        "waste_enabled": station.waste_calendar_enabled,
     })
 
 

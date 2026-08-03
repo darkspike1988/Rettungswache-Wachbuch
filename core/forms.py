@@ -202,6 +202,9 @@ class StationSettingsForm(forms.ModelForm):
             "chat_enabled",
             "holidays_enabled",
             "checklists_enabled",
+            "waste_calendar_enabled",
+            "waste_calendar_url",
+            "waste_calendar_label",
             "paypal_me_url",
             "wero_link",
             "iban",
@@ -210,6 +213,9 @@ class StationSettingsForm(forms.ModelForm):
         ]
         labels = {
             "name": "Name der Rettungswache",
+            "waste_calendar_enabled": "Müllkalender aktiv",
+            "waste_calendar_url": "Müllkalender ICS-URL",
+            "waste_calendar_label": "Anzeigename der Müll-Quelle",
             "paypal_me_url": "PayPal.me-Link",
             "wero_link": "Wero-Link",
             "iban": "IBAN",
@@ -217,12 +223,28 @@ class StationSettingsForm(forms.ModelForm):
             "payment_note": "Zahlungshinweis",
         }
         help_texts = {
+            "waste_calendar_url": (
+                "HTTPS-ICS-Feed des örtlichen Entsorgers (z. B. AbfallNavi/RegioIT). "
+                "Wird vom Feed-Worker abgerufen; nur HTTPS, Port 443, keine privaten Adressen."
+            ),
+            "waste_calendar_label": "z. B. „Abfall GT“ – erscheint als Kennzeichnung der externen Quelle.",
             "paypal_me_url": "Vollstaendige https://paypal.me/…-URL.",
             "wero_link": "Vollstaendige https://…-URL zum Wero-Profil.",
             "iban": "Deutsche IBAN (DE + 20 Ziffern), nur fuer die Anzeige.",
             "bic": "Optional, 8 oder 11 Zeichen.",
             "payment_note": "Freitext, z. B. Verwendungszweck oder Ansprechpartner.",
         }
+
+    def clean_waste_calendar_url(self):
+        value = (self.cleaned_data.get("waste_calendar_url") or "").strip()
+        enabled = self.cleaned_data.get("waste_calendar_enabled")
+        if enabled and not value:
+            raise forms.ValidationError(
+                "Für ein aktiviertes Müllkalender-Modul wird eine ICS-URL benötigt."
+            )
+        if value and not value.startswith("https://"):
+            raise forms.ValidationError("Müllkalender-Quellen müssen mit https:// beginnen.")
+        return value
 
     def clean_paypal_me_url(self):
         value = (self.cleaned_data.get("paypal_me_url") or "").strip()
