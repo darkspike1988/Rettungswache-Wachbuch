@@ -7,7 +7,7 @@ import json
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
-from django.test import Client, TestCase, override_settings
+from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -2082,7 +2082,6 @@ class DemoModeTests(TestCase):
         self.assertTrue(User.objects.filter(username="demo-admin").exists())
 
 
-class DatabaseRoleLeastPrivilegeTests(TestCase):
     """Stellt sicher, dass die Backup-Rolle nur Leserechte bekommt (R-010)."""
 
     def _run_grant(self, env, executed):
@@ -2197,3 +2196,275 @@ class DatabaseRoleLeastPrivilegeTests(TestCase):
         self.assertFalse(insert_priv)
         self.assertFalse(update_priv)
         self.assertFalse(delete_priv)
+WEB_PUSH_SETTINGS = {
+    "VAPID_PUBLIC_KEY": "BPtest",
+    "VAPID_PRIVATE_KEY": "private-key",
+    "VAPID_ADMIN_EMAIL": "ops@test.local",
+}
+
+
+class _PushOutboxBase(TransactionTestCase):
+    """Station with two subscribers so per-recipient fan-out can be asserted."""
+
+    def setUp(self):
+        self.station = Station.objects.create(name="Outboxwache", slug="outboxwache")
+        self.author = User.objects.create_user("autor@example.org", first_name="Autor")
+        self.other = User.objects.create_user("kollege@example.org", first_name="Kollege")
+        Membership.objects.create(user=self.author, station=self.station, role=Membership.Role.MEMBER)
+        Membership.objects.create(user=self.other, station=self.station, role=Membership.Role.SHIFT_LEAD)
+        self.sub_author = PushSubscription.objects.create(
+            user=self.author, station=self.station,
+            endpoint="https://push.example/author/1",
+            p256dh="p1", auth="a1",
+        )
+        self.sub_other = PushSubscription.objects.create(
+            user=self.other, station=self.station,
+            endpoint="https://push.example/other/1",
+            p256dh="p2", auth="a2",
+        )
+
+    def make_handover(self, title="Dringend"):
+        return HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.TASK,
+            priority=HandoverEntry.Priority.URGENT,
+            title=title,
+            details="details",
+            author=self.author,
+        )
+
+
+class PushOutboxTransactionTests(_PushOutboxBase):
+    @override_settings(**WEB_PUSH_SETTINGS)
+    def test_urgent_handover_writes_one_row_per_other_subscription(self):
+        from .models import PushOutbox
+        from .push import notify_urgent_handover
+
+        handover = self.make_handover()
+        with override_settings(**WEB_PUSH_SETTINGS):
+            count = notify_urgent_handover(handover, self.author)
+        self.assertEqual(count, 1)
+        rows = list(PushOutbox.objects.all())
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].subscription_id, self.sub_other.id)
+        self.assertEqual(rows[0].user_id, self.other.id)
+        self.assertEqual(rows[0].status, PushOutbox.Status.PENDING)
+        self.assertIn("Dringend", rows[0].payload)
+
+    def test_urgent_handover_skips_when_priority_normal(self):
+        from .models import PushOutbox
+        from .push import notify_urgent_handover
+
+        handover = HandoverEntry.objects.create(
+            station=self.station,
+            category=HandoverEntry.Category.TASK,
+            priority=HandoverEntry.Priority.NORMAL,
+            title="Normal",
+            details="x",
+            author=self.author,
+        )
+        with override_settings(**WEB_PUSH_SETTINGS):
+            self.assertEqual(notify_urgent_handover(handover, self.author), 0)
+        self.assertFalse(PushOutbox.objects.exists())
+
+    def test_urgent_handover_rolls_back_with_outer_transaction(self):
+        from django.db import transaction
+
+        from .models import PushOutbox
+        from .push import notify_urgent_handover
+
+        handover = self.make_handover()
+        try:
+            with override_settings(**WEB_PUSH_SETTINGS), transaction.atomic():
+                notify_urgent_handover(handover, self.author)
+                raise RuntimeError("simulated failure")
+        except RuntimeError:
+            pass
+        self.assertEqual(PushOutbox.objects.count(), 0)
+
+    def test_urgent_handover_noop_when_disabled(self):
+        from .models import PushOutbox
+        from .push import notify_urgent_handover
+
+        with override_settings(WEB_PUSH_ENABLED=False):
+            handover = self.make_handover()
+            self.assertEqual(notify_urgent_handover(handover, self.author), 0)
+        self.assertFalse(PushOutbox.objects.exists())
+
+    @override_settings(**WEB_PUSH_SETTINGS)
+    def test_create_handover_persists_outbox(self):
+        from .forms import HandoverForm
+        from .models import PushOutbox
+        from .services import create_handover
+
+        membership = Membership.objects.get(user=self.author, station=self.station)
+        form = HandoverForm(
+            data={
+                "category": HandoverEntry.Category.TASK,
+                "priority": HandoverEntry.Priority.URGENT,
+                "title": "Mit Outbox",
+                "details": "x",
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        create_handover(form, membership)
+        self.assertEqual(
+            PushOutbox.objects.filter(status=PushOutbox.Status.PENDING).count(),
+            1,
+        )
+
+
+class PushOutboxWorkerTests(_PushOutboxBase):
+    @override_settings(**WEB_PUSH_SETTINGS)
+    def test_worker_sends_pending_row_and_marks_sent(self):
+        from .management.commands.push_worker import process_once
+        from .models import PushOutbox
+        from .push import notify_urgent_handover
+
+        handover = self.make_handover()
+        with override_settings(**WEB_PUSH_SETTINGS):
+            notify_urgent_handover(handover, self.author)
+        outbox = PushOutbox.objects.get()
+        with patch("core.management.commands.push_worker.webpush") as webpush_mock:
+            processed = process_once()
+        self.assertEqual(processed, 1)
+        webpush_mock.assert_called_once()
+        kwargs = webpush_mock.call_args.kwargs
+        self.assertEqual(kwargs["headers"]["X-Idempotency-Key"], str(outbox.id))
+        outbox.refresh_from_db()
+        self.assertEqual(outbox.status, PushOutbox.Status.SENT)
+        self.assertIsNotNone(outbox.sent_at)
+        self.assertEqual(outbox.attempts, 0)
+
+    @override_settings(**WEB_PUSH_SETTINGS)
+    def test_worker_retries_with_backoff_on_transient_error(self):
+        from pywebpush import WebPushException
+
+        from .management.commands.push_worker import process_once
+        from .models import PushOutbox
+        from .push import notify_urgent_handover
+
+        handover = self.make_handover()
+        with override_settings(**WEB_PUSH_SETTINGS):
+            notify_urgent_handover(handover, self.author)
+        response = type("R", (), {"status_code": 503})()
+        exc = WebPushException("boom", response=response)
+        with patch(
+            "core.management.commands.push_worker.webpush",
+            side_effect=exc,
+        ) as webpush_mock:
+            process_once()
+        webpush_mock.assert_called_once()
+        outbox = PushOutbox.objects.get()
+        self.assertEqual(outbox.status, PushOutbox.Status.PENDING)
+        self.assertEqual(outbox.attempts, 1)
+        self.assertGreater(outbox.next_attempt_at, timezone.now())
+
+    @override_settings(**WEB_PUSH_SETTINGS)
+    def test_worker_keeps_retrying_until_max_attempts_then_discards(self):
+        from pywebpush import WebPushException
+
+        from .management.commands.push_worker import process_once
+        from .models import PushOutbox
+        from .push import notify_urgent_handover
+
+        handover = self.make_handover()
+        with override_settings(**WEB_PUSH_SETTINGS):
+            notify_urgent_handover(handover, self.author)
+        response = type("R", (), {"status_code": 502})()
+        exc = WebPushException("transient", response=response)
+        with patch(
+            "core.management.commands.push_worker.webpush",
+            side_effect=exc,
+        ):
+            for _ in range(PushOutbox.MAX_ATTEMPTS):
+                PushOutbox.objects.update(next_attempt_at=timezone.now() - timedelta(seconds=1))
+                process_once()
+        outbox = PushOutbox.objects.get()
+        self.assertEqual(outbox.attempts, PushOutbox.MAX_ATTEMPTS)
+        self.assertEqual(outbox.status, PushOutbox.Status.DISCARDED)
+        self.assertTrue(
+            AuditEvent.objects.filter(action="push.outbox_failed").exists()
+        )
+
+    @override_settings(**WEB_PUSH_SETTINGS)
+    def test_worker_drops_subscription_on_404(self):
+        from pywebpush import WebPushException
+
+        from .management.commands.push_worker import process_once
+        from .models import PushOutbox
+        from .push import notify_urgent_handover
+
+        handover = self.make_handover()
+        with override_settings(**WEB_PUSH_SETTINGS):
+            notify_urgent_handover(handover, self.author)
+        response = type("R", (), {"status_code": 404})()
+        exc = WebPushException("gone", response=response)
+        with patch(
+            "core.management.commands.push_worker.webpush",
+            side_effect=exc,
+        ):
+            process_once()
+        self.assertFalse(PushSubscription.objects.filter(pk=self.sub_other.id).exists())
+        outbox = PushOutbox.objects.get()
+        self.assertEqual(outbox.status, PushOutbox.Status.DISCARDED)
+
+    @override_settings(**WEB_PUSH_SETTINGS)
+    def test_backoff_schedule_steps(self):
+        from .models import PushOutbox
+
+        outbox = PushOutbox(
+            station=self.station, user=self.other,
+            subscription=self.sub_other, payload="{}",
+        )
+        self.assertEqual(outbox.next_backoff_seconds, PushOutbox.BACKOFF_SECONDS[0])
+        outbox.attempts = 1
+        self.assertEqual(outbox.next_backoff_seconds, PushOutbox.BACKOFF_SECONDS[1])
+        outbox.attempts = len(PushOutbox.BACKOFF_SECONDS) + 5
+        self.assertEqual(outbox.next_backoff_seconds, PushOutbox.BACKOFF_SECONDS[-1])
+
+
+class PushOutboxRetentionTests(_PushOutboxBase):
+    def _create_old(self, status):
+        from .models import PushOutbox
+
+        out = PushOutbox.objects.create(
+            station=self.station, user=self.other,
+            subscription=self.sub_other, payload="{}",
+            status=status,
+        )
+        PushOutbox.objects.filter(pk=out.pk).update(
+            created_at=timezone.now() - timedelta(days=PushOutbox.RETENTION_DAYS + 1)
+        )
+        return out
+
+    def test_cleanup_pushoutbox_command_removes_old_terminal_rows(self):
+        from .models import PushOutbox
+
+        old = self._create_old(PushOutbox.Status.SENT)
+        fresh = PushOutbox.objects.create(
+            station=self.station, user=self.other,
+            subscription=self.sub_other, payload="{}",
+            status=PushOutbox.Status.SENT,
+        )
+        old_pending = self._create_old(PushOutbox.Status.PENDING)
+        call_command("cleanup_pushoutbox")
+        self.assertFalse(PushOutbox.objects.filter(pk=old.id).exists())
+        self.assertTrue(PushOutbox.objects.filter(pk=fresh.id).exists())
+        self.assertTrue(PushOutbox.objects.filter(pk=old_pending.id).exists())
+
+    def test_apply_pushoutbox_retention_helper(self):
+        from .models import PushOutbox
+        from .services import apply_pushoutbox_retention
+
+        self._create_old(PushOutbox.Status.DISCARDED)
+        removed = apply_pushoutbox_retention()
+        self.assertEqual(removed, 1)
+        self.assertEqual(PushOutbox.objects.count(), 0)
+
+    def test_cleanup_pushoutbox_dry_run(self):
+        from .models import PushOutbox
+
+        self._create_old(PushOutbox.Status.SENT)
+        call_command("cleanup_pushoutbox", "--dry-run")
+        self.assertEqual(PushOutbox.objects.count(), 1)

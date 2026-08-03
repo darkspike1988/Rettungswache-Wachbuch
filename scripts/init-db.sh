@@ -9,8 +9,11 @@ psql -v ON_ERROR_STOP=1 \
     --set=feed_user="$FEED_DB_USER" \
     --set=feed_password="$FEED_DB_PASSWORD" \
     --set=backup_user="$BACKUP_DB_USER" \
-    --set=backup_password="$BACKUP_DB_PASSWORD" <<'SQL'
+    --set=backup_password="$BACKUP_DB_PASSWORD" \
+    --set=push_user="$PUSH_DB_USER" \
+    --set=push_password="$PUSH_DB_PASSWORD" <<'SQL'
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'app_user', :'app_password') \gexec
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'feed_user', :'feed_password') \gexec
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'backup_user', :'backup_password') \gexec
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'push_user', :'push_password') \gexec
 SQL

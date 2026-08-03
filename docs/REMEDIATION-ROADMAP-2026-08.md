@@ -150,7 +150,7 @@ bestehenden CI-Workflow aufgenommen.
 
 Actions und Images weiterhin auf unveraenderliche SHAs/Digests pinnen.
 
-### [ ] R-013 Push-Outbox
+### [~] R-013 Push-Outbox
 
 **Plan:** Transaktion schreibt einen Outbox-Datensatz; separater Worker sendet
 Push mit Retry, Backoff, Idempotenz und begrenzter Aufbewahrung. Kein externer

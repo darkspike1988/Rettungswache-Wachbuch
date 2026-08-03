@@ -1,5 +1,6 @@
 from datetime import date
 from urllib.parse import urlparse
+import uuid
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -434,6 +435,68 @@ class PushSubscription(models.Model):
 
     def __str__(self):
         return f"Push {self.user_id}@{self.station_id}"
+
+
+class PushOutbox(models.Model):
+    """Transactional outbox row for Web-Push delivery.
+
+    A request that creates an urgent handover writes one PushOutbox per
+    subscription in the same DB transaction. A separate worker picks the
+    rows, performs the external HTTP call, and updates the status. The
+    Gunicorn request never opens a network connection to a push service.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+        DISCARDED = "discarded", "Discarded"
+
+    BACKOFF_SECONDS = (60, 300, 900, 3600, 21600)
+    MAX_ATTEMPTS = 10
+    RETENTION_DAYS = 30
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="push_outbox")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="push_outbox")
+    # SET_NULL keeps the forensic outbox row when a subscription is purged.
+    # The worker nulls the reference first so the cascade never fires.
+    subscription = models.ForeignKey(
+        PushSubscription, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="outbox_entries",
+    )
+    payload = models.JSONField()
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    attempts = models.PositiveIntegerField(default=0)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "next_attempt_at"]),
+            models.Index(fields=["station", "status"]),
+        ]
+
+    def __str__(self):
+        return f"PushOutbox {self.id} ({self.status})"
+
+    @property
+    def next_backoff_seconds(self) -> int:
+        """Return the wait time for the next attempt.
+
+        ``attempts`` counts the deliveries that already failed. After the
+        first failure we wait ``BACKOFF_SECONDS[0]`` (60s), after the second
+        ``BACKOFF_SECONDS[1]`` (5 min), and so on. Beyond the defined
+        schedule the last step is reused so ``MAX_ATTEMPTS`` still leaves
+        room for a final retry.
+        """
+        idx = min(self.attempts, len(self.BACKOFF_SECONDS) - 1)
+        return self.BACKOFF_SECONDS[idx]
 
 
 class CalendarFeedToken(models.Model):
