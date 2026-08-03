@@ -490,7 +490,7 @@
     if (privateJwk) {
       return privateJwk;
     }
-    const passphrase = window.prompt("Passphrase für Ende-zu-Ende-Schlüssel eingeben:");
+    const passphrase = await window.requestCryptoUnlock();
     if (!passphrase) {
       throw new Error("Entsperren abgebrochen.");
     }

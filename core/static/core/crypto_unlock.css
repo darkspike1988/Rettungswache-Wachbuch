@@ -1,0 +1,59 @@
+dialog.crypto-unlock {
+  border: 1px solid var(--border, #d4dae3);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 28rem;
+  width: 90%;
+  background: var(--surface, #ffffff);
+  color: var(--text, #1a1a1a);
+}
+
+dialog.crypto-unlock::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+dialog.crypto-unlock h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+dialog.crypto-unlock p {
+  margin: 0 0 16px;
+  color: var(--text-muted, #4a5568);
+}
+
+dialog.crypto-unlock label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+dialog.crypto-unlock input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #cbd5e0);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+dialog.crypto-unlock input:focus-visible {
+  outline: 2px solid var(--brand, #1f5f8b);
+  outline-offset: 2px;
+}
+
+dialog.crypto-unlock input[aria-invalid="true"] {
+  border-color: #c53030;
+}
+
+dialog.crypto-unlock .crypto-unlock-error {
+  color: #c53030;
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+}
+
+dialog.crypto-unlock .crypto-unlock-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
