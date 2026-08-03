@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 "indexes": [
-                    models.Index(fields=["bucket", "window_start"], name="core_ratelim_bucket__b9e54a_idx"),
+                    models.Index(fields=["bucket", "window_start"]),
                 ],
                 "unique_together": {("bucket", "key_hash", "window_start")},
             },
