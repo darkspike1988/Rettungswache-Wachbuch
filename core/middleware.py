@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 
 from .errors import (
@@ -80,4 +81,24 @@ class CorrelationIdMiddleware:
         return response
 
 
-__all__ = ["SecurityHeadersMiddleware", "CorrelationIdMiddleware"]
+class ClientIPMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        request.client_ip = self._extract(request)
+        return self.get_response(request)
+
+    def _extract(self, request):
+        trusted = bool(getattr(settings, "TRUSTED_PROXY", False))
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if trusted and forwarded:
+            ip = forwarded.split(",")[0].strip()
+        else:
+            ip = (request.META.get("REMOTE_ADDR") or "unknown").strip()
+        if not ip or len(ip) > 64:
+            ip = "unknown"
+        return ip
+
+
+__all__ = ["SecurityHeadersMiddleware", "CorrelationIdMiddleware", "ClientIPMiddleware"]

@@ -125,12 +125,17 @@ explizit mit `docker compose run --rm -e RESTORE_OWNER=1` und Owner-Credentials
 gestartet werden, damit der dauerhafte Container keinen Owner-Zugang besitzt.
 
 **Abnahme:** Backup gelingt; Backuprolle kann keine Fachzeile aendern/loeschen;
-Restore-Test in isolierter DB ist gruen; Offsite-Ziel ist verschluessert.
-### [ ] R-011 Gemeinsames Rate Limiting und Proxy-Vertrauen
+Restore-Test in isolierter DB ist gruen; Offsite-Ziel ist verschluesselt.
+### [x] R-011 Gemeinsames Rate Limiting und Proxy-Vertrauen
 
 **Plan:** registrierungsbezogene Limits in Redis oder transaktionaler DB-Tabelle,
 IP nur hinter explizit vertrautem Proxy auswerten, gehashten Schluessel verwenden,
 Aufbewahrung dokumentieren.
+
+**Umsetzung:** DB-basiertes `RateLimit`-Model mit `select_for_update`,
+SHA-256-gehashte Schlüssel via `RATELIMIT_KEY_SALT`, IP-Extraktion in
+`ClientIPMiddleware` (nutzt `X-Forwarded-For` nur bei `TRUSTED_PROXY=true`),
+`community_views.register` als erste Anwendungsstelle.
 
 **Abnahme:** mehrere Gunicorn-Worker teilen denselben Zaehler; gefaelschtes
 `X-Forwarded-For` umgeht das Limit nicht.
