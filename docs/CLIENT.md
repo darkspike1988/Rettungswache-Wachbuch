@@ -7,10 +7,19 @@ Stand: 31. Juli 2026.
 | | |
 | --- | --- |
 | **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch (≥ **0.14.1**) |
-| **Client** | https://github.com/darkspike1988/Wachbuch-Client (App **0.2.x**) |
+| **Client** | https://github.com/darkspike1988/Wachbuch-Client (App **0.5.1+** (kompatibel mit Server ab 0.14.1)) |
 | **Spiegel im Server** | `clients/wachbuch-mobile/` |
 | **Push Server → Client** | `./scripts/publish-mobile-client-repo.sh` |
 | **Pull Client → Server** | `./scripts/pull-mobile-client-repo.sh` |
+
+## Versionspaarung
+
+| Server | Client | Hinweis |
+| --- | --- | --- |
+| ≥ 0.15.0 | 0.5.1+ | Demo-Modus, Kaffeekasse-Zahlungshinweise, SECRET_KEY-Rotation |
+| ≥ 0.14.1 | 0.5.0+ | API v1, App-Tokens, i18n |
+| ≥ 0.14.0 | 0.5.0+ | API v1 vereinheitlicht, Checklisten-API |
+| ≥ 0.12.0 | 0.2.x | Mobile-Startflow (Server-Adresse oder QR) |
 
 Canonical für die App-Entwicklung ist **Wachbuch-Client**. Der Ordner
 `clients/wachbuch-mobile/` bleibt als Spiegel für Docs/CI im Server-Repo.

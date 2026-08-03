@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Doku-Sync: Versionspaarung Server ↔ Client dokumentiert
 - **Kaffeekasse: Zahlungsweg-Hinweise** – optionale Felder `paypal_me_url`,
   `wero_link`, `iban`, `bic`, `payment_note` in den Stationseinstellungen;
   Anzeige als Links (`target="_blank" rel="noopener"`), kopierbare IBAN und
