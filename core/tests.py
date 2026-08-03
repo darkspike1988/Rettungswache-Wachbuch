@@ -1738,6 +1738,8 @@ class ApiUnifiedContractTests(PilotTestCase):
         self.assertContains(html, "Fahrzeugcheck")
 
     def test_checklist_abschluss_alias_matches_erledigt(self):
+        from .models import Checklist, ChecklistCompletion, ChecklistItem
+
         raw = self._token(scopes=["write:checklists"])
         self.station.checklists_enabled = True
         self.station.save(update_fields=["checklists_enabled"])
