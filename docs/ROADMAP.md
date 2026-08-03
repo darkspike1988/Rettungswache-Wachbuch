@@ -11,11 +11,11 @@ Arbeitsregeln fuer weitere Coding-Agenten stehen in [`../AGENTS.md`](../AGENTS.m
 Aktueller Stand der ersten Welle:
 
 - [~] CSP-kompatible Empfaengerauswahl fuer verschluesselte Post
-- [~] sichere JSON-Einbettung ohne `|safe`/`innerHTML`
-- [~] Sicherheitsregressionstests
+- [x] sichere JSON-Einbettung ohne `|safe`/`innerHTML`
+- [x] Sicherheitsregressionstests
 - [x] E2EE-Texte an das reale Vertrauensmodell angepasst
 - [~] Race-Condition-Schutz fuer Tagesaufgaben
-- [~] scheme-relative Redirects blockiert
+- [x] scheme-relative Redirects blockiert
 - [~] vierteilige Hauptnavigation, Fokus- und mobile Wochenansicht verbessert
 - [ ] Least-Privilege-Backuprolle
 - [ ] gemeinsames Rate Limiting hinter explizit vertrautem Proxy
@@ -23,7 +23,8 @@ Aktueller Stand der ersten Welle:
 - [ ] externe ASVS-, Penetrations-, Last-, Restore- und Accessibility-Abnahme
 
 `[~]` bedeutet: Code ist im Review-Branch umgesetzt, die in der Detail-Roadmap
-genannte CI-, Browser- oder Parallelitaetsabnahme steht noch aus.
+genannte Browser-, Parallelitaets- oder manuelle UX-Abnahme steht noch aus.
+Django- und Docker-CI waren auf Commit `6af6689` (Run 59) gruen.
 
 ## Erreicht (Basis bis 0.14.2)
 
