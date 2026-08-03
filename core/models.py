@@ -809,3 +809,19 @@ class AuditEvent(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValidationError("Audit-Ereignisse dürfen nicht gelöscht werden.")
+
+
+class RateLimit(models.Model):
+    bucket = models.CharField(max_length=64)
+    key_hash = models.CharField(max_length=64)
+    window_start = models.DateTimeField()
+    count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = (("bucket", "key_hash", "window_start"),)
+        indexes = [
+            models.Index(fields=["bucket", "window_start"]),
+        ]
+
+    def __str__(self):
+        return f"{self.bucket}:{self.key_hash}:{self.window_start.isoformat()}"

@@ -19,6 +19,7 @@ from .access import CONTENT_ROLES, get_membership, membership_required, station_
 from .avatars import initials_for
 from .forms import AvatarForm, ChatMessageForm, ProfileForm, RegistrationForm
 from .models import ChatMessage, Membership, RegistrationRequest, UserProfile
+from .rate_limit import consume as rate_limit_consume
 from .services import audit, revoke_api_tokens_for_user
 
 
@@ -27,20 +28,17 @@ def registration_enabled():
 
 
 def _client_ip(request):
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()[:64]
-    return (request.META.get("REMOTE_ADDR") or "unknown")[:64]
+    return getattr(request, "client_ip", "") or "unknown"
 
 
 def _registration_rate_limited(request):
-    key = f"rwsth-register:{_client_ip(request)}"
-    count = cache.get(key, 0)
-    limit = int(getattr(settings, "REGISTRATION_RATE_LIMIT", 5) or 5)
-    if count >= limit:
-        return True
-    cache.set(key, count + 1, timeout=3600)
-    return False
+    ip = _client_ip(request)
+    return not rate_limit_consume(
+        "register",
+        ip,
+        limit=int(getattr(settings, "REGISTRATION_RATE_LIMIT", 5) or 5),
+        window_seconds=3600,
+    )
 
 
 def _can_view_avatar(viewer, target_user):

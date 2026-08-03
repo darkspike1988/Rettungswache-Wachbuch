@@ -48,6 +48,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.CorrelationIdMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
+    "core.middleware.ClientIPMiddleware",
     "axes.middleware.AxesMiddleware",
 ]
 
@@ -216,6 +217,8 @@ if DEMO_MODE:
     MFA_REQUIRED = False
 REGISTRATION_ENABLED = env_bool("REGISTRATION_ENABLED", default=False)
 REGISTRATION_RATE_LIMIT = int(os.getenv("REGISTRATION_RATE_LIMIT", "5") or "5")
+TRUSTED_PROXY = env_bool("TRUSTED_PROXY", default=False)
+RATELIMIT_KEY_SALT = os.getenv("RATELIMIT_KEY_SALT", "wachbuch")
 WEBAUTHN_ENABLED = env_bool("WEBAUTHN_ENABLED", default=True)
 WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", "").strip()
 WEBAUTHN_ORIGIN = os.getenv("WEBAUTHN_ORIGIN", "").strip()
