@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import ApiToken, AuditEvent, BirthdayPreference, FeedItem, HandoverEntry, HandoverRevision
+from .push import notify_urgent_handover
 
 
 def audit(actor, station, action, obj, metadata=None):
@@ -58,7 +59,7 @@ def create_handover(form, membership):
     audit(membership.user, membership.station, "handover.created", handover, {
         "fields": ["category", "priority", "title", "details"],
     })
-    _schedule_urgent_push(handover, membership.user)
+    notify_urgent_handover(handover, membership.user)
     return handover
 
 
@@ -119,25 +120,8 @@ def update_handover_content(handover, cleaned_data, membership):
         "changes": structure_changes(before, after),
     })
     if locked.priority == HandoverEntry.Priority.URGENT and "priority" in field_names:
-        _schedule_urgent_push(locked, membership.user)
+        notify_urgent_handover(locked, membership.user)
     return locked
-
-
-def _schedule_urgent_push(handover, actor):
-    handover_id = handover.pk
-    actor_id = actor.pk
-
-    def send():
-        from django.contrib.auth.models import User
-
-        from .push import notify_urgent_handover
-
-        item = HandoverEntry.objects.filter(pk=handover_id).first()
-        user = User.objects.filter(pk=actor_id).first()
-        if item and user:
-            notify_urgent_handover(item, user)
-
-    transaction.on_commit(send)
 
 
 @transaction.atomic
@@ -202,4 +186,31 @@ def apply_retention(now=None):
     return {
         "feed_items": apply_feed_retention(now=now),
         "audit_events": apply_audit_retention(now=now),
+        "push_outbox": apply_pushoutbox_retention(now=now),
     }
+
+
+def apply_pushoutbox_retention(now=None, days=None):
+    """Delete terminal push-outbox rows older than ``days``.
+
+    ``days`` defaults to ``PushOutbox.RETENTION_DAYS`` (30). Returns the
+    number of removed rows. ``0`` or a negative value disables retention.
+    """
+    from .models import PushOutbox
+
+    if days is None:
+        days = PushOutbox.RETENTION_DAYS
+    days = int(days or 0)
+    if days <= 0:
+        return 0
+    now = now or timezone.now()
+    cutoff = now - timedelta(days=days)
+    deleted, _ = PushOutbox.objects.filter(
+        status__in=[
+            PushOutbox.Status.SENT,
+            PushOutbox.Status.DISCARDED,
+            PushOutbox.Status.FAILED,
+        ],
+        created_at__lt=cutoff,
+    ).delete()
+    return deleted

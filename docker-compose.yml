@@ -21,6 +21,8 @@ services:
       FEED_DB_PASSWORD: ${FEED_DB_PASSWORD}
       BACKUP_DB_USER: ${BACKUP_DB_USER}
       BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD}
+      PUSH_DB_USER: ${PUSH_DB_USER:-rwsth_push}
+      PUSH_DB_PASSWORD: ${PUSH_DB_PASSWORD:-disabled}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -53,6 +55,8 @@ services:
       APP_DB_USER: ${APP_DB_USER}
       FEED_DB_USER: ${FEED_DB_USER}
       BACKUP_DB_USER: ${BACKUP_DB_USER}
+      PUSH_DB_USER: ${PUSH_DB_USER:-rwsth_push}
+      PUSH_DB_PASSWORD: ${PUSH_DB_PASSWORD:-disabled}
       DEFAULT_STATION_NAME: ${DEFAULT_STATION_NAME:-Rettungswache}
       DEFAULT_STATION_SLUG: ${DEFAULT_STATION_SLUG:-rettungswache}
       DEMO_MODE: ${DEMO_MODE:-false}
@@ -146,6 +150,43 @@ services:
     depends_on:
       web:
         condition: service_healthy
+    networks:
+      - worker-db
+      - egress
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  push-worker:
+    image: rettungswache-wachbuch:local
+    restart: unless-stopped
+    logging: *default-logging
+    command: ["/app/scripts/start-push-worker.sh"]
+    environment:
+      DJANGO_SECRET_KEY: ${PUSH_WORKER_SECRET_KEY}
+      DJANGO_DEBUG: "false"
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${PUSH_DB_USER}
+      DB_PASSWORD: ${PUSH_DB_PASSWORD}
+      ALLOWED_HOSTS: localhost
+      WEB_PUSH_ENABLED: ${WEB_PUSH_ENABLED:-false}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_ADMIN_EMAIL: ${VAPID_ADMIN_EMAIL:-ops@localhost}
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/push_worker.alive"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - worker-db
       - egress

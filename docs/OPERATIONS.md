@@ -81,6 +81,49 @@ Vor dem Upgrade einer 0.2-Installation muessen die Hosts aller bestehenden
 Quellen aus dem Django-Admin in `FEED_ALLOWED_HOSTS` uebernommen werden. Eine
 leere Allowlist deaktiviert Abrufe absichtlich.
 
+## Push-Outbox
+
+Dringende Uebergaben schreiben innerhalb der Handover-Transaktion einen
+`PushOutbox`-Eintrag pro aktivem Abo. Der `push-worker`-Service liest die
+Tabelle, sendet ueber `pywebpush` und loescht das Abo bei HTTP 404/410.
+Der Gunicorn-Request selbst macht **keinen** externen Netzaufruf.
+
+Der Container laeuft mit dedizierter DB-Rolle `PUSH_DB_USER` (Least Privilege)
+und eigenem `PUSH_WORKER_SECRET_KEY`. Erreichbar nur ueber `worker-db` und
+`egress`, kein direkter App-DB-User.
+
+### Retry und Backoff
+
+Bei Netzwerkfehlern oder 5xx-Antworten bleibt der Eintrag `pending` und der
+Worker plant den naechsten Versuch mit exponentiellem Backoff:
+
+| Versuch | Wartezeit |
+|--------:|----------:|
+| 1       | 60 s      |
+| 2       | 5 min     |
+| 3       | 15 min    |
+| 4       | 1 h       |
+| 5+      | 6 h       |
+
+Nach `MAX_ATTEMPTS = 10` Versuchen wird der Eintrag auf `discarded` gesetzt
+und ein `push.outbox_failed` Audit-Event geschrieben. Die Idempotenz wird
+ueber den HTTP-Header `X-Idempotency-Key` (UUID der Outbox-Zeile) an den
+Push-Provider uebertragen.
+
+### Aufbewahrung
+
+Abgeschlossene Zeilen (`sent`, `discarded`, `failed`) werden nach 30 Tagen
+geloescht. Aufrufbar als eigenstaendiger Befehl oder Bestandteil der
+taeglichen Retention:
+
+```bash
+docker compose exec -T web python manage.py cleanup_pushoutbox
+docker compose exec -T web python manage.py cleanup_pushoutbox --days 7 --dry-run
+```
+
+`apply_retention` ruft `apply_pushoutbox_retention` ebenfalls auf, sodass der
+bestehende Retention-Cron-Pfad die Outbox mitraeumt.
+
 ## Backup und Restore
 
 ### Rollenmodell (R-010, Least-Privilege)
