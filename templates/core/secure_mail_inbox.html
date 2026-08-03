@@ -4,7 +4,7 @@
 <header class="page-heading narrow">
   <p class="context-line">Interne Post · E2EE</p>
   <h1>Post</h1>
-  <p class="lead">Verschlüsselte interne Mails. Nur Absender und Empfänger können den Inhalt lesen – nicht der Master-Admin.</p>
+  <p class="lead">Interne Post wird im Browser verschlüsselt gespeichert. Datenbank und Backups enthalten Ciphertext; ausgelieferter Webclient und Server bleiben Teil des Vertrauensmodells.</p>
 </header>
 <nav class="chat-tabs" aria-label="Nachrichtenbereiche">
   <a href="{% url 'chat' %}">Wache</a>
@@ -16,7 +16,7 @@
 {% else %}
 <section class="content-flow narrow" data-e2ee-mail data-viewer-id="{{ viewer_id }}">
   <p class="hint" data-crypto-status hidden></p>
-  <script type="application/json" data-members-json>{{ colleagues_json|safe }}</script>
+  {{ colleagues_json|json_script:"mail-members-json" }}
   <h2>Empfangen</h2>
   <div class="member-list-clean">
     {% for item in received %}
@@ -45,7 +45,6 @@
   <form class="form-card" data-e2ee-mail-compose>
     <fieldset>
       <legend>Empfänger</legend>
-      {% for person in colleagues_json %}{% endfor %}
       <div class="recipient-picks" data-recipient-picks></div>
     </fieldset>
     <p><label>Betreff <input type="text" name="subject" maxlength="160"></label></p>
@@ -53,16 +52,5 @@
     <button class="button primary" type="submit">Verschlüsselt senden</button>
   </form>
 </section>
-<script>
-  (() => {
-    const root = document.querySelector("[data-e2ee-mail]");
-    if (!root) return;
-    const people = JSON.parse(root.querySelector("[data-members-json]").textContent || "[]");
-    const box = root.querySelector("[data-recipient-picks]");
-    box.innerHTML = people.filter((p) => p.has_keys).map((p) => (
-      `<label><input type="checkbox" name="recipient_ids" value="${p.user_id}"> ${p.label}</label>`
-    )).join("") || "<p class='empty-state'>Keine Kollegen mit Schlüsseln.</p>";
-  })();
-</script>
 {% endif %}
 {% endblock %}

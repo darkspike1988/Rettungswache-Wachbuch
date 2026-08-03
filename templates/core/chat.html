@@ -4,7 +4,7 @@
 <header class="page-heading narrow">
   <p class="context-line">Kollegen</p>
   <h1>Wachenchat</h1>
-  <p class="lead">Ende-zu-Ende-verschlüsselt. Der Server speichert nur Ciphertext – Master-Admin sieht keine Klartexte in der Verwaltung.</p>
+  <p class="lead">Nachrichten werden im Browser verschlüsselt; die Datenbank speichert nur Ciphertext. Der ausgelieferte Webclient und der Server bleiben Teil des Vertrauensmodells.</p>
 </header>
 <nav class="chat-tabs" aria-label="Nachrichtenbereiche">
   <a href="{% url 'chat' %}" aria-current="page">Wache</a>
@@ -16,8 +16,8 @@
 {% endif %}
 <section class="chat-thread" data-e2ee-chat {% if has_keys %}data-has-keys="1"{% endif %} data-viewer-id="{{ viewer_id }}">
   <p class="hint" data-crypto-status hidden></p>
-  <script type="application/json" data-feed-json>{{ feed_json|safe }}</script>
-  <script type="application/json" data-members-json>{{ members_json|safe }}</script>
+  {{ feed_json|json_script:"chat-feed-json" }}
+  {{ members_json|json_script:"chat-members-json" }}
   {% for item in feed %}
     <article class="chat-bubble {% if item.is_own %}is-own{% endif %}">
       <div class="chat-avatar" aria-hidden="true">

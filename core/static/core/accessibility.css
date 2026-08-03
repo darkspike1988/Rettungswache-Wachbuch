@@ -1,0 +1,45 @@
+/* Review remediation overrides. Keep this file small and remove rules only after
+   they have been absorbed into the main design system with equivalent tests. */
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--brand-deep);
+}
+
+.chat-tabs a,
+.recipient-picks label {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.recipient-picks label {
+  gap: .55rem;
+  padding: .35rem .2rem;
+  cursor: pointer;
+}
+
+.recipient-picks input {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0;
+}
+
+@media (max-width: 48rem) {
+  .week-board {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .week-day {
+    min-width: 0;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid CanvasText;
+    box-shadow: none;
+  }
+}

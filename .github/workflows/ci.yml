@@ -19,11 +19,25 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r requirements.txt
+      - name: Compile Python sources
+        run: python -m compileall -q config core
+      - name: Check JavaScript syntax
+        run: |
+          node --check core/static/core/app.js
+          node --check core/static/core/json_data.js
       - name: Check migrations
         env:
           DJANGO_SECRET_KEY: ci-only-secret
           DJANGO_DEBUG: "false"
         run: python manage.py makemigrations --check --dry-run --settings=config.test_settings
+      - name: Run deployment checks
+        env:
+          DJANGO_SECRET_KEY: ci-only-secret
+          DJANGO_DEBUG: "false"
+          SECURE_COOKIES: "true"
+          ALLOWED_HOSTS: example.test
+          CSRF_TRUSTED_ORIGINS: https://example.test
+        run: python manage.py check --deploy --settings=config.settings
       - name: Run tests
         env:
           DJANGO_SECRET_KEY: ci-only-secret

@@ -45,11 +45,14 @@ DEFAULT_TASKS = (
 
 
 def ensure_default_station_tasks(station):
-    """Legt die Standardvorlage an, wenn die Wache noch keine Aufgaben hat."""
-    if StationTask.objects.filter(station=station).exists():
-        return 0
-    created = 0
+    """Legt die Standardvorlage einmalig und parallelitätssicher an."""
     with transaction.atomic():
+        # Lock the stable station row before checking for tasks. A lock on a
+        # non-existing StationTask row would not serialize two first requests.
+        Station.objects.select_for_update().get(pk=station.pk)
+        if StationTask.objects.filter(station=station).exists():
+            return 0
+        created = 0
         for title, band, weekday, notes, sort_order in DEFAULT_TASKS:
             StationTask.objects.create(
                 station=station,
@@ -60,7 +63,7 @@ def ensure_default_station_tasks(station):
                 sort_order=sort_order,
             )
             created += 1
-    return created
+        return created
 
 
 def week_monday(value: date) -> date:
@@ -155,16 +158,23 @@ def week_board(station, any_day: date):
 def toggle_task_completion(*, task, membership, work_date: date, mark_done: bool):
     station = membership.station
     with transaction.atomic():
+        # Serialize all completion changes for the same task, including the
+        # first completion where no row exists yet.
+        locked_task = StationTask.objects.select_for_update().get(
+            pk=task.pk,
+            station=station,
+            is_active=True,
+        )
         existing = (
             StationTaskCompletion.objects.select_for_update()
-            .filter(task=task, work_date=work_date)
+            .filter(task=locked_task, work_date=work_date)
             .first()
         )
         if mark_done:
             if existing:
                 return existing
             completion = StationTaskCompletion.objects.create(
-                task=task,
+                task=locked_task,
                 station=station,
                 work_date=work_date,
                 completed_by=membership.user,
