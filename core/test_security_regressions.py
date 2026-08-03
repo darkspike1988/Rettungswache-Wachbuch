@@ -1,10 +1,19 @@
 from pathlib import Path
 
-from django.http import HttpResponse
-from django.test import RequestFactory, SimpleTestCase
+from django.http import HttpResponse, JsonResponse
+from django.test import Client, RequestFactory, SimpleTestCase, override_settings
 from django.utils.html import json_script
 
-from .middleware import SecurityHeadersMiddleware
+from .errors import (
+    CORRELATION_ID_PATTERN,
+    ERROR_CODES,
+    ERROR_CODE_FORBIDDEN,
+    ERROR_CODE_NOT_FOUND,
+    RESPONSE_CORRELATION_HEADER,
+    correlation_id_for_request,
+    json_error,
+)
+from .middleware import CorrelationIdMiddleware, SecurityHeadersMiddleware
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -89,3 +98,122 @@ class ConcurrencyGuardRegressionTests(SimpleTestCase):
         source = (PROJECT_ROOT / "core/task_board.py").read_text(encoding="utf-8")
         self.assertIn("Station.objects.select_for_update()", source)
         self.assertIn("StationTask.objects.select_for_update()", source)
+
+
+class ErrorHandlerRegressionTests(SimpleTestCase):
+    """Regressionstests fuer R-014 (Fehlerseiten und API-Konsistenz)."""
+
+    def _render(self, response_callable):
+        request = RequestFactory().get("/")
+        middleware = CorrelationIdMiddleware(response_callable)
+        response = middleware(request)
+        return response
+
+    def test_correlation_id_is_generated_when_missing(self):
+        captured = {}
+
+        def view(request):
+            captured["cid"] = getattr(request, "correlation_id", None)
+            return HttpResponse("ok")
+
+        response = self._render(view)
+        self.assertTrue(captured["cid"])
+        self.assertEqual(response[RESPONSE_CORRELATION_HEADER], captured["cid"])
+        self.assertRegex(captured["cid"], r"^[A-Za-z0-9_\-]{1,128}$")
+
+    def test_correlation_id_honors_safe_header_value(self):
+        request = RequestFactory().get("/", HTTP_X_CORRELATION_ID="client-abc-123")
+        cid = correlation_id_for_request(request)
+        self.assertEqual(cid, "client-abc-123")
+
+    def test_correlation_id_rejects_hostile_header_value(self):
+        # Header mit Zeilenumbruch oder Sonderzeichen darf nicht uebernommen
+        # werden (Schutz vor Log-Injection und Header-Smuggling).
+        for hostile in ("a\nb", "x y", "<script>", "x" * 200):
+            request = RequestFactory().get("/", HTTP_X_CORRELATION_ID=hostile)
+            cid = correlation_id_for_request(request)
+            self.assertNotEqual(cid, hostile)
+            self.assertRegex(cid, CORRELATION_ID_PATTERN)
+
+    def test_json_error_has_canonical_shape_and_correlation_id(self):
+        def view(request):
+            return json_error(request, ERROR_CODE_FORBIDDEN, message="Nein.", status=403)
+
+        response = self._render(view)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response["Content-Type"], "application/json")
+        import json
+        body = json.loads(response.content)
+        self.assertFalse(body["ok"])
+        self.assertEqual(body["error"]["code"], ERROR_CODE_FORBIDDEN)
+        self.assertEqual(body["error"]["message"], "Nein.")
+        self.assertEqual(body["error"]["correlation_id"], response[RESPONSE_CORRELATION_HEADER])
+
+    def test_error_codes_table_is_stable(self):
+        self.assertEqual(set(ERROR_CODES), {
+            "validation_error", "auth_required", "forbidden",
+            "not_found", "rate_limit", "server_error",
+        })
+        self.assertEqual(ERROR_CODES["forbidden"]["status"], 403)
+        self.assertEqual(ERROR_CODES["not_found"]["status"], 404)
+        self.assertEqual(ERROR_CODES["rate_limit"]["status"], 429)
+        self.assertEqual(ERROR_CODES["validation_error"]["status"], 400)
+        self.assertEqual(ERROR_CODES["auth_required"]["status"], 401)
+        self.assertEqual(ERROR_CODES["server_error"]["status"], 500)
+
+    def test_api_path_returns_json_for_404(self):
+        client = Client(HTTP_ACCEPT="application/json")
+        with override_settings(DEBUG=False, ALLOWED_HOSTS=["testserver"]):
+            response = client.get("/api/v1/does-not-exist/")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response["Content-Type"], "application/json")
+        body = response.json()
+        self.assertFalse(body["ok"])
+        self.assertEqual(body["error"]["code"], ERROR_CODE_NOT_FOUND)
+        self.assertTrue(body["error"]["correlation_id"])
+        self.assertEqual(
+            body["error"]["correlation_id"],
+            response[RESPONSE_CORRELATION_HEADER],
+        )
+
+    def test_html_path_renders_error_template(self):
+        client = Client()
+        with override_settings(DEBUG=False, ALLOWED_HOSTS=["testserver"]):
+            response = client.get("/nonexistent-page/")
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("text/html", response["Content-Type"])
+        self.assertContains(response, "error-shell", status_code=404)
+        self.assertContains(response, "Korrelations-ID", status_code=404)
+        self.assertContains(response, response[RESPONSE_CORRELATION_HEADER], status_code=404)
+
+    def test_error_templates_exist_and_extend_base(self):
+        for status, name in [
+            (400, "errors/400.html"),
+            (403, "errors/403.html"),
+            (404, "errors/404.html"),
+            (429, "errors/429.html"),
+            (500, "errors/500.html"),
+        ]:
+            source = (PROJECT_ROOT / "templates" / name).read_text(encoding="utf-8")
+            with self.subTest(template=name):
+                self.assertIn('{% extends "base.html" %}', source)
+                self.assertIn("error-shell", source)
+                self.assertIn("Korrelations-ID", source)
+
+    def test_handler_routes_are_wired(self):
+        source = (PROJECT_ROOT / "config" / "urls.py").read_text(encoding="utf-8")
+        for handler in ("handler400", "handler403", "handler404", "handler429", "handler500"):
+            with self.subTest(handler=handler):
+                self.assertIn(f"{handler} =", source)
+                self.assertIn("core.views.", source)
+
+    def test_debug_keeps_django_defaults_in_development(self):
+        # In DEBUG=true bleiben die Django-Default-Fehlerseiten aktiv.
+        # Das ist der dokumentierte Modus; der Test stellt sicher, dass die
+        # Handler nur ausserhalb von DEBUG greifen.
+        client = Client()
+        with override_settings(DEBUG=True):
+            response = client.get("/nonexistent-page/")
+        # In DEBUG zeigt Django "Page not found" ohne unser Template.
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("error-shell", response.content.decode("utf-8", errors="ignore"))

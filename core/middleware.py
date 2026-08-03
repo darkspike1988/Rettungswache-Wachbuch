@@ -1,3 +1,24 @@
+"""Middleware-Schicht fuer das Wachbuch.
+
+Sammelt nur technische, nicht personenbezogene Daten (Pfad, Methode,
+Korrelations-ID). Request-Bodies, Formularfelder und Auth-Header werden
+nicht geloggt.
+"""
+
+from __future__ import annotations
+
+import logging
+
+from django.http import HttpRequest, HttpResponse
+
+from .errors import (
+    REQUEST_ATTR_CORRELATION_ID,
+    RESPONSE_CORRELATION_HEADER,
+    correlation_id_for_request,
+    log_exception,
+)
+
+
 class SecurityHeadersMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -22,3 +43,41 @@ class SecurityHeadersMiddleware:
             "publickey-credentials-get=(self), publickey-credentials-create=(self)"
         )
         return response
+
+
+class CorrelationIdMiddleware:
+    """Stellt pro Request eine Korrelations-ID bereit.
+
+    * Uebernimmt eine gueltige ``X-Correlation-ID`` aus dem Request (Pattern
+      ``[A-Za-z0-9_-]{1,128}``), erzeugt sonst eine frische UUID4.
+    * Legt die ID auf ``request.correlation_id`` ab.
+    * Setzt sie als ``X-Correlation-ID`` in jede Antwort.
+    * Schreibt sie als ``correlation_id`` Log-``extra`` fuer strukturierte Logs.
+    """
+
+    HEADER = RESPONSE_CORRELATION_HEADER
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self._logger = logging.getLogger("wachbuch.requests")
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        correlation_id = correlation_id_for_request(request)
+        setattr(request, REQUEST_ATTR_CORRELATION_ID, correlation_id)
+        self._logger.info(
+            "request_started method=%s path=%s correlation_id=%s",
+            request.method or "",
+            request.path or "",
+            correlation_id,
+            extra={"correlation_id": correlation_id},
+        )
+        try:
+            response = self.get_response(request)
+        except Exception:
+            log_exception(request, message="request_failed")
+            raise
+        response[self.HEADER] = correlation_id
+        return response
+
+
+__all__ = ["SecurityHeadersMiddleware", "CorrelationIdMiddleware"]

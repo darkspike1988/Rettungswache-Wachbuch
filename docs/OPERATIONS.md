@@ -195,3 +195,62 @@ Bei Stoerungen zuerst Logs und letzten Dump sichern, dann die Ursache
 reproduzierbar ueber Anwendung oder Migration beheben.
 
 Siehe auch [`COMPLIANCE.md`](COMPLIANCE.md).
+
+## Korrelations-IDs und Fehlerkanone (R-014)
+
+Jeder Request traegt eine Korrelations-ID, die Antworten, JSON-Fehler und
+Logeintraege miteinander verknuepft. Sie ist die wichtigste Information fuer
+den Support, weil personenbezogene Daten bewusst nicht geloggt werden.
+
+* Eingehender Header `X-Correlation-ID` wird uebernommen, wenn er dem Muster
+  `[A-Za-z0-9_-]{1,128}` entspricht. Andernfalls erzeugt der Server eine
+  frische UUID4 (hex, 32 Zeichen).
+* Die ID wird in jeder Antwort als `X-Correlation-ID` mitgesendet und auf
+  `request.correlation_id` abgelegt.
+* Logs (Logger `wachbuch.requests` und `wachbuch.errors`) erhalten die ID
+  als strukturiertes Feld `extra={"correlation_id": ...}`. Request-Bodies,
+  Formularfelder und Auth-Header werden nie geloggt.
+* Fehlerseiten (HTML und JSON) zeigen die Korrelations-ID fuer den
+  Support-Vorgang an.
+
+### JSON-Fehlerstruktur
+
+Alle JSON-Fehlerantworten folgen demselben Schema:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "validation_error",
+    "message": "Eingaben sind ungueltig.",
+    "correlation_id": "8b4f1e0b..."
+  },
+  "fields": {"title": ["Pflichtfeld."]}
+}
+```
+
+Das `fields`-Objekt ist optional und enthaelt Formularfehler bei
+`validation_error`.
+
+### Eindeutige Fehler-Codes
+
+| Code | HTTP | Bedeutung |
+|------|------|-----------|
+| `validation_error` | 400 | Eingaben oder Formular ungueltig (auch 422 bei API). |
+| `auth_required` | 401 | Anmeldung oder API-Token fehlt/ungueltig. |
+| `forbidden` | 403 | Rolle oder Station erlaubt den Zugriff nicht. |
+| `not_found` | 404 | Objekt, Pfad oder Modul nicht vorhanden. |
+| `rate_limit` | 429 | Zu viele Anfragen (Axes, R-011). |
+| `server_error` | 500 | Unerwarteter interner Fehler. |
+
+Stabile Codes gehoeren zum oeffentlichen API-Versprechen. Aenderungen
+erfordern ein neues Mapping in `core.errors.ERROR_CODES`.
+
+### Verhalten nach Modus
+
+* `DEBUG=true`: Django zeigt die Standard-Traceback-Seiten. Fuer den
+  Pilotbetrieb zulaessig, fuer Produktion aus.
+* `DEBUG=false`: Eigene Templates (`templates/errors/400-500.html`) und
+  kanonische JSON-Antworten werden ausgeliefert. 500-Fehler loggen den
+  vollstaendigen Stacktrace intern, die Antwort enthaelt nur die
+  Korrelations-ID.
