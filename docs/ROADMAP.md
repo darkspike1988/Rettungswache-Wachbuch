@@ -10,17 +10,20 @@ Arbeitsregeln fuer weitere Coding-Agenten stehen in [`../AGENTS.md`](../AGENTS.m
 
 Aktueller Stand der ersten Welle:
 
-- [x] CSP-kompatible Empfaengerauswahl fuer verschluesselte Post
-- [x] sichere JSON-Einbettung ohne `|safe`/`innerHTML`
-- [x] Sicherheitsregressionstests
+- [~] CSP-kompatible Empfaengerauswahl fuer verschluesselte Post
+- [~] sichere JSON-Einbettung ohne `|safe`/`innerHTML`
+- [~] Sicherheitsregressionstests
 - [x] E2EE-Texte an das reale Vertrauensmodell angepasst
-- [x] Race-Condition-Schutz fuer Tagesaufgaben
-- [x] scheme-relative Redirects blockiert
-- [x] vierteilige Hauptnavigation, Fokus- und mobile Wochenansicht verbessert
+- [~] Race-Condition-Schutz fuer Tagesaufgaben
+- [~] scheme-relative Redirects blockiert
+- [~] vierteilige Hauptnavigation, Fokus- und mobile Wochenansicht verbessert
 - [ ] Least-Privilege-Backuprolle
 - [ ] gemeinsames Rate Limiting hinter explizit vertrautem Proxy
-- [ ] CI-/Supply-Chain-Gates, Push-Outbox und zugaenglicher Entsperrdialog
+- [~] CI-Baseline; weitere Supply-Chain-Gates, Push-Outbox und zugaenglicher Entsperrdialog offen
 - [ ] externe ASVS-, Penetrations-, Last-, Restore- und Accessibility-Abnahme
+
+`[~]` bedeutet: Code ist im Review-Branch umgesetzt, die in der Detail-Roadmap
+genannte CI-, Browser- oder Parallelitaetsabnahme steht noch aus.
 
 ## Erreicht (Basis bis 0.14.2)
 
