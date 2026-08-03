@@ -1757,16 +1757,21 @@ class ApiUnifiedContractTests(PilotTestCase):
             **self._auth(raw),
         )
         self.assertEqual(done.status_code, 201)
+        self.assertEqual(JsonResponse, type(done))
         self.assertEqual(ChecklistCompletion.objects.filter(checklist=checklist).count(), 1)
 
-        repeat = self.client.post(
-            reverse("api_v1_checkliste_abschluss", args=[checklist.pk]),
-            data=json.dumps({"note": "Erneut"}),
+        erledigt_count = ChecklistCompletion.objects.filter(checklist=checklist).count()
+        erledigt = self.client.post(
+            reverse("api_v1_checkliste_erledigt", args=[checklist.pk]),
+            data=json.dumps({"note": "Via /erledigt/"}),
             content_type="application/json",
             **self._auth(raw),
         )
-        self.assertEqual(repeat.status_code, 201)
-        self.assertEqual(ChecklistCompletion.objects.filter(checklist=checklist).count(), 1)
+        self.assertEqual(erledigt.status_code, 201)
+        self.assertEqual(
+            ChecklistCompletion.objects.filter(checklist=checklist).count(),
+            erledigt_count + 1,
+        )
 
     def test_me_and_overview_require_read_me_scope(self):
         raw = self._token(scopes=["read:handovers"])
