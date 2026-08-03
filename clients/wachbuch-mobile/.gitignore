@@ -33,16 +33,21 @@ migrate_working_dir/
 /build/
 /coverage/
 
-# Symbolication related
+# Symbolication and obfuscation outputs
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android Studio outputs
 /android/app/debug
 /android/app/profile
 /android/app/release
 
-# Local release APKs (build with scripts/build-apk.sh)
+# Android signing material must never be committed
+/android/key.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Local release outputs
 /dist/

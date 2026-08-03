@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wachbuch_mobile/api/server_address.dart';
+import 'package:wachbuch_mobile/ui/error_banner.dart';
 
 /// Full-screen QR scanner for the Wachbuch server address.
 ///
@@ -51,9 +52,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Server-QR scannen'),
-      ),
+      appBar: AppBar(title: const Text('Server-QR scannen')),
       body: Column(
         children: [
           Material(
@@ -64,8 +63,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 'Die Kamera wird nur zum Lesen der Server-Adresse genutzt. '
                 'Es werden keine Fotos gespeichert oder hochgeladen.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSecondaryContainer,
-                    ),
+                  color: scheme.onSecondaryContainer,
+                ),
               ),
             ),
           ),
@@ -73,10 +72,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                MobileScanner(
-                  controller: _controller,
-                  onDetect: _onDetect,
-                ),
+                MobileScanner(controller: _controller, onDetect: _onDetect),
                 Align(
                   alignment: Alignment.center,
                   child: Container(
@@ -94,7 +90,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(_error!, style: TextStyle(color: scheme.error)),
+              child: ErrorBanner(message: _error!),
             ),
           SafeArea(
             child: Padding(
@@ -102,7 +98,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
               child: Text(
                 'QR aus dem Wachbuch-Web unter Mein Konto → App-Tokens',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
           ),
@@ -124,8 +120,14 @@ Future<String?> openServerQrScanner(BuildContext context) async {
         'Adresse auch manuell eingeben.',
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Abbrechen')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Weiter')),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Weiter'),
+        ),
       ],
     ),
   );
@@ -144,7 +146,10 @@ Future<String?> openServerQrScanner(BuildContext context) async {
           'Kamera in den Systemeinstellungen.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
           if (status.isPermanentlyDenied)
             FilledButton(
               onPressed: () {
@@ -159,7 +164,7 @@ Future<String?> openServerQrScanner(BuildContext context) async {
     return null;
   }
 
-  return Navigator.of(context).push<String>(
-    MaterialPageRoute(builder: (_) => const QrScanScreen()),
-  );
+  return Navigator.of(
+    context,
+  ).push<String>(MaterialPageRoute(builder: (_) => const QrScanScreen()));
 }

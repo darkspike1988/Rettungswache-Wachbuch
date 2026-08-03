@@ -14,6 +14,19 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>wachbuch</string>
+			</array>
+		</dict>
+	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleName</key>
 	<string>wachbuch_mobile</string>
 	<key>CFBundlePackageType</key>
@@ -26,8 +39,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Wachbuch nutzt die Kamera nur, um den QR-Code mit der Server-Adresse Ihrer Wache zu scannen. Es werden keine Fotos gespeichert.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Wachbuch nutzt den ungefähren Standort ausschließlich lokal, um Sonnenaufgang und Sonnenuntergang für das automatische Tag-/Nacht-Design zu berechnen.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

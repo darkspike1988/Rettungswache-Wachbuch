@@ -11,7 +11,7 @@ flutter analyze
 flutter test
 ```
 
-API-Vertrag und Server: https://github.com/darkspike1988/Rettungswache-Wachbuch  
+API-Vertrag und Server: https://github.com/darkspike1988/Rettungswache-Wachbuch
 Client-Doku im Server-Repo: `docs/CLIENT.md` / `docs/API.md`
 
 Lizenz: AGPL-3.0-or-later (siehe `LICENSE`).
