@@ -21,6 +21,8 @@ services:
       FEED_DB_PASSWORD: ${FEED_DB_PASSWORD}
       BACKUP_DB_USER: ${BACKUP_DB_USER}
       BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD}
+      PUSH_DB_USER: ${PUSH_DB_USER:-rwsth_push}
+      PUSH_DB_PASSWORD: ${PUSH_DB_PASSWORD:-disabled}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -53,6 +55,8 @@ services:
       APP_DB_USER: ${APP_DB_USER}
       FEED_DB_USER: ${FEED_DB_USER}
       BACKUP_DB_USER: ${BACKUP_DB_USER}
+      PUSH_DB_USER: ${PUSH_DB_USER:-rwsth_push}
+      PUSH_DB_PASSWORD: ${PUSH_DB_PASSWORD:-disabled}
       DEFAULT_STATION_NAME: ${DEFAULT_STATION_NAME:-Rettungswache}
       DEFAULT_STATION_SLUG: ${DEFAULT_STATION_SLUG:-rettungswache}
       DEMO_MODE: ${DEMO_MODE:-false}
