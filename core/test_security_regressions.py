@@ -217,3 +217,26 @@ class ErrorHandlerRegressionTests(SimpleTestCase):
         # In DEBUG zeigt Django "Page not found" ohne unser Template.
         self.assertEqual(response.status_code, 404)
         self.assertNotIn("error-shell", response.content.decode("utf-8", errors="ignore"))
+
+
+class CryptoUnlockDialogTests(SimpleTestCase):
+    def test_base_template_contains_accessible_dialog(self):
+        source = (PROJECT_ROOT / "templates/base.html").read_text(encoding="utf-8")
+        self.assertIn('id="crypto-unlock-dialog"', source)
+        self.assertIn('aria-labelledby="crypto-unlock-title"', source)
+        self.assertIn('aria-describedby="crypto-unlock-description"', source)
+        self.assertIn('role="alert"', source)
+        self.assertIn('aria-live="assertive"', source)
+        self.assertIn('aria-invalid', source)
+
+    def test_app_js_uses_dialog_instead_of_window_prompt(self):
+        source = (PROJECT_ROOT / "core/static/core/app.js").read_text(encoding="utf-8")
+        self.assertNotIn("window.prompt", source)
+        self.assertIn("requestCryptoUnlock", source)
+
+    def test_crypto_unlock_js_uses_show_modal(self):
+        source = (PROJECT_ROOT / "core/static/core/crypto_unlock.js").read_text(encoding="utf-8")
+        self.assertIn("showModal", source)
+        self.assertIn("aria-invalid", source)
+        self.assertIn("Escape", source)
+        self.assertIn("requestCryptoUnlock", source)

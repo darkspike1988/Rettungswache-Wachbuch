@@ -19,6 +19,7 @@
   <title>{% block title %}{{ app_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'core/app.css' %}">
   <link rel="stylesheet" href="{% static 'core/accessibility.css' %}">
+  <link rel="stylesheet" href="{% static 'core/crypto_unlock.css' %}">
 </head>
 <body class="{% if current_membership %}has-app-nav{% endif %} {% block body_class %}{% endblock %}">
   <a class="skip-link" href="#inhalt">Zum Inhalt</a>
@@ -120,7 +121,21 @@
     </div>
     <span>Keine Patienten- oder Einsatzdaten.</span>
   </footer>
+  <dialog id="crypto-unlock-dialog" aria-labelledby="crypto-unlock-title" aria-describedby="crypto-unlock-description" class="crypto-unlock">
+    <form method="dialog" id="crypto-unlock-form">
+      <h2 id="crypto-unlock-title">Schlüssel entsperren</h2>
+      <p id="crypto-unlock-description">Gib die Passphrase für deinen Ende-zu-Ende-Schlüssel ein. Die Eingabe bleibt nur in diesem Browser.</p>
+      <label for="crypto-unlock-input">Passphrase</label>
+      <input id="crypto-unlock-input" name="passphrase" type="password" autocomplete="current-password" required aria-describedby="crypto-unlock-error" />
+      <p id="crypto-unlock-error" class="crypto-unlock-error" role="alert" aria-live="assertive" hidden></p>
+      <div class="crypto-unlock-actions">
+        <button type="button" id="crypto-unlock-cancel" class="button secondary">Abbrechen</button>
+        <button type="submit" id="crypto-unlock-submit" class="button primary">Entsperren</button>
+      </div>
+    </form>
+  </dialog>
   <script src="{% static 'core/json_data.js' %}" defer></script>
+  <script src="{% static 'core/crypto_unlock.js' %}" defer></script>
   <script src="{% static 'core/app.js' %}" defer></script>
 </body>
 </html>
