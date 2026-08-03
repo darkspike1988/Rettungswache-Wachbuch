@@ -441,6 +441,42 @@ class StationTaskBoardTests(PilotTestCase):
         self.assertEqual(self.client.get(reverse("tasks_today")).status_code, 404)
         self.assertNotContains(self.client.get(reverse("more")), "Tagesaufgaben")
 
+    def _toggle(self, next_value):
+        self.client.get(reverse("tasks_today"))
+        task = StationTask.objects.get(station=self.station, title="Fahrzeugcheck")
+        return self.client.post(reverse("task_toggle", args=[task.pk]), {
+            "tag": timezone.localdate().isoformat(),
+            "erledigt": "1",
+            "next": next_value,
+        })
+
+    def test_task_toggle_accepts_safe_local_next_url(self):
+        safe = reverse("tasks_week")
+        self.assertRedirects(self._toggle(safe), safe)
+
+    def test_task_toggle_rejects_external_next_url(self):
+        self.assertRedirects(
+            self._toggle("https://evil.example.com/"),
+            reverse("tasks_today"),
+            fetch_redirect_response=False,
+        )
+
+    def test_task_toggle_rejects_scheme_relative_next_url(self):
+        self.assertRedirects(
+            self._toggle("//evil.example.com"),
+            reverse("tasks_today"),
+            fetch_redirect_response=False,
+        )
+
+    def test_task_toggle_defaults_when_next_missing(self):
+        self.client.get(reverse("tasks_today"))
+        task = StationTask.objects.get(station=self.station, title="Fahrzeugcheck")
+        response = self.client.post(reverse("task_toggle", args=[task.pk]), {
+            "tag": timezone.localdate().isoformat(),
+            "erledigt": "1",
+        })
+        self.assertRedirects(response, reverse("tasks_today"))
+
 
 class BirthdayAndCoffeeTests(PilotTestCase):
     def test_birthday_is_opt_in_and_stores_no_year(self):
