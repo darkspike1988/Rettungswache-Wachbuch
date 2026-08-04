@@ -10,6 +10,8 @@ import 'package:wachbuch_mobile/screens/login_screen.dart';
 import 'package:wachbuch_mobile/screens/server_setup_screen.dart';
 import 'package:wachbuch_mobile/theme/solar_theme.dart';
 
+import 'test_localization.dart';
+
 class _MemorySessionStore extends SessionStore {
   _MemorySessionStore({this.url});
 
@@ -105,6 +107,7 @@ class _ThemeLocation implements SolarLocationProvider {
 void main() {
   testWidgets('fresh install opens server setup', (tester) async {
     await tester.pumpWidget(WachbuchApp(store: _MemorySessionStore()));
+    await tester.binding.setLocale('de', '');
     await tester.pumpAndSettle();
 
     expect(find.byType(ServerSetupScreen), findsOneWidget);
@@ -128,7 +131,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: LoginScreen(
           store: _MemorySessionStore(),
           serverUrl: 'https://wache.example.org',
@@ -149,7 +152,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: ServerSetupScreen(
           store: _MemorySessionStore(),
           onServerReady: (_) async {},
@@ -171,7 +174,7 @@ void main() {
     final api = _ClosableApi();
     var loggedIn = false;
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: LoginScreen(
           store: _MemorySessionStore(),
           serverUrl: 'https://wache.example.org',
@@ -203,7 +206,7 @@ void main() {
     final api = _ClosableApi();
     String? selectedUrl;
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: ServerSetupScreen(
           store: _MemorySessionStore(),
           apiFactory: (_) => api,

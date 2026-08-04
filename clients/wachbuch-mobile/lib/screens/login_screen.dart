@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/auth/session_store.dart';
+import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
 import 'package:wachbuch_mobile/ui/error_banner.dart';
 import 'package:wachbuch_mobile/ui/layout.dart';
 
@@ -67,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final l = AppLocalizations.of(context)!;
     setState(() {
       _busy = true;
       _error = null;
@@ -79,10 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_useTokenPaste) {
         token = _tokenCtrl.text.trim();
         if (token.isEmpty) {
-          throw ApiException(
-            400,
-            'Bitte App-Token einfügen (aus /konto/api/).',
-          );
+          throw ApiException(400, l.loginTokenPasteHint);
         }
         await api.copyWithToken(token).me();
       } else {
@@ -107,15 +106,14 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _error = error.message;
         if (error.isMfaRequired) {
-          _error =
-              '${error.message}\n\nBei Zwei-Faktor: App-Token im Web unter Mein Konto → App-Tokens erzeugen.';
+          _error = '${error.message}\n\n${l.loginMfaHint}';
           _useTokenPaste = true;
         }
       });
     } catch (error) {
       if (!mounted) return;
       final message = error is ArgumentError
-          ? (error.message?.toString() ?? 'Ungültige Eingabe.')
+          ? (error.message?.toString() ?? l.loginInvalidInput)
           : error.toString();
       setState(() => _error = message);
     } finally {
@@ -126,15 +124,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final width = MediaQuery.sizeOf(context).width;
     final maxW = AppLayout.isTablet(width) ? 480.0 : 420.0;
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Anmelden'),
+        title: Text(l.loginAppBarTitle),
         leading: IconButton(
-          tooltip: 'Server ändern',
+          tooltip: l.loginChangeServer,
           onPressed: _busy ? null : () => widget.onChangeServer(),
           icon: const Icon(Icons.arrow_back),
         ),
@@ -150,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.all(24),
                   children: [
                     Text(
-                      'Anmeldung',
+                      l.loginHeading,
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
@@ -165,25 +164,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (_useTokenPaste)
                       TextFormField(
                         controller: _tokenCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'App-Token (wb_…)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.key_outlined),
-                          helperText:
-                              'Aus dem Web unter /konto/api/ – nötig bei MFA',
+                        decoration: InputDecoration(
+                          labelText: l.loginTokenLabel,
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.key_outlined),
+                          helperText: l.loginTokenHelper,
                         ),
                         obscureText: true,
                         validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Token erforderlich'
+                            ? l.loginTokenRequired
                             : null,
                       )
                     else ...[
                       TextFormField(
                         controller: _userCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Benutzername',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person_outline),
+                        decoration: InputDecoration(
+                          labelText: l.loginUsername,
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.person_outline),
                         ),
                         textInputAction: TextInputAction.next,
                         autocorrect: false,
@@ -193,18 +191,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           FilteringTextInputFormatter.deny(RegExp(r'\s')),
                         ],
                         validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Benutzername erforderlich'
+                            ? l.loginUsernameRequired
                             : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _passCtrl,
                         decoration: InputDecoration(
-                          labelText: 'Passwort',
+                          labelText: l.loginPassword,
                           border: const OutlineInputBorder(),
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            tooltip: _obscure ? 'Anzeigen' : 'Verbergen',
+                            tooltip: _obscure ? l.loginShow : l.loginHide,
                             onPressed: () =>
                                 setState(() => _obscure = !_obscure),
                             icon: Icon(
@@ -221,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           if (!_busy) _submit();
                         },
                         validator: (v) => (v == null || v.isEmpty)
-                            ? 'Passwort erforderlich'
+                            ? l.loginPasswordRequired
                             : null,
                       ),
                     ],
@@ -238,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               width: 22,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Anmelden'),
+                          : Text(l.loginSubmit),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
@@ -249,9 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               _error = null;
                             }),
                       child: Text(
-                        _useTokenPaste
-                            ? 'Mit Benutzername und Passwort'
-                            : 'Stattdessen App-Token nutzen',
+                        _useTokenPaste ? l.loginUseCredentials : l.loginUseToken,
                       ),
                     ),
                   ],

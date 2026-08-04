@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/api/server_address.dart';
 import 'package:wachbuch_mobile/auth/session_store.dart';
+import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
 import 'package:wachbuch_mobile/screens/qr_scan_screen.dart';
 import 'package:wachbuch_mobile/ui/error_banner.dart';
 import 'package:wachbuch_mobile/ui/layout.dart';
@@ -72,6 +73,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final width = MediaQuery.sizeOf(context).width;
     final maxW = AppLayout.isTablet(width) ? 480.0 : 420.0;
     final scheme = Theme.of(context).colorScheme;
@@ -94,7 +96,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Wachbuch',
+                    l.appName,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
@@ -102,7 +104,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Server-Adresse Ihrer Wache',
+                    l.setupServerAddressTitle,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
@@ -110,7 +112,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Geben Sie die Adresse ein oder scannen Sie den QR-Code aus dem Web.',
+                    l.setupHint,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
@@ -120,12 +122,12 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                   TextFormField(
                     controller: _addressCtrl,
                     decoration: InputDecoration(
-                      labelText: 'Adresse',
-                      hintText: 'https://wache.example.org',
+                      labelText: l.setupAddressLabel,
+                      hintText: l.setupAddressHint,
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.link),
                       suffixIcon: IconButton(
-                        tooltip: 'QR-Code scannen',
+                        tooltip: l.setupScanQr,
                         onPressed: _busy ? null : _scanQr,
                         icon: const Icon(Icons.qr_code_scanner),
                       ),
@@ -140,12 +142,12 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                     },
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Adresse eingeben';
+                        return l.setupAddressRequired;
                       }
                       try {
                         parseServerAddress(value);
                       } catch (_) {
-                        return 'Ungültige Adresse';
+                        return l.setupAddressInvalid;
                       }
                       return null;
                     },
@@ -154,7 +156,7 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _scanQr,
                     icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text('QR-Code scannen'),
+                    label: Text(l.setupScanQr),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 16),
@@ -169,12 +171,11 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                             width: 22,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Bestätigen'),
+                        : Text(l.setupConfirm),
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Play-Store-Client: Verbindung nur zu Ihrem selbst gehosteten Server. '
-                    'Produktion: HTTPS erforderlich.',
+                    l.setupFooter,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,

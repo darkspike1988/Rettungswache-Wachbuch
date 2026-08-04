@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/screens/home_shell.dart';
 
+import 'test_localization.dart';
+
 void _usePhone(WidgetTester tester) {
   tester.view.physicalSize = const Size(400, 800);
   tester.view.devicePixelRatio = 1;
@@ -192,7 +194,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _ImmediateApi(),
           onLogout: () async {},
@@ -222,7 +224,7 @@ void main() {
   ) async {
     _usePhone(tester);
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _PolishedApi(),
           onLogout: () async {},
@@ -242,7 +244,7 @@ void main() {
   ) async {
     _usePhone(tester);
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _PolishedApi(),
           onLogout: () async {},
@@ -268,7 +270,7 @@ void main() {
   testWidgets('priority filter and search combine with AND', (tester) async {
     _usePhone(tester);
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _PolishedApi(),
           onLogout: () async {},
@@ -298,7 +300,7 @@ void main() {
   ) async {
     _usePhone(tester);
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _PolishedApi(),
           onLogout: () async {},
@@ -331,7 +333,7 @@ void main() {
     _usePhone(tester);
     final api = _PolishedApi();
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: api,
           onLogout: () async {},
@@ -358,7 +360,7 @@ void main() {
     _usePhone(tester);
     final api = _FilterReloadApi();
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: api,
           onLogout: () async {},
@@ -387,7 +389,7 @@ void main() {
   ) async {
     _usePhone(tester);
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _MalformedApi(),
           onLogout: () async {},
@@ -412,7 +414,7 @@ void main() {
   ) async {
     _usePhone(tester);
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
@@ -441,7 +443,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _ImmediateApi(),
           onLogout: () async {},
@@ -460,7 +462,7 @@ void main() {
   ) async {
     final response = Completer<Map<String, dynamic>>();
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _ControlledApi(response),
           onLogout: () async {},
@@ -480,7 +482,7 @@ void main() {
   testWidgets('disposing HomeShell closes its API client', (tester) async {
     final api = _ImmediateApi();
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: api,
           onLogout: () async {},
@@ -503,7 +505,7 @@ void main() {
     final api = _ReloadApi();
 
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: api,
           onLogout: () async {},
@@ -542,7 +544,7 @@ void main() {
   ) async {
     final api = _ReloadApi(stationName: 'Wachbuch');
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: api,
           onLogout: () async {},
@@ -567,7 +569,7 @@ void main() {
   ) async {
     _usePhone(tester);
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _PolishedApi(),
           onLogout: () async {},
@@ -590,7 +592,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
@@ -620,7 +622,7 @@ void main() {
     _usePhone(tester);
     const name = 'Rettungswache Rheda-Wiedenbrück Nord mit sehr langem Namen';
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _ReloadApi(stationName: name),
           onLogout: () async {},
@@ -642,7 +644,7 @@ void main() {
   ) async {
     _usePhone(tester);
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: HomeShell(
           api: _PolishedApi(),
           onLogout: () async {},
@@ -663,7 +665,7 @@ void main() {
     (tester) async {
       _usePhone(tester);
       await tester.pumpWidget(
-        MaterialApp(
+        localizedApp(
           home: HomeShell(
             api: _ImmediateApi(),
             onLogout: () async {},

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:wachbuch_mobile/api/client.dart';
+import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
 import 'package:wachbuch_mobile/screens/checklisten_screen.dart';
 import 'package:wachbuch_mobile/screens/kaffeekasse_screen.dart';
 import 'package:wachbuch_mobile/screens/kalender_screen.dart';
+import 'package:wachbuch_mobile/state/auth_state.dart';
+import 'package:wachbuch_mobile/state/handover_state.dart';
 import 'package:wachbuch_mobile/ui/error_banner.dart';
 import 'package:wachbuch_mobile/ui/handover_filter.dart';
 import 'package:wachbuch_mobile/ui/layout.dart';
@@ -26,213 +29,194 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
-  Map<String, dynamic>? _me;
-  List<Map<String, dynamic>> _handovers = [];
-  String? _error;
-  bool _loading = true;
-  bool _offline = false;
   int _reloadGeneration = 0;
+  late final HandoverState _handoverState;
+  late final AuthState _authState;
+  late final Listenable _listenable;
 
   @override
   void initState() {
     super.initState();
+    _handoverState = HandoverState(api: widget.api);
+    _authState = AuthState(api: widget.api);
+    _listenable = Listenable.merge([_handoverState, _authState]);
     _reload();
   }
 
   Future<void> _reload() async {
     final generation = ++_reloadGeneration;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final results = await Future.wait([
-        widget.api.me(),
-        widget.api.handovers(),
-      ]);
-      if (!mounted || generation != _reloadGeneration) {
-        return;
-      }
-      setState(() {
-        _me = results[0] as Map<String, dynamic>;
-        _handovers = results[1] as List<Map<String, dynamic>>;
-        _loading = false;
-        _offline = false;
-      });
-    } on ApiException catch (error) {
-      if (!mounted || generation != _reloadGeneration) {
-        return;
-      }
-      setState(() {
-        _error = error.statusCode == 401
-            ? 'Anmeldung abgelaufen oder widerrufen.'
-            : error.message;
-        _loading = false;
-        _offline = error.statusCode == 0;
-      });
-      if (error.statusCode == 401) {
-        await widget.onLogout();
-      }
-    } catch (error) {
-      if (!mounted || generation != _reloadGeneration) {
-        return;
-      }
-      setState(() {
-        _error = error.toString();
-        _loading = false;
-        _offline = true;
-      });
+    await Future.wait([
+      _authState.reload(),
+      _handoverState.reload(),
+    ]);
+    if (!mounted || generation != _reloadGeneration) {
+      return;
+    }
+    final isUnauthorized =
+        _authState.lastError?.statusCode == 401 ||
+        _handoverState.lastError?.statusCode == 401;
+    if (isUnauthorized) {
+      await widget.onLogout();
     }
   }
 
-  String get _stationName {
-    final station = (_me?['membership'] as Map?)?['station'] as Map?;
-    return (station?['name'] as String?) ?? 'Wachbuch';
-  }
+  bool get _loading => _authState.loading || _handoverState.loading;
 
-  String get _roleLabel {
-    final membership = _me?['membership'] as Map?;
-    return (membership?['role_label'] as String?) ?? '';
-  }
+  bool get _offline =>
+      _authState.lastError?.statusCode == 0 ||
+      _handoverState.lastError?.statusCode == 0;
 
-  Map<String, dynamic> get _modules {
-    final station = (_me?['membership'] as Map?)?['station'] as Map?;
-    final modules = station?['modules'];
-    if (modules is Map<String, dynamic>) {
-      return modules;
+  String? _displayError(AppLocalizations l10n) {
+    for (final error in [_authState.lastError, _handoverState.lastError]) {
+      if (error == null) continue;
+      if (error.statusCode == 401) return l10n.sessionExpiredError;
+      return error.message;
     }
-    if (modules is Map) {
-      return Map<String, dynamic>.from(modules);
-    }
-    return {};
+    return _authState.error ?? _handoverState.error;
   }
 
   @override
   void dispose() {
+    _handoverState.dispose();
+    _authState.dispose();
     widget.api.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final width = MediaQuery.sizeOf(context).width;
     final tablet = AppLayout.isTablet(width);
 
-    final pages = IndexedStack(
-      index: _tab,
-      children: [
-        _OverviewTab(
-          api: widget.api,
-          stationName: _stationName,
-          roleLabel: _roleLabel,
-          modules: _modules,
-          handovers: _handovers,
-          loading: _loading,
-          hasData: _me != null,
-          error: _error,
-          onRefresh: _reload,
-        ),
-        _HandoversTab(
-          api: widget.api,
-          items: _handovers,
-          loading: _loading,
-          error: _error,
-          onRefresh: _reload,
-        ),
-        _AccountTab(
-          me: _me,
-          serverUrl: widget.api.baseUrl,
-          loading: _loading,
-          onLogout: widget.onLogout,
-          onChangeServer: widget.onChangeServer,
-          onRefresh: _reload,
-        ),
-      ],
-    );
+    return ListenableBuilder(
+      listenable: _listenable,
+      builder: (context, _) {
+        final stationName = _authState.stationName(l.stationFallback);
+        final error = _displayError(l);
+        final loading = _loading;
+        final offline = _offline;
 
-    final appBar = AppBar(
-      title: Text(_stationName, maxLines: 1, overflow: TextOverflow.ellipsis),
-      actions: [
-        IconButton(
-          tooltip: 'Aktualisieren',
-          onPressed: _loading ? null : _reload,
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
-    );
-
-    final offlineBanner = OfflineBanner(
-      visible: _offline,
-      onRetry: _loading ? () {} : _reload,
-    );
-
-    if (tablet) {
-      return Scaffold(
-        appBar: appBar,
-        body: Column(
+        final pages = IndexedStack(
+          index: _tab,
           children: [
-            offlineBanner,
-            Expanded(
-              child: Row(
-                children: [
-                  NavigationRail(
-                    selectedIndex: _tab,
-                    onDestinationSelected: (index) =>
-                        setState(() => _tab = index),
-                    labelType: width >= AppLayout.wideBreakpoint
-                        ? NavigationRailLabelType.all
-                        : NavigationRailLabelType.selected,
-                    destinations: const [
-                      NavigationRailDestination(
-                        icon: Icon(Icons.home_outlined),
-                        selectedIcon: Icon(Icons.home),
-                        label: Text('Übersicht'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.assignment_outlined),
-                        selectedIcon: Icon(Icons.assignment),
-                        label: Text('Übergaben'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.person_outline),
-                        selectedIcon: Icon(Icons.person),
-                        label: Text('Konto'),
-                      ),
-                    ],
-                  ),
-                  const VerticalDivider(width: 1),
-                  Expanded(child: pages),
-                ],
-              ),
+            _OverviewTab(
+              api: widget.api,
+              stationName: stationName,
+              roleLabel: _authState.roleLabel,
+              modules: _authState.modules,
+              handovers: _handoverState.items,
+              loading: loading,
+              hasData: _authState.hasData,
+              error: error,
+              onRefresh: _reload,
+            ),
+            _HandoversTab(
+              api: widget.api,
+              handoverState: _handoverState,
+              error: error,
+              onRefresh: _reload,
+            ),
+            _AccountTab(
+              me: _authState.me,
+              serverUrl: widget.api.baseUrl,
+              loading: loading,
+              onLogout: widget.onLogout,
+              onChangeServer: widget.onChangeServer,
+              onRefresh: _reload,
             ),
           ],
-        ),
-      );
-    }
+        );
 
-    return Scaffold(
-      appBar: appBar,
-      body: Column(
-        children: [offlineBanner, Expanded(child: pages)],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (index) => setState(() => _tab = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            label: 'Übersicht',
+        final appBar = AppBar(
+          title: Text(
+            stationName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            label: 'Übergaben',
+          actions: [
+            IconButton(
+              tooltip: l.refreshTooltip,
+              onPressed: loading ? null : _reload,
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        );
+
+        final offlineBanner = OfflineBanner(
+          visible: offline,
+          onRetry: loading ? () {} : _reload,
+        );
+
+        if (tablet) {
+          return Scaffold(
+            appBar: appBar,
+            body: Column(
+              children: [
+                offlineBanner,
+                Expanded(
+                  child: Row(
+                    children: [
+                      NavigationRail(
+                        selectedIndex: _tab,
+                        onDestinationSelected: (index) =>
+                            setState(() => _tab = index),
+                        labelType: width >= AppLayout.wideBreakpoint
+                        ? NavigationRailLabelType.all
+                        : NavigationRailLabelType.selected,
+                        destinations: [
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.home_outlined),
+                            selectedIcon: const Icon(Icons.home),
+                            label: Text(l.navOverview),
+                          ),
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.assignment_outlined),
+                            selectedIcon: const Icon(Icons.assignment),
+                            label: Text(l.navHandovers),
+                          ),
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.person_outline),
+                            selectedIcon: const Icon(Icons.person),
+                            label: Text(l.navAccount),
+                          ),
+                        ],
+                      ),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: pages),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Scaffold(
+          appBar: appBar,
+          body: Column(
+            children: [offlineBanner, Expanded(child: pages)],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            label: 'Konto',
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _tab,
+            onDestinationSelected: (index) => setState(() => _tab = index),
+            destinations: [
+              NavigationDestination(
+                icon: const Icon(Icons.home_outlined),
+                label: l.navOverview,
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.assignment_outlined),
+                label: l.navHandovers,
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.person_outline),
+                label: l.navAccount,
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -265,6 +249,7 @@ class _OverviewTab extends StatelessWidget {
     if (loading && !hasData) {
       return const Center(child: CircularProgressIndicator());
     }
+    final l = AppLocalizations.of(context)!;
     final width = MediaQuery.sizeOf(context).width;
     final maxW = AppLayout.contentMaxWidth(width);
     final openCount = handovers
@@ -292,9 +277,9 @@ class _OverviewTab extends StatelessWidget {
                 ErrorBanner(message: error!),
                 const SizedBox(height: 16),
               ],
-              const _SectionTitle(
+              _SectionTitle(
                 icon: Icons.monitor_heart_outlined,
-                title: 'Aktive Übergaben',
+                title: l.overviewActiveHandovers,
               ),
               const SizedBox(height: 12),
               LayoutBuilder(
@@ -315,21 +300,21 @@ class _OverviewTab extends StatelessWidget {
                         width: metricWidth,
                         icon: Icons.inbox_outlined,
                         value: openCount,
-                        label: 'offen',
+                        label: l.metricOpen,
                       ),
                       _DashboardMetric(
                         key: const Key('overview-stat-progress'),
                         width: metricWidth,
                         icon: Icons.pending_actions_outlined,
                         value: inProgressCount,
-                        label: 'in Bearbeitung',
+                        label: l.metricInProgress,
                       ),
                       _DashboardMetric(
                         key: const Key('overview-stat-urgent'),
                         width: metricWidth,
                         icon: Icons.priority_high_rounded,
                         value: urgentCount,
-                        label: 'dringend',
+                        label: l.metricUrgent,
                         urgent: urgentCount > 0,
                       ),
                     ],
@@ -337,9 +322,9 @@ class _OverviewTab extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 24),
-              const _SectionTitle(
+              _SectionTitle(
                 icon: Icons.dashboard_customize_outlined,
-                title: 'Module dieser Wache',
+                title: l.overviewModulesTitle,
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -374,8 +359,7 @@ class _OverviewTab extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Ihre Wache und die verfügbaren Module werden automatisch '
-                          'aus Ihrem Benutzerkonto geladen.',
+                          l.overviewModulesHint,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
                                 color: Theme.of(
@@ -537,34 +521,35 @@ class _ModuleTiles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final destinations = <_ModuleDestination>[];
     if (modules['calendar'] == true) {
       destinations.add(
-        const _ModuleDestination(
+        _ModuleDestination(
           key: 'module-tile-calendar',
           icon: Icons.event_outlined,
-          title: 'Kalender',
-          subtitle: 'Wachentermine und Dienste',
+          title: l.moduleCalendarTitle,
+          subtitle: l.moduleCalendarSubtitle,
         ),
       );
     }
     if (modules['coffee'] == true) {
       destinations.add(
-        const _ModuleDestination(
+        _ModuleDestination(
           key: 'module-tile-coffee',
           icon: Icons.coffee_outlined,
-          title: 'Kaffeekasse',
-          subtitle: 'Kassenstand und Buchungen',
+          title: l.moduleCoffeeTitle,
+          subtitle: l.moduleCoffeeSubtitle,
         ),
       );
     }
     if (modules['checklists'] == true) {
       destinations.add(
-        const _ModuleDestination(
+        _ModuleDestination(
           key: 'module-tile-checklists',
           icon: Icons.checklist_outlined,
-          title: 'Checklisten',
-          subtitle: 'Punkte abhaken und abschließen',
+          title: l.moduleChecklistsTitle,
+          subtitle: l.moduleChecklistsSubtitle,
         ),
       );
     }
@@ -573,9 +558,9 @@ class _ModuleTiles extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(
+        _SectionTitle(
           icon: Icons.apps_outlined,
-          title: 'Schnellzugriff',
+          title: l.quickAccessTitle,
         ),
         const SizedBox(height: 12),
         LayoutBuilder(
@@ -687,15 +672,13 @@ class _ModuleTile extends StatelessWidget {
 class _HandoversTab extends StatefulWidget {
   const _HandoversTab({
     required this.api,
-    required this.items,
-    required this.loading,
+    required this.handoverState,
     required this.error,
     required this.onRefresh,
   });
 
   final WachbuchApi api;
-  final List<Map<String, dynamic>> items;
-  final bool loading;
+  final HandoverState handoverState;
   final String? error;
   final Future<void> Function() onRefresh;
 
@@ -705,19 +688,11 @@ class _HandoversTab extends StatefulWidget {
 
 class _HandoversTabState extends State<_HandoversTab> {
   final _searchController = TextEditingController();
-  final Set<String> _statuses = {};
-  final Set<String> _priorities = {};
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _toggle(Set<String> target, String value, bool selected) {
-    setState(() {
-      selected ? target.add(value) : target.remove(value);
-    });
   }
 
   Future<void> _showDetails(Map<String, dynamic> item) async {
@@ -738,30 +713,28 @@ class _HandoversTabState extends State<_HandoversTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.loading && widget.items.isEmpty) {
+    final state = widget.handoverState;
+    final items = state.items;
+    if (state.loading && items.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final l = AppLocalizations.of(context)!;
     final width = MediaQuery.sizeOf(context).width;
     final cols = AppLayout.handoverColumns(width);
     final maxW = AppLayout.contentMaxWidth(width);
-    final filtered = filterHandovers(
-      widget.items,
-      query: _searchController.text,
-      statuses: _statuses,
-      priorities: _priorities,
-    );
+    final filtered = state.filteredItems;
     final availableStatuses = _orderedValues(
       [
-        ...widget.items.map((item) => item['status']?.toString() ?? ''),
-        ..._statuses,
+        ...items.map((item) => item['status']?.toString() ?? ''),
+        ...state.statuses,
       ],
       const ['open', 'in_progress', 'done'],
     );
     final availablePriorities = _orderedValues(
       [
-        ...widget.items.map((item) => item['priority']?.toString() ?? ''),
-        ..._priorities,
+        ...items.map((item) => item['priority']?.toString() ?? ''),
+        ...state.priorities,
       ],
       const ['urgent', 'important', 'normal'],
     );
@@ -772,52 +745,52 @@ class _HandoversTabState extends State<_HandoversTab> {
         constraints: BoxConstraints(maxWidth: maxW),
         child: Column(
           children: [
-            if (widget.items.isNotEmpty) ...[
+            if (items.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: SearchBar(
                   key: const Key('handover-search'),
                   controller: _searchController,
-                  hintText: 'Übergaben durchsuchen',
+                  hintText: l.handoverSearchHint,
                   leading: const Icon(Icons.search),
                   trailing: [
                     if (_searchController.text.isNotEmpty)
                       IconButton(
-                        tooltip: 'Suche löschen',
+                        tooltip: l.handoverSearchClear,
                         onPressed: () {
                           _searchController.clear();
-                          setState(() {});
+                          state.setSearchQuery('');
                         },
                         icon: const Icon(Icons.close),
                       ),
                   ],
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (text) => state.setSearchQuery(text),
                 ),
               ),
               _FilterSection(
-                title: 'Status',
+                title: l.filterStatus,
                 values: availableStatuses,
-                selected: _statuses,
-                label: handoverStatusLabel,
+                selected: state.statuses,
+                label: (value) => handoverStatusLabel(value, l),
                 keyPrefix: 'status-filter',
                 onChanged: (value, selected) =>
-                    _toggle(_statuses, value, selected),
+                    state.toggleStatus(value, selected: selected),
               ),
               _FilterSection(
-                title: 'Priorität',
+                title: l.filterPriority,
                 values: availablePriorities,
-                selected: _priorities,
-                label: handoverPriorityLabel,
+                selected: state.priorities,
+                label: (value) => handoverPriorityLabel(value, l),
                 keyPrefix: 'priority-filter',
                 onChanged: (value, selected) =>
-                    _toggle(_priorities, value, selected),
+                    state.togglePriority(value, selected: selected),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '${filtered.length} von ${widget.items.length} Übergaben',
+                    l.handoversCount(filtered.length, items.length),
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                 ),
@@ -828,7 +801,7 @@ class _HandoversTabState extends State<_HandoversTab> {
                 onRefresh: widget.onRefresh,
                 child: _HandoverResults(
                   items: filtered,
-                  allItemsEmpty: widget.items.isEmpty,
+                  allItemsEmpty: items.isEmpty,
                   error: widget.error,
                   columns: cols,
                   onOpen: _showDetails,
@@ -861,6 +834,7 @@ class _FilterSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     if (values.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -868,7 +842,7 @@ class _FilterSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 0, 2),
       child: Semantics(
         container: true,
-        label: '$title filtern',
+        label: l.filterSectionLabel(title),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -917,6 +891,7 @@ class _HandoverResults extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     if (error != null && allItemsEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -928,14 +903,14 @@ class _HandoverResults extends StatelessWidget {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        children: const [Text('Keine aktiven Übergaben.')],
+        children: [Text(l.handoversNoneActive)],
       );
     }
     if (items.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        children: const [Text('Keine Übergaben für diese Filter.')],
+        children: [Text(l.handoversNoneForFilter)],
       );
     }
     if (columns == 1) {
@@ -972,11 +947,13 @@ class _HandoverCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final title = item['title']?.toString().trim();
     return Semantics(
       button: true,
-      label:
-          'Übergabe ${title?.isNotEmpty == true ? title : 'ohne Titel'} öffnen',
+      label: l.handoverOpenSemantics(
+        title?.isNotEmpty == true ? title! : l.handoverUntitled,
+      ),
       child: SizedBox(
         height: _handoverCardExtent(context),
         child: Card(
@@ -998,14 +975,14 @@ class _HandoverCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title?.isNotEmpty == true ? title! : 'Übergabe',
+                          title?.isNotEmpty == true ? title! : l.handoverFallback,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          handoverCategoryLabel(item['category']),
+                          handoverCategoryLabel(item['category'], l),
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
                                 color: Theme.of(
@@ -1019,11 +996,11 @@ class _HandoverCard extends StatelessWidget {
                           runSpacing: 8,
                           children: [
                             _HandoverChip(
-                              label: handoverStatusLabel(item['status']),
+                              label: handoverStatusLabel(item['status'], l),
                               colors: _statusColors(context, item['status']),
                             ),
                             _HandoverChip(
-                              label: handoverPriorityLabel(item['priority']),
+                              label: handoverPriorityLabel(item['priority'], l),
                               colors: _priorityColors(
                                 context,
                                 item['priority'],
@@ -1078,6 +1055,7 @@ class _HandoverDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return SafeArea(
       child: FutureBuilder<Map<String, dynamic>>(
         future: future,
@@ -1091,7 +1069,7 @@ class _HandoverDetailSheet extends StatelessWidget {
           if (snapshot.hasError) {
             final message = snapshot.error is ApiException
                 ? (snapshot.error! as ApiException).message
-                : 'Details konnten nicht geladen werden.';
+                : l.detailsLoadFailed;
             return Padding(
               padding: const EdgeInsets.all(24),
               child: ErrorBanner(message: message),
@@ -1114,7 +1092,7 @@ class _HandoverDetailSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item['title']?.toString() ?? 'Übergabe',
+                  item['title']?.toString() ?? l.handoverFallback,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 12),
@@ -1123,7 +1101,7 @@ class _HandoverDetailSheet extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     _HandoverChip(
-                      label: handoverCategoryLabel(item['category']),
+                      label: handoverCategoryLabel(item['category'], l),
                       colors: (
                         background: Theme.of(
                           context,
@@ -1132,11 +1110,11 @@ class _HandoverDetailSheet extends StatelessWidget {
                       ),
                     ),
                     _HandoverChip(
-                      label: handoverStatusLabel(item['status']),
+                      label: handoverStatusLabel(item['status'], l),
                       colors: _statusColors(context, item['status']),
                     ),
                     _HandoverChip(
-                      label: handoverPriorityLabel(item['priority']),
+                      label: handoverPriorityLabel(item['priority'], l),
                       colors: _priorityColors(context, item['priority']),
                     ),
                   ],
@@ -1145,7 +1123,7 @@ class _HandoverDetailSheet extends StatelessWidget {
                 Text(
                   details?.isNotEmpty == true
                       ? details!
-                      : 'Keine weiteren Angaben.',
+                      : l.detailsNoFurtherInfo,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 20),
@@ -1154,11 +1132,15 @@ class _HandoverDetailSheet extends StatelessWidget {
                 if (item['updated_at'] != null)
                   _DetailRow(
                     icon: Icons.update,
-                    value:
-                        'Aktualisiert ${_formatTimestamp(item['updated_at'])}',
+                    value: l.detailsUpdatedAt(
+                      _formatTimestamp(item['updated_at']),
+                    ),
                   ),
                 if (version != null)
-                  _DetailRow(icon: Icons.history, value: 'Version $version'),
+                  _DetailRow(
+                    icon: Icons.history,
+                    value: l.detailsVersion(version.toString()),
+                  ),
               ],
             ),
           );
@@ -1277,6 +1259,7 @@ class _AccountTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final user = me?['user'] as Map?;
     final width = MediaQuery.sizeOf(context).width;
     final maxW = AppLayout.contentMaxWidth(width);
@@ -1290,33 +1273,33 @@ class _AccountTab extends StatelessWidget {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Angemeldet als'),
+              title: Text(l.accountLoggedInAs),
               subtitle: Text((user?['username'] as String?) ?? '—'),
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Server'),
+              title: Text(l.accountServer),
               subtitle: Text(serverUrl),
             ),
-            const ListTile(
+            ListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text('Lizenz'),
-              subtitle: Text('AGPL-3.0-or-later · Quellcode offen'),
+              title: Text(l.accountLicense),
+              subtitle: Text(l.accountLicenseValue),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
               onPressed: loading ? null : onRefresh,
-              child: const Text('Profil aktualisieren'),
+              child: Text(l.accountRefreshProfile),
             ),
             const SizedBox(height: 8),
             FilledButton.tonal(
               onPressed: loading ? null : onLogout,
-              child: const Text('Abmelden'),
+              child: Text(l.accountLogout),
             ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: loading ? null : onChangeServer,
-              child: const Text('Anderen Server einrichten'),
+              child: Text(l.accountChangeServer),
             ),
           ],
         ),

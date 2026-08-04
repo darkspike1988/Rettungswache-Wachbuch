@@ -1,4 +1,6 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
 import 'package:wachbuch_mobile/ui/handover_filter.dart';
 
 void main() {
@@ -26,18 +28,24 @@ void main() {
     },
   ];
 
+  late AppLocalizations l10n;
+
+  setUpAll(() async {
+    l10n = await AppLocalizations.delegate.load(const Locale('de'));
+  });
+
   test('empty query and filters preserve every handover', () {
-    expect(filterHandovers(items), items);
+    expect(filterHandovers(items, l10n: l10n), items);
   });
 
   test('search matches title case-insensitively', () {
-    final result = filterHandovers(items, query: 'rtw');
+    final result = filterHandovers(items, l10n: l10n, query: 'rtw');
 
     expect(result.map((item) => item['id']), [1]);
   });
 
   test('search also matches the localized category label', () {
-    final result = filterHandovers(items, query: 'material');
+    final result = filterHandovers(items, l10n: l10n, query: 'material');
 
     expect(result.map((item) => item['id']), [2]);
   });
@@ -45,6 +53,7 @@ void main() {
   test('status and priority filters combine with AND', () {
     final result = filterHandovers(
       items,
+      l10n: l10n,
       statuses: {'open'},
       priorities: {'normal'},
     );
@@ -57,6 +66,7 @@ void main() {
       const [
         {'id': 4},
       ],
+      l10n: l10n,
       statuses: {'open'},
     );
 
@@ -64,13 +74,13 @@ void main() {
   });
 
   test('server enum values receive German labels', () {
-    expect(handoverStatusLabel('in_progress'), 'In Bearbeitung');
-    expect(handoverPriorityLabel('urgent'), 'Dringend');
-    expect(handoverCategoryLabel('vehicle'), 'Fahrzeugstatus');
+    expect(handoverStatusLabel('in_progress', l10n), 'In Bearbeitung');
+    expect(handoverPriorityLabel('urgent', l10n), 'Dringend');
+    expect(handoverCategoryLabel('vehicle', l10n), 'Fahrzeugstatus');
   });
 
   test('unknown enum values get a readable fallback', () {
-    expect(handoverStatusLabel('waiting_for_team'), 'Waiting For Team');
-    expect(handoverPriorityLabel(''), 'Nicht angegeben');
+    expect(handoverStatusLabel('waiting_for_team', l10n), 'Waiting For Team');
+    expect(handoverPriorityLabel('', l10n), 'Nicht angegeben');
   });
 }
