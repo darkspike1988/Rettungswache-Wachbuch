@@ -3,6 +3,9 @@ set -eu
 
 mkdir -p /backups
 
+# 0 deaktiviert die lokale Aufbewahrung, sonst Tage (Standard 7).
+BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
+
 encrypt_dump() {
     input="$1"
     output="$2"
@@ -42,6 +45,14 @@ upload_offsite() {
     echo "Offsite-Upload nach $BACKUP_OFF_TARGET abgeschlossen ($payload)."
 }
 
+prune_old_dumps() {
+    # 0 deaktiviert die lokale Aufbewahrung (Ringe bleiben unveraendert).
+    [ "$BACKUP_RETENTION_DAYS" -gt 0 ] || return 0
+    find /backups -type f \
+        \( -name 'rwsth-*.dump' -o -name 'rwsth-*.dump.gpg' \) \
+        -mtime +"$BACKUP_RETENTION_DAYS" -delete
+}
+
 while true; do
     timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
     temporary="/backups/.rwsth-${timestamp}.dump.tmp"
@@ -56,6 +67,6 @@ while true; do
         --file "$temporary"
     mv "$temporary" "$target"
     upload_offsite "$target"
-    find /backups -type f \( -name 'rwsth-*.dump' -o -name 'rwsth-*.dump.gpg' \) -mtime +6 -delete
+    prune_old_dumps
     sleep 86400
 done
