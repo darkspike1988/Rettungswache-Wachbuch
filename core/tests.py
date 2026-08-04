@@ -2197,6 +2197,7 @@ class DemoModeTests(TestCase):
         self.assertFalse(update_priv)
         self.assertFalse(delete_priv)
 WEB_PUSH_SETTINGS = {
+    "WEB_PUSH_ENABLED": True,
     "VAPID_PUBLIC_KEY": "BPtest",
     "VAPID_PRIVATE_KEY": "private-key",
     "VAPID_ADMIN_EMAIL": "ops@test.local",
