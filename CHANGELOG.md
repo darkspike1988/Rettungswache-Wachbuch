@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Muellkalender-ICS-Fallback (Roadmap Schritt 3)** – optionale, stationsspezifische
+  Felder `waste_calendar_url` + `waste_calendar_enabled`; neues `WasteCollection`-Modell
+  speichert die aus der ICS-Quelle importierten Abfuhrtermine; Management-Befehl
+  `sync_waste_calendar` importiert sie mit demselben Haertungsprofil wie die
+  Feed-Sync (HTTPS-only, Port 443, keine Weiterleitungen, DNS-Pinning auf globale
+  Adressen, 1-MB-Limit); Abfuhrtermine erscheinen im Kalender, Dashboard und ICS-Abo
+  mit Kennzeichnung „Muell“; HTTP- und private-IP-Quellen werden abgewiesen
 - Doku-Sync: Versionspaarung Server ↔ Client dokumentiert
 - **Kaffeekasse: Zahlungsweg-Hinweise** – optionale Felder `paypal_me_url`,
   `wero_link`, `iban`, `bic`, `payment_note` in den Stationseinstellungen;

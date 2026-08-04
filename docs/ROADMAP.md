@@ -88,7 +88,7 @@ pro Station. Feiertage sind unabhaengig davon nutzbar.
 0. Review-Remediation Wave 0-2
 1. Kaffeekasse-Zahlungshinweise
 2. Feiertage im fortlaufenden Kalender   (umgesetzt)
-3. Muellkalender: manueller ICS-URL-Fallback je Station
+3. Muellkalender: manueller ICS-URL-Fallback je Station   (umgesetzt)
 4. Muellkalender: Ort/Strasse-Auswahl Kreis GT + Sync
 5. API v1 / AGPL-Client ausbauen (E2EE-Chat über API, Stores/F-Droid; Schreiben für Übergaben/Kalender/Kasse/Checklisten ist in 0.14; Demo-Modus in 0.15)
 6. Feinschliff UX (Dashboard, Kopieren-Buttons)

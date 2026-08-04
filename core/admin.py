@@ -16,6 +16,7 @@ from .models import (
     Station,
     StationTask,
     StationTaskCompletion,
+    WasteCollection,
 )
 
 
@@ -45,6 +46,7 @@ class StationAdmin(admin.ModelAdmin):
         "feeds_enabled",
         "tasks_enabled",
         "checklists_enabled",
+        "waste_calendar_enabled",
     )
     list_filter = ("is_active",)
 
@@ -73,6 +75,12 @@ class HandoverRevisionAdmin(ReadOnlyAdmin):
 @admin.register(CalendarEvent)
 class CalendarEventAdmin(ReadOnlyAdmin):
     list_display = ("title", "station", "starts_at", "ends_at", "created_by")
+    list_filter = ("station",)
+
+
+@admin.register(WasteCollection)
+class WasteCollectionAdmin(ReadOnlyAdmin):
+    list_display = ("title", "station", "starts_at", "ends_at")
     list_filter = ("station",)
 
 
