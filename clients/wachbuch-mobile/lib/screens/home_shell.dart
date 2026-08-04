@@ -4,6 +4,7 @@ import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
 import 'package:wachbuch_mobile/screens/checklisten_screen.dart';
 import 'package:wachbuch_mobile/screens/kaffeekasse_screen.dart';
 import 'package:wachbuch_mobile/screens/kalender_screen.dart';
+import 'package:wachbuch_mobile/services/connectivity_service.dart';
 import 'package:wachbuch_mobile/state/auth_state.dart';
 import 'package:wachbuch_mobile/state/handover_state.dart';
 import 'package:wachbuch_mobile/ui/error_banner.dart';
@@ -32,15 +33,29 @@ class _HomeShellState extends State<HomeShell> {
   int _reloadGeneration = 0;
   late final HandoverState _handoverState;
   late final AuthState _authState;
+  late final ConnectivityService _connectivity;
   late final Listenable _listenable;
+  bool _wasOffline = false;
 
   @override
   void initState() {
     super.initState();
     _handoverState = HandoverState(api: widget.api);
     _authState = AuthState(api: widget.api);
-    _listenable = Listenable.merge([_handoverState, _authState]);
+    _connectivity = ConnectivityService();
+    _listenable = Listenable.merge([_handoverState, _authState, _connectivity]);
+    _connectivity.start();
+    _connectivity.addListener(_onConnectivityChanged);
     _reload();
+  }
+
+  void _onConnectivityChanged() {
+    if (_connectivity.isOnline && _wasOffline && mounted) {
+      _wasOffline = false;
+      _reload();
+    } else if (_connectivity.isOffline) {
+      _wasOffline = true;
+    }
   }
 
   Future<void> _reload() async {
@@ -63,6 +78,7 @@ class _HomeShellState extends State<HomeShell> {
   bool get _loading => _authState.loading || _handoverState.loading;
 
   bool get _offline =>
+      !_connectivity.isOnline ||
       _authState.lastError?.statusCode == 0 ||
       _handoverState.lastError?.statusCode == 0;
 
@@ -77,6 +93,8 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    _connectivity.removeListener(_onConnectivityChanged);
+    _connectivity.dispose();
     _handoverState.dispose();
     _authState.dispose();
     widget.api.close();
