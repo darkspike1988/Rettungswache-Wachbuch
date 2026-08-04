@@ -156,7 +156,23 @@ sudo chown 70:70 backups
 ```
 
 `pg_dump` laeuft mit `--no-owner --no-acl --format custom`. Der lokale
-Sieben-Tage-Ring bleibt im Container-Volume `backups/`.
+Ring bleibt im Verzeichnis `backups/` und wird pro Durchlauf um Dumps
+aelter als `BACKUP_RETENTION_DAYS` ausgeduennt.
+
+### Aufbewahrung alter Dumps
+
+`BACKUP_RETENTION_DAYS` (Standard `7`) steuert, wie viele Tage alte Dumps
+im `backup`-Container behalten werden. Jeder Durchlauf loescht Dateien
+(`rwsth-*.dump`, `rwsth-*.dump.gpg`), deren Modifikationszeit aelter ist.
+Der Wert `0` deaktiviert das Loeschen; der lokale Ring waechst dann
+unbegrenzt und muss von Hand gepflegt werden. Die Einstellung wirkt nur
+auf die lokalen Dumps im Container, nicht auf das Offsite-Ziel.
+
+```bash
+# in .env
+BACKUP_RETENTION_DAYS=14   # zwei Wochen behalten
+BACKUP_RETENTION_DAYS=0    # nie automatisch loeschen
+```
 
 ### Offsite-Verschluesselung
 

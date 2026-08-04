@@ -31,6 +31,21 @@ Pull Requests sollen Zweck, Verhaltensaenderung, Tests und moegliche
 Datenschutz- oder Migrationsfolgen beschreiben. Neue Abhaengigkeiten brauchen
 eine Begruendung und kompatible Lizenz (Server und Client: AGPL-kompatibel).
 
+## Abhaengigkeiten und Hashes
+
+`requirements.txt` fuehrt die Produktionsabhaengigkeiten. Fuer
+Supply-Chain-Sicherheit existiert eine optionale Lock-Datei mit SHA256-Hashes:
+
+```bash
+./scripts/update-hashes.sh   # erzeugt requirements.lock via pip-compile --generate-hashes
+pip install --require-hashes -r requirements.lock   # Installation mit Hash-Verifikation
+```
+
+Die CI prueft die Hashes automatisch, sobald `requirements.lock` Eintraege mit
+`--hash` enthaelt. Wird die Lock-Datei nicht gepflegt, entfaellt der Check
+stillschweigend. Bei jeder Aenderung an `requirements.txt` die Lock-Datei neu
+erzeugen und committen.
+
 ## Datenschutz
 
 Issues, Tests, Screenshots und Commits duerfen keine personenbezogenen Daten,
