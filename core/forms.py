@@ -202,6 +202,8 @@ class StationSettingsForm(forms.ModelForm):
             "chat_enabled",
             "holidays_enabled",
             "checklists_enabled",
+            "waste_calendar_enabled",
+            "waste_calendar_url",
             "paypal_me_url",
             "wero_link",
             "iban",
@@ -222,7 +224,23 @@ class StationSettingsForm(forms.ModelForm):
             "iban": "Deutsche IBAN (DE + 20 Ziffern), nur fuer die Anzeige.",
             "bic": "Optional, 8 oder 11 Zeichen.",
             "payment_note": "Freitext, z. B. Verwendungszweck oder Ansprechpartner.",
+            "waste_calendar_url": "Vollstaendige https://…-URL zu einer ICS-Datei der Abfuhrtermine.",
         }
+
+    def clean_waste_calendar_url(self):
+        value = (self.cleaned_data.get("waste_calendar_url") or "").strip()
+        if value and not value.startswith("https://"):
+            raise forms.ValidationError("Muellkalender-URLs muessen mit https:// beginnen.")
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("waste_calendar_enabled") and not cleaned.get("waste_calendar_url"):
+            self.add_error(
+                "waste_calendar_url",
+                "Fuer den Muellkalender-Fallback wird eine HTTPS-ICS-URL benoetigt.",
+            )
+        return cleaned
 
     def clean_paypal_me_url(self):
         value = (self.cleaned_data.get("paypal_me_url") or "").strip()

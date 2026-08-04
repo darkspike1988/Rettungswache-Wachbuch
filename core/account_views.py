@@ -106,9 +106,10 @@ def build_station_calendar_ics(station, events):
                 "END:VEVENT",
             ])
             continue
+        uid_prefix = "wachbuch-waste" if item.kind == "waste" else "wachbuch-event"
         lines.extend([
             "BEGIN:VEVENT",
-            f"UID:wachbuch-event-{item.source_pk}@rettungswache-wachbuch",
+            f"UID:{uid_prefix}-{item.source_pk}@rettungswache-wachbuch",
             f"DTSTAMP:{stamp}",
             f"DTSTART:{_ics_datetime(item.starts_at)}",
             f"DTEND:{_ics_datetime(item.ends_at)}",

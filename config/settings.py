@@ -206,6 +206,7 @@ FEED_ALLOWED_HOSTS = {
     if value.strip()
 }
 FEED_MAX_BYTES = 2_000_000
+WASTE_CALENDAR_MAX_BYTES = 1_048_576
 RETENTION_FEED_DAYS = int(os.getenv("RETENTION_FEED_DAYS", "90") or "0")
 RETENTION_AUDIT_DAYS = int(os.getenv("RETENTION_AUDIT_DAYS", "0") or "0")
 MFA_ENABLED = env_bool("MFA_ENABLED", default=True)

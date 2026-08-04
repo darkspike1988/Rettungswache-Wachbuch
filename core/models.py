@@ -22,6 +22,8 @@ class Station(models.Model):
     chat_enabled = models.BooleanField(default=True, verbose_name="Wachenchat aktiviert")
     holidays_enabled = models.BooleanField(default=True, verbose_name="Feiertage (NRW) im Kalender")
     checklists_enabled = models.BooleanField(default=False, verbose_name="Checklisten aktiviert")
+    waste_calendar_enabled = models.BooleanField(default=False, verbose_name="Muellkalender aktiviert")
+    waste_calendar_url = models.URLField(blank=True, default="", max_length=600, verbose_name="Muellkalender-ICS-URL")
     paypal_me_url = models.URLField(blank=True, default="", verbose_name="PayPal.me-Link")
     wero_link = models.URLField(blank=True, default="", verbose_name="Wero-Link")
     iban = models.CharField(max_length=34, blank=True, default="", verbose_name="IBAN")
@@ -151,6 +153,23 @@ class CalendarEvent(models.Model):
     def clean(self):
         if self.ends_at and self.starts_at and self.ends_at < self.starts_at:
             raise ValidationError({"ends_at": "Das Ende darf nicht vor dem Beginn liegen."})
+
+    def __str__(self):
+        return self.title
+
+
+class WasteCollection(models.Model):
+    """Abfuhrtermin aus dem stationsspezifischen Muellkalender-ICS-Fallback."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="waste_collections")
+    title = models.CharField(max_length=200)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["starts_at"]
+        indexes = [models.Index(fields=["station", "starts_at"], name="waste_coll_station_idx")]
 
     def __str__(self):
         return self.title

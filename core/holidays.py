@@ -107,7 +107,7 @@ def is_upcoming_agenda_item(item, *, now=None, today=None):
 
 
 def station_agenda(station, events, *, past_days=1, future_days=400):
-    """Merge station events with NRW holidays into one chronological agenda."""
+    """Merge station events, NRW holidays and waste collections into one agenda."""
     now = timezone.now()
     window_start = now - timedelta(days=past_days)
     window_end = now + timedelta(days=future_days)
@@ -133,6 +133,20 @@ def station_agenda(station, events, *, past_days=1, future_days=400):
                 kind="holiday",
                 description="Gesetzlicher Feiertag in Nordrhein-Westfalen",
                 all_day=True,
+            ))
+    if getattr(station, "waste_calendar_enabled", False) and station.waste_collections.exists():
+        for waste in station.waste_collections.all():
+            ends_at = waste.ends_at or (waste.starts_at + timedelta(hours=1))
+            if ends_at < window_start:
+                continue
+            items.append(AgendaEntry(
+                starts_at=waste.starts_at,
+                ends_at=ends_at,
+                title=waste.title,
+                kind="waste",
+                description="Muellabfuhr (externe ICS-Quelle)",
+                source_pk=waste.pk,
+                all_day=False,
             ))
     items.sort(key=lambda item: (item.starts_at, item.title))
     return items

@@ -1495,6 +1495,137 @@ class HolidayCalendarTests(PilotTestCase):
         self.assertFalse(is_upcoming_agenda_item(past_event, now=noon, today=today))
 
 
+class WasteCalendarTests(PilotTestCase):
+    def setUp(self):
+        super().setUp()
+        self.station.waste_calendar_enabled = True
+        self.station.waste_calendar_url = "https://abfall.example.org/wache.ics"
+        self.station.save(update_fields=["waste_calendar_enabled", "waste_calendar_url"])
+
+    def _ics(self, *events):
+        lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Test//DE"]
+        for summary, start, end in events:
+            lines += ["BEGIN:VEVENT", f"SUMMARY:{summary}", f"DTSTART:{start}", f"DTEND:{end}", "END:VEVENT"]
+        lines.append("END:VCALENDAR")
+        return "\r\n".join(lines).encode("utf-8")
+
+    def test_parse_ics_creates_waste_collections(self):
+        from .waste_sync import parse_ics
+
+        payload = self._ics(
+            ("Restmuell", "20260905T060000", "20260905T070000"),
+            ("Biotonne", "20260912T060000Z", "20260912T070000Z"),
+        )
+        events = parse_ics(payload)
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0][0], "Restmuell")
+        self.assertEqual(events[1][0], "Biotonne")
+        self.assertIsNotNone(events[0][1])
+        self.assertIsNotNone(events[1][1].tzinfo)
+
+    def test_sync_station_waste_replaces_existing_entries(self):
+        from .models import WasteCollection
+        from .waste_sync import sync_station_waste
+
+        WasteCollection.objects.create(
+            station=self.station, title="Alt", starts_at=timezone.now()
+        )
+        with patch("core.waste_sync.fetch_waste_calendar") as fetch:
+            fetch.return_value = self._ics(
+                ("Restmuell", "20260905T060000", "20260905T070000"),
+                ("Papier", "20260909T060000", "20260909T070000"),
+            )
+            count = sync_station_waste(self.station)
+        self.assertEqual(count, 2)
+        titles = set(WasteCollection.objects.filter(station=self.station).values_list("title", flat=True))
+        self.assertEqual(titles, {"Restmuell", "Papier"})
+
+    @override_settings(WASTE_CALENDAR_MAX_BYTES=1_048_576)
+    def test_http_url_is_rejected(self):
+        from .waste_sync import fetch_waste_calendar
+
+        with self.assertRaises(ValueError):
+            fetch_waste_calendar("http://abfall.example.org/wache.ics")
+
+    def test_private_ip_is_rejected(self):
+        from .waste_sync import fetch_waste_calendar
+
+        with patch("core.waste_sync.socket.getaddrinfo") as lookup:
+            lookup.return_value = [(2, 1, 6, "", ("10.0.0.5", 443))]
+            with self.assertRaises(ValueError):
+                fetch_waste_calendar("https://abfall.example.org/wache.ics")
+
+    def test_redirect_is_rejected(self):
+        from .waste_sync import fetch_waste_calendar
+
+        with patch("core.waste_sync.socket.getaddrinfo") as lookup, patch(
+            "core.waste_sync.urllib3.HTTPSConnectionPool"
+        ) as pool_class:
+            lookup.return_value = [(2, 1, 6, "", ("93.184.216.34", 443))]
+            response = pool_class.return_value.request.return_value
+            response.status = 302
+            with self.assertRaises(ValueError):
+                fetch_waste_calendar("https://abfall.example.org/wache.ics")
+
+    def test_waste_collections_appear_in_calendar_and_ics(self):
+        from .models import WasteCollection
+
+        WasteCollection.objects.create(
+            station=self.station,
+            title="Restmuell",
+            starts_at=timezone.now() + timedelta(days=2),
+            ends_at=timezone.now() + timedelta(days=2, hours=1),
+        )
+        calendar_page = self.client.get(reverse("calendar"))
+        self.assertEqual(calendar_page.status_code, 200)
+        self.assertTrue(any(item.kind == "waste" for item in calendar_page.context["page_obj"]))
+        self.assertContains(calendar_page, "Müll")
+        feed = self.client.get(reverse("calendar_feed_ics"))
+        self.assertIn("wachbuch-waste-", feed.content.decode())
+
+    def test_disabled_waste_calendar_hides_from_agenda(self):
+        from .models import WasteCollection
+        from .holidays import station_agenda
+
+        self.station.waste_calendar_enabled = False
+        self.station.save(update_fields=["waste_calendar_enabled"])
+        WasteCollection.objects.create(
+            station=self.station,
+            title="Restmuell",
+            starts_at=timezone.now() + timedelta(days=2),
+        )
+        agenda = station_agenda(self.station, [])
+        self.assertFalse(any(item.kind == "waste" for item in agenda))
+
+    def test_station_settings_rejects_http_waste_url(self):
+        from core.forms import StationSettingsForm
+
+        form = StationSettingsForm(
+            data={
+                "name": "Testwache",
+                "waste_calendar_enabled": "on",
+                "waste_calendar_url": "http://abfall.example.org/wache.ics",
+            },
+            instance=self.station,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("waste_calendar_url", form.errors)
+
+    def test_station_settings_requires_url_when_enabled(self):
+        from core.forms import StationSettingsForm
+
+        form = StationSettingsForm(
+            data={
+                "name": "Testwache",
+                "waste_calendar_enabled": "on",
+                "waste_calendar_url": "",
+            },
+            instance=self.station,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("waste_calendar_url", form.errors)
+
+
 class ApiMobileFoundationTests(PilotTestCase):
     def _create_token(self):
         from .api.views import generate_api_token

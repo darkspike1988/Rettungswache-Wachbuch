@@ -892,3 +892,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   background: linear-gradient(180deg, #f3f7f5, var(--surface));
 }
 .agenda-holiday h2, .agenda-holiday strong { color: var(--brand-deep); }
+.agenda-waste {
+  background: linear-gradient(180deg, #f4f1e8, var(--surface));
+}
+.agenda-waste h2, .agenda-waste strong { color: #6b5d2b; }
