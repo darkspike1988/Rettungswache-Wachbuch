@@ -6,6 +6,7 @@ Alle wesentlichen Änderungen an Wachbuch Mobile werden hier dokumentiert.
 
 ### Neu
 
+- Doku-Sync: Server-Versionspaarung dokumentiert
 - `GET /api/v1/kalender/` – Wachenkalender mit Terminen (Titel, Beschreibung, Start/Ende, Ganztag, Ort).
 - `GET /api/v1/kaffeekasse/` – Kassenstand, Zahlungshinweise und letzte Buchungen (Ledger).
 - `GET /api/v1/checklisten/` – Checklisten mit Punkten und Abhak-Status.

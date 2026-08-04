@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wachbuch_mobile/api/server_address.dart';
+import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
 import 'package:wachbuch_mobile/ui/error_banner.dart';
 
 /// Full-screen QR scanner for the Wachbuch server address.
@@ -43,16 +44,20 @@ class _QrScanScreenState extends State<QrScanScreen> {
         Navigator.of(context).pop(address);
         return;
       } catch (_) {
-        setState(() => _error = 'Kein gültiger Wachbuch-Server-QR.');
+        if (!mounted) return;
+        setState(
+          () => _error = AppLocalizations.of(context)!.qrScanInvalid,
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Server-QR scannen')),
+      appBar: AppBar(title: Text(l.qrScanTitle)),
       body: Column(
         children: [
           Material(
@@ -60,8 +65,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                'Die Kamera wird nur zum Lesen der Server-Adresse genutzt. '
-                'Es werden keine Fotos gespeichert oder hochgeladen.',
+                l.qrScanCameraHint,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: scheme.onSecondaryContainer,
                 ),
@@ -96,7 +100,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                'QR aus dem Wachbuch-Web unter Mein Konto → App-Tokens',
+                l.qrScanWebHint,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
@@ -110,23 +114,20 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
 /// Explains camera use (Play policy) then requests permission and opens scanner.
 Future<String?> openServerQrScanner(BuildContext context) async {
+  final l = AppLocalizations.of(context)!;
   final proceed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Kamera für QR-Code'),
-      content: const Text(
-        'Wachbuch benötigt die Kamera ausschließlich, um den QR-Code mit der '
-        'Server-Adresse Ihrer Wache zu scannen. Ohne Kamera können Sie die '
-        'Adresse auch manuell eingeben.',
-      ),
+      title: Text(l.qrCameraDialogTitle),
+      content: Text(l.qrCameraDialogMessage),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Abbrechen'),
+          child: Text(l.commonCancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Weiter'),
+          child: Text(l.qrCameraContinue),
         ),
       ],
     ),
@@ -139,16 +140,12 @@ Future<String?> openServerQrScanner(BuildContext context) async {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kamera nicht freigegeben'),
-        content: const Text(
-          'Ohne Kamerazugriff können Sie den QR nicht scannen. '
-          'Geben Sie die Server-Adresse manuell ein oder aktivieren Sie die '
-          'Kamera in den Systemeinstellungen.',
-        ),
+        title: Text(l.qrCameraDeniedTitle),
+        content: Text(l.qrCameraDeniedMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+            child: Text(l.qrCameraOk),
           ),
           if (status.isPermanentlyDenied)
             FilledButton(
@@ -156,7 +153,7 @@ Future<String?> openServerQrScanner(BuildContext context) async {
                 openAppSettings();
                 Navigator.pop(ctx);
               },
-              child: const Text('Einstellungen'),
+              child: Text(l.qrCameraSettings),
             ),
         ],
       ),

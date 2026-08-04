@@ -145,5 +145,30 @@
   "setupAddressRequired": "Adresse eingeben",
   "setupAddressInvalid": "Ungültige Adresse",
   "setupConfirm": "Bestätigen",
-  "setupFooter": "Play-Store-Client: Verbindung nur zu Ihrem selbst gehosteten Server. Produktion: HTTPS erforderlich."
+  "setupFooter": "Play-Store-Client: Verbindung nur zu Ihrem selbst gehosteten Server. Produktion: HTTPS erforderlich.",
+
+  "qrScanTitle": "Server-QR scannen",
+  "qrScanCameraHint": "Die Kamera wird nur zum Lesen der Server-Adresse genutzt. Es werden keine Fotos gespeichert oder hochgeladen.",
+  "qrScanInvalid": "Kein gültiger Wachbuch-Server-QR.",
+  "qrScanWebHint": "QR aus dem Wachbuch-Web unter Mein Konto → App-Tokens",
+  "qrCameraDialogTitle": "Kamera für QR-Code",
+  "qrCameraDialogMessage": "Wachbuch benötigt die Kamera ausschließlich, um den QR-Code mit der Server-Adresse Ihrer Wache zu scannen. Ohne Kamera können Sie die Adresse auch manuell eingeben.",
+  "qrCameraContinue": "Weiter",
+  "qrCameraDeniedTitle": "Kamera nicht freigegeben",
+  "qrCameraDeniedMessage": "Ohne Kamerazugriff können Sie den QR nicht scannen. Geben Sie die Server-Adresse manuell ein oder aktivieren Sie die Kamera in den Systemeinstellungen.",
+  "qrCameraOk": "OK",
+  "qrCameraSettings": "Einstellungen",
+
+  "handoverStatusOpen": "Offen",
+  "handoverStatusInProgress": "In Bearbeitung",
+  "handoverStatusDone": "Erledigt",
+  "handoverPriorityNormal": "Normal",
+  "handoverPriorityImportant": "Wichtig",
+  "handoverPriorityUrgent": "Dringend",
+  "handoverCategoryStation": "Wache",
+  "handoverCategoryVehicle": "Fahrzeugstatus",
+  "handoverCategoryMaterial": "Material",
+  "handoverCategoryTask": "Offene Aufgabe",
+  "handoverCategorySafety": "Sicherheit/Mangel",
+  "handoverEnumUnknown": "Nicht angegeben"
 }

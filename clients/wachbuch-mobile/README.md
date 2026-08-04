@@ -9,8 +9,16 @@ Open-Source-Begleit-App für selbst gehostetes
 | **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch |
 | **Lizenz** | AGPL-3.0-or-later |
 | **API** | `/api/v1/` (Token-Auth, Paperless/Nextcloud-Stil) |
-| **App-Version** | 0.5.1 (passend zu Server ≥ 0.14.1) |
+| **App-Version** | 0.5.1+ (kompatibel mit Server ≥ 0.14.1) |
 | **Roadmap** | [ROADMAP.md](ROADMAP.md) |
+
+## Server-Versions-Paarung
+
+| Server | Client | API-Features |
+| --- | --- | --- |
+| 0.15.0 | 0.5.1+ | Demo-Modus, Kaffeekasse-Zahlungshinweise, App-Token-Härtung |
+| 0.14.1 | 0.5.0+ | API v1, App-Tokens, MFA |
+| 0.14.0 | 0.5.0+ | Deutsche Alias-Pfade, Checklisten-Modul |
 
 ## Startflow
 
