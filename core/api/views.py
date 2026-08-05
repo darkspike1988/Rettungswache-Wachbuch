@@ -17,8 +17,10 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.vary import vary_on_cookie, vary_on_headers
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -350,6 +352,9 @@ def _handover_json(item, *, detail=False):
 def handovers_list(request):
     if request.method == "POST":
         return handover_create(request)
+    
+@cache_page(settings.HANDOVER_CACHE_TIMEOUT)
+@vary_on_headers("Authorization",)
     if not _scope_allowed(request.api_token, "read:handovers"):
         return _json_error(request, "Scope read:handovers fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
@@ -411,6 +416,8 @@ def api_status(request):
 @csrf_exempt
 @require_GET
 @api_token_required
+@cache_page(settings.DASHBOARD_CACHE_TIMEOUT)
+@vary_on_headers("Authorization",)
 def overview(request):
     """Dashboard summary (German alias: /uebersicht/)."""
     if not _scope_allowed(request.api_token, "read:me"):

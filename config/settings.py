@@ -235,3 +235,37 @@ CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 60 * 60 * 12
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = False
+
+# Redis Cache Configuration
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379") or "6379")
+REDIS_DB = int(os.getenv("REDIS_DB", "0") or "0")
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "").strip() or None
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL_KWARGS": {"max_connections": 100},
+            "PICKLE_VERSION": -1,  # Use the latest protocol
+        },
+        "KEY_PREFIX": "wachbuch",
+        "TIMEOUT": 300,  # Default cache timeout: 5 minutes
+    }
+}
+
+# Cache timeouts for specific views (in seconds)
+HANDOVER_CACHE_TIMEOUT = 60  # 1 minute for handover lists
+DASHBOARD_CACHE_TIMEOUT = 30  # 30 seconds for dashboard
+CALENDAR_CACHE_TIMEOUT = 120  # 2 minutes for calendar
+COFFEE_CACHE_TIMEOUT = 60  # 1 minute for coffee ledger
+
+# Use cached template loader for production
+if not DEBUG:
+    TEMPLATES[0]["OPTIONS"]["loaders"] = [
+        ("django.template.loaders.cached.Loader", [
+            "django.template.backends.django.DjangoTemplates",
+        ]),
+    ]
