@@ -16,8 +16,9 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.utils.text import slugify
-from django.views.decorators.cache import never_cache
+from django.views.decorators.cache import cache_page, never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.vary import vary_on_cookie, vary_on_headers
 
 from .access import CONTENT_ROLES, get_membership, membership_required, pending_registrations_for_station, station_module_required, users_awaiting_station_access
 from .errors import (
@@ -413,6 +414,8 @@ def dashboard_profile(station):
 
 
 @membership_required(CONTENT_ROLES)
+@cache_page(settings.DASHBOARD_CACHE_TIMEOUT)
+@vary_on_cookie
 def dashboard(request):
     station = request.membership.station
     now = timezone.now()
