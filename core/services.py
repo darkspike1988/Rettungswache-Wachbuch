@@ -4,7 +4,14 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .models import ApiToken, AuditEvent, BirthdayPreference, FeedItem, HandoverEntry, HandoverRevision
+from .models import (
+    ApiToken,
+    AuditEvent,
+    BirthdayPreference,
+    FeedItem,
+    HandoverEntry,
+    HandoverRevision,
+)
 from .push import notify_urgent_handover
 
 

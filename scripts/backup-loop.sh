@@ -5,6 +5,13 @@ mkdir -p /backups
 
 # 0 deaktiviert die lokale Aufbewahrung, sonst Tage (Standard 7).
 BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
+run_once=false
+if [ "${1:-}" = "--once" ]; then
+    run_once=true
+elif [ -n "${1:-}" ]; then
+    echo "Aufruf: backup-loop.sh [--once]" >&2
+    exit 2
+fi
 
 encrypt_dump() {
     input="$1"
@@ -68,5 +75,9 @@ while true; do
     mv "$temporary" "$target"
     upload_offsite "$target"
     prune_old_dumps
+    if [ "$run_once" = "true" ]; then
+        echo "Backup abgeschlossen: $target"
+        break
+    fi
     sleep 86400
 done

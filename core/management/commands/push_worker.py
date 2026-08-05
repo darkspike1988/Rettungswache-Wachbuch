@@ -34,7 +34,7 @@ from core.services import audit
 
 try:
     from pywebpush import WebPushException, webpush
-except Exception:  # pragma: no cover - import guard
+except ImportError:  # pragma: no cover - optional dependency guard
     WebPushException = Exception
     webpush = None
 
@@ -180,7 +180,7 @@ def _deliver(outbox: PushOutbox) -> None:
             return
         _schedule_retry(outbox, str(exc) or "WebPushException")
         return
-    except Exception as exc:  # network or unexpected
+    except Exception as exc:  # noqa: BLE001 - retry boundary for provider failures
         _schedule_retry(outbox, f"{type(exc).__name__}: {exc}"[:2000])
         return
 
@@ -199,8 +199,8 @@ def process_once(batch_size: int = 25) -> int:
             with transaction.atomic():
                 _deliver(outbox)
             processed += 1
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.exception("PushOutbox %s crashed: %s", outbox.id, exc)
+        except Exception as exc:
+            logger.exception("PushOutbox %s crashed", outbox.id)
             _mark_failed(outbox, f"worker crash: {exc}")
             processed += 1
     return processed
@@ -237,8 +237,8 @@ class Command(BaseCommand):
                 count = process_once(batch_size=batch_size)
                 if count:
                     self.stdout.write(f"push_worker: {count} Eintraege verarbeitet")
-            except Exception as exc:  # pragma: no cover - loop guard
-                logger.exception("push_worker Loop-Fehler: %s", exc)
+            except Exception:
+                logger.exception("push_worker Loop-Fehler")
             if once or stop["flag"]:
                 return
             time.sleep(interval)

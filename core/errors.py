@@ -9,10 +9,11 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
 from django.conf import settings
-from django.http import HttpRequest, JsonResponse
+from django.http import JsonResponse
 
 CORRELATION_HEADER = "HTTP_X_CORRELATION_ID"
 RESPONSE_CORRELATION_HEADER = "X-Correlation-ID"
@@ -75,9 +76,9 @@ def label_for_code(code: str) -> str:
 def build_error_payload(
     code: str,
     *,
-    message: Optional[str] = None,
-    correlation_id: Optional[str] = None,
-    extra: Optional[Mapping[str, Any]] = None,
+    message: str | None = None,
+    correlation_id: str | None = None,
+    extra: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "ok": False,
@@ -99,9 +100,9 @@ def json_error(
     request,
     code: str,
     *,
-    message: Optional[str] = None,
-    status: Optional[int] = None,
-    extra: Optional[Mapping[str, Any]] = None,
+    message: str | None = None,
+    status: int | None = None,
+    extra: Mapping[str, Any] | None = None,
     log: bool = False,
 ) -> JsonResponse:
     correlation_id = correlation_id_for_request(request)
@@ -147,23 +148,23 @@ def log_exception(request, *, exc=None, message: str = "unhandled_exception") ->
 
 __all__ = [
     "CORRELATION_HEADER",
-    "RESPONSE_CORRELATION_HEADER",
-    "REQUEST_ATTR_CORRELATION_ID",
     "CORRELATION_ID_PATTERN",
-    "ERROR_CODE_VALIDATION",
+    "ERROR_CODES",
     "ERROR_CODE_AUTH_REQUIRED",
     "ERROR_CODE_FORBIDDEN",
     "ERROR_CODE_NOT_FOUND",
     "ERROR_CODE_RATE_LIMIT",
     "ERROR_CODE_SERVER_ERROR",
-    "ERROR_CODES",
-    "is_api_request",
-    "correlation_id_for_request",
-    "status_for_code",
-    "label_for_code",
+    "ERROR_CODE_VALIDATION",
+    "REQUEST_ATTR_CORRELATION_ID",
+    "RESPONSE_CORRELATION_HEADER",
     "build_error_payload",
+    "correlation_id_for_request",
+    "is_api_request",
     "json_error",
+    "label_for_code",
     "log_exception",
+    "status_for_code",
 ]
 
 

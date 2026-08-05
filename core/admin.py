@@ -8,6 +8,7 @@ from .models import (
     ChecklistCompletion,
     ChecklistItem,
     CoffeeEntry,
+    DismissedNotice,
     FeedItem,
     FeedSource,
     HandoverEntry,
@@ -16,6 +17,7 @@ from .models import (
     Station,
     StationTask,
     StationTaskCompletion,
+    UpdateRequest,
     WasteCollection,
 )
 
@@ -146,6 +148,24 @@ class ChecklistCompletionAdmin(ReadOnlyAdmin):
 class AuditEventAdmin(ReadOnlyAdmin):
     list_display = ("created_at", "actor", "station", "action", "object_type", "object_id")
     list_filter = ("station", "action", "object_type")
+
+
+@admin.register(UpdateRequest)
+class UpdateRequestAdmin(ReadOnlyAdmin):
+    list_display = (
+        "requested_at",
+        "requested_by",
+        "current_version",
+        "target_version",
+        "status",
+    )
+    list_filter = ("status", "station")
+
+
+@admin.register(DismissedNotice)
+class DismissedNoticeAdmin(ReadOnlyAdmin):
+    list_display = ("user", "notice_key", "dismissed_at")
+    list_filter = ("notice_key",)
 
 
 admin.site.site_header = "Wachbuch-Verwaltung"

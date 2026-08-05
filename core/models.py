@@ -1,6 +1,6 @@
+import uuid
 from datetime import date
 from urllib.parse import urlparse
-import uuid
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -611,6 +611,68 @@ class UserProfile(models.Model):
     def for_user(cls, user):
         profile, _ = cls.objects.get_or_create(user=user)
         return profile
+
+
+class DismissedNotice(models.Model):
+    """A user-scoped, versioned dismissal for optional application notices."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="dismissed_notices")
+    notice_key = models.CharField(max_length=120)
+    dismissed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "notice_key"],
+                name="unique_user_notice_dismissal",
+            ),
+        ]
+        ordering = ["-dismissed_at"]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.notice_key}"
+
+
+class UpdateRequest(models.Model):
+    """Auditable request for the host-side, manually started update runner."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Wartet"
+        RUNNING = "running", "Wird installiert"
+        SUCCEEDED = "succeeded", "Erfolgreich"
+        FAILED = "failed", "Fehlgeschlagen"
+        CANCELLED = "cancelled", "Abgebrochen"
+
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="requested_updates",
+    )
+    station = models.ForeignKey(
+        Station,
+        on_delete=models.PROTECT,
+        related_name="update_requests",
+    )
+    current_version = models.CharField(max_length=40)
+    target_version = models.CharField(max_length=40)
+    release_url = models.URLField(max_length=500)
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    requested_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    result_message = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ["-requested_at"]
+        indexes = [models.Index(fields=["status", "requested_at"])]
+
+    def __str__(self):
+        return f"{self.current_version} -> {self.target_version} ({self.status})"
 
 
 class UserCryptoIdentity(models.Model):

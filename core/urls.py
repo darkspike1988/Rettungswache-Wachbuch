@@ -1,7 +1,13 @@
 from django.urls import path
 
-from . import account_views, community_views, secure_views, views
-
+from . import (
+    account_views,
+    community_views,
+    notice_views,
+    secure_views,
+    update_views,
+    views,
+)
 
 urlpatterns = [
     path("", views.landing, name="landing"),
@@ -19,6 +25,11 @@ urlpatterns = [
     path("kalender/abo/<str:token>.ics", account_views.calendar_feed_token_ics, name="calendar_feed_token_ics"),
     path("kalender/<int:pk>/termin.ics", views.calendar_event_ics, name="calendar_event_ics"),
     path("benachrichtigungen/", account_views.push_settings, name="push_settings"),
+    path(
+        "hinweise/app-installation/ausblenden/",
+        notice_views.dismiss_install_notice,
+        name="dismiss_install_notice",
+    ),
     path("geburtstage/", views.birthdays, name="birthdays"),
     path("geburtstage/einstellung/", views.birthday_settings, name="birthday_settings"),
     path("kaffeekasse/", views.coffee, name="coffee"),
@@ -47,5 +58,6 @@ urlpatterns = [
     path("team/registrierung/<int:pk>/ablehnen/", community_views.registration_reject, name="registration_reject"),
     path("team/<int:pk>/", views.membership_update, name="membership_update"),
     path("einstellungen/", views.station_settings, name="station_settings"),
+    path("system/updates/", update_views.updates, name="updates"),
     path("audit/", views.audit_log, name="audit_log"),
 ]

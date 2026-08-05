@@ -19,9 +19,7 @@ def user_has_confirmed_mfa(user):
     """True if the user has at least one confirmed second factor (TOTP and/or Passkey)."""
     if TotpDevice.objects.filter(user=user, is_confirmed=True).exists():
         return True
-    if webauthn_enabled() and user_has_passkey(user):
-        return True
-    return False
+    return webauthn_enabled() and user_has_passkey(user)
 
 
 def user_has_totp(user):

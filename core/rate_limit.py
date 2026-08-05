@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import uuid
 from datetime import timedelta
 
 from django.conf import settings
@@ -10,7 +9,7 @@ from django.utils import timezone
 
 def hash_key(raw: str) -> str:
     salt = getattr(settings, "RATELIMIT_KEY_SALT", "wachbuch")
-    payload = f"{salt}|{raw}".encode("utf-8")
+    payload = f"{salt}|{raw}".encode()
     return hashlib.sha256(payload).hexdigest()
 
 

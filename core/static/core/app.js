@@ -240,12 +240,21 @@
   }
 
   if (dismissButton) {
-    dismissButton.addEventListener("click", () => {
-      hideInstallBanner();
+    dismissButton.addEventListener("click", async () => {
+      dismissButton.disabled = true;
       try {
-        localStorage.setItem("rwsth-install-dismissed", String(Date.now()));
+        const dismissUrl = installBanner ? installBanner.dataset.dismissUrl : "";
+        if (dismissUrl) {
+          await postJson(dismissUrl, {});
+        }
+        hideInstallBanner();
+        try {
+          localStorage.setItem("rwsth-install-dismissed", String(Date.now()));
+        } catch (_error) {
+          /* ignore */
+        }
       } catch (_error) {
-        /* ignore */
+        dismissButton.disabled = false;
       }
     });
   }

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Ersteinrichtung | {{ app_name }}{% endblock %}
+{% block body_class %}setup-page{% endblock %}
+{% block content %}
+<header class="page-heading narrow">
+  <p class="context-line">Geführte Ersteinrichtung</p>
+  <h1>Wachbuch sicher einrichten</h1>
+  <p class="lead">Die Einrichtung erstellt die erste Wache und ein persönliches Master-Admin-Konto. Patienten- und Einsatzdaten gehören nicht in dieses System.</p>
+</header>
+
+{% if not setup_token_ready %}
+  <section class="section-block narrow" role="alert">
+    <h2>Einrichtungs-Code fehlt</h2>
+    <p>Setze in <code>.env</code> einen zufälligen <code>SETUP_TOKEN</code> mit mindestens 32 Zeichen oder starte die Installation über <code>./scripts/install.sh</code>. Danach den Webdienst neu starten.</p>
+  </section>
+{% elif not authorized %}
+  <form method="post" class="form-card narrow" autocomplete="off">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="authorize">
+    <h2>Installation freischalten</h2>
+    <p>Der Einrichtungs-Code wurde bei der Installation im Terminal angezeigt und liegt in der lokalen <code>.env</code>-Datei.</p>
+    {% include "core/form_errors.html" with form=authorization_form %}
+    {{ authorization_form.as_p }}
+    <div class="form-actions"><button class="button primary" type="submit">Weiter</button></div>
+  </form>
+{% else %}
+  <form method="post" class="form-card setup-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="configure">
+    <h2>Wache und Master-Admin</h2>
+    {% include "core/form_errors.html" with form=setup_form %}
+    {{ setup_form.as_p }}
+    <div class="form-actions"><button class="button primary" type="submit">Einrichtung abschließen</button></div>
+  </form>
+{% endif %}
+{% endblock %}

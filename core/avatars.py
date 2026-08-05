@@ -7,7 +7,6 @@ from io import BytesIO
 from django.core.exceptions import ValidationError
 from PIL import Image, UnidentifiedImageError
 
-
 ALLOWED_CONTENT_TYPES = {
     "image/jpeg": "JPEG",
     "image/png": "PNG",

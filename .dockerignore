@@ -1,5 +1,8 @@
 .git/
 .github/
+.firecrawl/
+.pytest_cache/
+.ruff_cache/
 .env
 .env.*
 !.env.example

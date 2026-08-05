@@ -5,9 +5,10 @@
 1. Einen Fork oder Branch anlegen.
 2. Keine echten Wach-, Mitarbeiter-, Einsatz- oder Zugangsdaten verwenden.
 3. Aenderungen klein halten und durch Tests absichern.
-4. Vor dem Pull Request Tests und Docker-Build ausfuehren.
+4. Vor dem Pull Request Lint, Tests und Docker-Build ausfuehren.
 
 ```bash
+uvx --from ruff==0.16.1 ruff check .
 docker compose build web
 docker compose run --rm --no-deps \
   -e DJANGO_SECRET_KEY=test-only \
@@ -34,17 +35,17 @@ eine Begruendung und kompatible Lizenz (Server und Client: AGPL-kompatibel).
 ## Abhaengigkeiten und Hashes
 
 `requirements.txt` fuehrt die Produktionsabhaengigkeiten. Fuer
-Supply-Chain-Sicherheit existiert eine optionale Lock-Datei mit SHA256-Hashes:
+Supply-Chain-Sicherheit ist die vollstaendige Lock-Datei mit SHA256-Hashes
+verbindlich:
 
 ```bash
 ./scripts/update-hashes.sh   # erzeugt requirements.lock via pip-compile --generate-hashes
 pip install --require-hashes -r requirements.lock   # Installation mit Hash-Verifikation
 ```
 
-Die CI prueft die Hashes automatisch, sobald `requirements.lock` Eintraege mit
-`--hash` enthaelt. Wird die Lock-Datei nicht gepflegt, entfaellt der Check
-stillschweigend. Bei jeder Aenderung an `requirements.txt` die Lock-Datei neu
-erzeugen und committen.
+Die CI installiert ausschliesslich mit `--require-hashes`. Eine fehlende oder
+unvollstaendige Lock-Datei bricht den Build ab. Bei jeder Aenderung an
+`requirements.txt` die Lock-Datei neu erzeugen und committen.
 
 ## Datenschutz
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 import ipaddress
 import re
 import socket
-from datetime import datetime, timezone as datetime_timezone
+from datetime import date, datetime
 from urllib.parse import urlparse
 
 import certifi
@@ -23,7 +23,6 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import WasteCollection
-
 
 _WASTE_MAX_BYTES = getattr(settings, "WASTE_CALENDAR_MAX_BYTES", 1_048_576)
 
@@ -130,19 +129,20 @@ def _parse_ics_date(value):
     if "T" in value:
         core = value.split("T", 1)[1]
         if core.endswith("Z"):
-            dt = datetime.strptime(value, "%Y%m%dT%H%M%SZ")
-            return dt.replace(tzinfo=datetime_timezone.utc)
+            return datetime.strptime(value, "%Y%m%dT%H%M%S%z")
         try:
-            dt = datetime.strptime(value, "%Y%m%dT%H%M%S")
+            # ICS without a zone is deliberately interpreted in Django's
+            # configured local timezone.
+            dt = datetime.strptime(value, "%Y%m%dT%H%M%S")  # noqa: DTZ007
         except ValueError:
             return None
         return timezone.make_aware(dt)
     if len(value) == 8:
         try:
-            dt = datetime.strptime(value, "%Y%m%d")
+            day = date.fromisoformat(f"{value[:4]}-{value[4:6]}-{value[6:]}")
         except ValueError:
             return None
-        return timezone.make_aware(dt)
+        return timezone.make_aware(datetime.combine(day, datetime.min.time()))
     return None
 
 

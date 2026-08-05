@@ -1,4 +1,6 @@
-from .settings import *  # noqa: F403
+from .settings import *
+
+SETUP_WIZARD_ENABLED = False
 
 
 STORAGES = {
@@ -7,6 +9,6 @@ STORAGES = {
     }
 }
 MIDDLEWARE = [
-    item for item in MIDDLEWARE  # noqa: F405
+    item for item in MIDDLEWARE
     if item != "whitenoise.middleware.WhiteNoiseMiddleware"
 ]

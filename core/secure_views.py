@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 from django.contrib import messages
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
@@ -13,9 +12,14 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods
 
-from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
+from .access import (
+    CONTENT_ROLES,
+    get_membership,
+    membership_required,
+    station_module_required,
+)
 from .avatars import initials_for
 from .messaging import (
     ordered_pair,

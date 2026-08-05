@@ -19,7 +19,7 @@ class Command(BaseCommand):
                 try:
                     count = sync_source(source)
                     self.stdout.write(f"{source.name}: {count} Eintraege")
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - isolate one external source
                     self.stderr.write(f"{source.name}: {exc}")
             if not options["watch"]:
                 break

@@ -14,22 +14,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Lint Python sources
+        uses: astral-sh/ruff-action@4919ec5cf1f49eff0871dbcea0da843445b837e6
+        with:
+          version: "0.16.1"
+          args: check
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.13"
           cache: pip
-      - run: pip install -r requirements.txt
-      - name: Verify dependency hashes (if lock file exists)
-        run: |
-          if grep -q '^--hash' requirements.lock 2>/dev/null; then
-            pip install --require-hashes -r requirements.lock
-          fi
+      - name: Install hash-locked dependencies
+        run: pip install --require-hashes -r requirements.lock
+      - name: Verify installed dependency consistency
+        run: pip check
       - name: Compile Python sources
         run: python -m compileall -q config core
       - name: Check JavaScript syntax
         run: |
           node --check core/static/core/app.js
           node --check core/static/core/json_data.js
+          node --check core/static/core/crypto_unlock.js
+      - name: Check shell script syntax
+        run: |
+          sh -n scripts/*.sh
       - name: Check migrations
         env:
           DJANGO_SECRET_KEY: ci-only-secret

@@ -232,6 +232,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 .install-banner strong, .install-banner span { display: block; }
 .install-banner span { color: var(--muted); font-size: .92rem; }
+.install-banner [data-install-dismiss] { white-space: nowrap; }
 .install-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 
 .app-nav {
@@ -304,6 +305,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .message { padding: .85rem 1rem; color: var(--text); background: #e5f1f4; border-left: 4px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; }
 .message + .message { margin-top: .5rem; }
 .message.error { background: var(--danger-soft); border-color: var(--danger); }
+.setup-form { max-width: 48rem; }
+.setup-checklist { display: grid; gap: .75rem; padding-left: 1.5rem; }
+.update-release { display: grid; gap: .75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 
 .page-heading { max-width: 48rem; margin-bottom: 1.75rem; }
 .page-heading.narrow, .narrow { max-width: 42rem; }

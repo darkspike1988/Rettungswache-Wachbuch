@@ -1,4 +1,4 @@
-Pillow==11.3.0
+Pillow==12.3.0
 Django==6.0.7
 django-axes==8.3.1
 dj-database-url==3.1.2
@@ -13,4 +13,4 @@ webauthn==2.5.0
 whitenoise==6.12.0
 qrcode==8.2
 argon2-cffi==25.1.0
-cryptography==49.0.0
+cryptography==50.0.0
