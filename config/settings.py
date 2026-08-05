@@ -9,6 +9,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 from core.version import APP_VERSION as DEFAULT_APP_VERSION  # noqa: E402
 
+# Enable audit logging by importing the audit module
+# This must be done before Django starts to patch request handling
+try:
+    from core import audit  # noqa: F401
+    AUDIT_LOGGING_ENABLED = True
+except ImportError:
+    AUDIT_LOGGING_ENABLED = False
+
 
 def env_bool(name, default=False):
     return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
@@ -210,7 +218,7 @@ WASTE_CALENDAR_MAX_BYTES = 1_048_576
 RETENTION_FEED_DAYS = int(os.getenv("RETENTION_FEED_DAYS", "90") or "0")
 RETENTION_AUDIT_DAYS = int(os.getenv("RETENTION_AUDIT_DAYS", "0") or "0")
 MFA_ENABLED = env_bool("MFA_ENABLED", default=True)
-MFA_REQUIRED = env_bool("MFA_REQUIRED", default=False)
+MFA_REQUIRED = env_bool("MFA_REQUIRED", default=True)  # Standardmäßig erzwungen
 DEMO_MODE = env_bool("DEMO_MODE", default=False)
 DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "Demo-Passwort-12345").strip() or "Demo-Passwort-12345"
 if DEMO_MODE:
