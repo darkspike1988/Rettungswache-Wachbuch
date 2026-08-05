@@ -22,6 +22,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.views.decorators.vary import vary_on_cookie, vary_on_headers
 
+from ..rate_limit import consume
+from ..services import get_client_ip
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Sum
@@ -50,6 +53,52 @@ from ..version import APP_VERSION
 
 API_VERSION = "v1"
 TOKEN_PREFIX = "wb_"
+
+
+# Rate Limiting Configuration for API Endpoints
+API_RATE_LIMITS = {
+    "token": {"limit": 10, "window_seconds": 60},  # 10 requests per minute
+    "handovers_list": {"limit": 100, "window_seconds": 60},  # 100 requests per minute
+    "handovers_create": {"limit": 30, "window_seconds": 60},  # 30 requests per minute
+    "overview": {"limit": 60, "window_seconds": 60},  # 60 requests per minute
+    "me": {"limit": 60, "window_seconds": 60},  # 60 requests per minute
+    "default": {"limit": 120, "window_seconds": 60},  # 120 requests per minute
+}
+
+
+def api_rate_limit(bucket: str, get_key: callable = None):
+    """Decorator to apply rate limiting to API endpoints.
+    
+    Args:
+        bucket: The rate limit bucket name
+        get_key: Function to extract rate limit key from request (default: IP address)
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped_view(request, *args, **kwargs):
+            # Get rate limit configuration
+            config = API_RATE_LIMITS.get(bucket, API_RATE_LIMITS["default"])
+            limit = config["limit"]
+            window_seconds = config["window_seconds"]
+            
+            # Extract key from request
+            if get_key:
+                raw_key = get_key(request)
+            else:
+                raw_key = get_client_ip(request)
+            
+            # Check rate limit
+            if not consume(bucket, raw_key, limit=limit, window_seconds=window_seconds):
+                return _json_error(
+                    request,
+                    "Rate limit exceeded. Please try again later.",
+                    status=429,
+                    code=ERROR_CODE_RATE_LIMIT,
+                )
+            
+            return view_func(request, *args, **kwargs)
+        return wrapped_view
+    return decorator
 DEFAULT_TOKEN_TTL_DAYS = 90
 WRITE_ROLES = {Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN}
 CASHIER_ROLES = {Membership.Role.CASHIER, Membership.Role.ADMIN}
@@ -218,6 +267,7 @@ def openapi_spec(request):
 
 @csrf_exempt
 @require_POST
+@api_rate_limit("token", get_key=lambda r: r.POST.get("username", ""))
 def obtain_token(request):
     """Paperless-style token exchange: username + password → API token."""
     body = _parse_json(request)
@@ -279,6 +329,7 @@ def obtain_token(request):
 @csrf_exempt
 @require_GET
 @api_token_required
+@api_rate_limit("me")
 def me(request):
     if not _scope_allowed(request.api_token, "read:me"):
         return _json_error(request, "Scope read:me fehlt.", status=403)
@@ -349,12 +400,12 @@ def _handover_json(item, *, detail=False):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 @api_token_required
+@api_rate_limit("handovers_list")
+@cache_page(settings.HANDOVER_CACHE_TIMEOUT)
+@vary_on_headers("Authorization",)
 def handovers_list(request):
     if request.method == "POST":
         return handover_create(request)
-    
-@cache_page(settings.HANDOVER_CACHE_TIMEOUT)
-@vary_on_headers("Authorization",)
     if not _scope_allowed(request.api_token, "read:handovers"):
         return _json_error(request, "Scope read:handovers fehlt.", status=403)
     if request.membership.role not in CONTENT_ROLES:
@@ -416,6 +467,7 @@ def api_status(request):
 @csrf_exempt
 @require_GET
 @api_token_required
+@api_rate_limit("overview")
 @cache_page(settings.DASHBOARD_CACHE_TIMEOUT)
 @vary_on_headers("Authorization",)
 def overview(request):
