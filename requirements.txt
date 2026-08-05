@@ -3,7 +3,7 @@ Django==6.0.7
 django-axes==8.3.1
 dj-database-url==3.1.2
 certifi==2026.7.22
-feedparser==6.0.13
+feedparser==6.0.14
 gunicorn==26.0.0
 psycopg[binary]==3.3.4
 pyotp==2.9.0
