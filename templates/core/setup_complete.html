@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Einrichtung abgeschlossen | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading narrow">
+  <p class="context-line">Ersteinrichtung abgeschlossen</p>
+  <h1>Die Wache ist bereit</h1>
+  <p class="lead">Das Master-Admin-Konto ist aktiv. Bevor echte Daten erfasst werden, müssen TLS, Backup und organisatorische Freigaben geprüft werden.</p>
+</header>
+<section class="section-block narrow">
+  <h2>Nächste sichere Schritte</h2>
+  <ol class="setup-checklist">
+    <li><a href="{{ mfa_setup_url }}">Zwei-Faktor oder Passkey einrichten</a></li>
+    <li><a href="{% url 'team' %}">Persönliche Teamkonten anlegen</a></li>
+    <li><a href="{% url 'station_settings' %}">Module und Wachenname prüfen</a></li>
+    <li>Reverse-Proxy mit TLS und verschlüsseltes Offsite-Backup einrichten</li>
+    <li>Go-live-Checkliste mit Datenschutz und Interessenvertretung abnehmen</li>
+  </ol>
+  <div class="form-actions"><a class="button primary" href="{% url 'dashboard' %}">Zur Übersicht</a></div>
+</section>
+{% endblock %}

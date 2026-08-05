@@ -2,20 +2,15 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from core import account_views, community_views, secure_views
+from core import account_views, community_views, secure_views, setup_views
 from core.auth_views import PasswordLoginView
 from core.views import (
-    bad_request,
     healthz,
     mfa_disable,
     mfa_setup,
     mfa_verify,
     offline,
-    page_not_found,
-    permission_denied,
     privacy_notice,
-    rate_limited,
-    server_error,
     service_worker,
     web_manifest,
 )
@@ -28,6 +23,8 @@ handler500 = "core.views.server_error"
 
 
 urlpatterns = [
+    path("einrichtung/", setup_views.initial_setup, name="initial_setup"),
+    path("einrichtung/abgeschlossen/", setup_views.setup_complete, name="setup_complete"),
     path("healthz/", healthz, name="healthz"),
     path("manifest.webmanifest", web_manifest, name="web_manifest"),
     path("service-worker.js", service_worker, name="service_worker"),

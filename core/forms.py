@@ -1,12 +1,20 @@
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from django import forms
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import BirthdayPreference, CalendarEvent, HandoverEntry, Membership, Station, StationTask
+from .models import (
+    BirthdayPreference,
+    CalendarEvent,
+    HandoverEntry,
+    Membership,
+    Station,
+    StationTask,
+)
 
 
 class DateTimeLocalInput(forms.DateTimeInput):
@@ -129,7 +137,7 @@ class CoffeeEntryForm(forms.Form):
         )
 
     def amount_cents(self):
-        cents = int((self.cleaned_data["amount_eur"] * 100).quantize(Decimal("1"), ROUND_HALF_UP))
+        cents = int((self.cleaned_data["amount_eur"] * 100).quantize(Decimal(1), ROUND_HALF_UP))
         return cents if self.cleaned_data["direction"] == "credit" else -cents
 
 
@@ -265,6 +273,61 @@ class StationSettingsForm(forms.ModelForm):
         if value and (not value.isalnum() or len(value) not in (8, 11)):
             raise forms.ValidationError("BIC muss 8 oder 11 alphanumerische Zeichen haben.")
         return value
+
+
+class SetupAuthorizationForm(forms.Form):
+    setup_token = forms.CharField(
+        label="Einrichtungs-Code",
+        max_length=256,
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "one-time-code"}),
+    )
+
+
+class InitialSetupForm(forms.Form):
+    station_name = forms.CharField(max_length=120, label="Name der Rettungswache")
+    username = forms.CharField(max_length=150, label="Benutzername des Master-Admins")
+    first_name = forms.CharField(max_length=150, required=False, label="Vorname")
+    last_name = forms.CharField(max_length=150, required=False, label="Nachname")
+    email = forms.EmailField(required=False, label="E-Mail")
+    password1 = forms.CharField(label="Sicheres Passwort", widget=forms.PasswordInput)
+    password2 = forms.CharField(label="Passwort wiederholen", widget=forms.PasswordInput)
+    calendar_enabled = forms.BooleanField(required=False, initial=True, label="Kalender aktivieren")
+    tasks_enabled = forms.BooleanField(required=False, initial=True, label="Tagesaufgaben aktivieren")
+    chat_enabled = forms.BooleanField(required=False, initial=True, label="Wachenchat aktivieren")
+    coffee_enabled = forms.BooleanField(required=False, initial=True, label="Kaffeekasse aktivieren")
+    birthdays_enabled = forms.BooleanField(required=False, initial=True, label="Geburtstage aktivieren")
+    product_boundary = forms.BooleanField(
+        label=(
+            "Ich bestätige: Das Wachbuch wird nicht für Patienten-, Einsatz-, "
+            "Alarmierungs-, Diagnose- oder Krankheitsdaten verwendet."
+        ),
+    )
+    operator_responsibility = forms.BooleanField(
+        label=(
+            "Ich übernehme die Verantwortung für TLS, Datenschutzfreigabe, "
+            "Backups, Updates und organisatorische Zugriffsregeln."
+        ),
+    )
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("Dieser Benutzername ist bereits vergeben.")
+        return username
+
+    def clean(self):
+        cleaned = super().clean()
+        password1 = cleaned.get("password1")
+        password2 = cleaned.get("password2")
+        if password1 and password2 and password1 != password2:
+            self.add_error("password2", "Die Passwörter stimmen nicht überein.")
+        if password1:
+            try:
+                validate_password(password1)
+            except ValidationError as exc:
+                self.add_error("password1", exc)
+        return cleaned
 
 
 class RegistrationForm(forms.Form):

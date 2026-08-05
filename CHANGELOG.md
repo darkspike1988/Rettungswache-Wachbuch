@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Gefuehrte, mit einem starken `SETUP_TOKEN` geschuetzte Ersteinrichtung fuer
+  Wache, ersten Master-Admin, Module und Produktgrenze; `scripts/install.sh`
+  erzeugt alle lokalen Geheimnisse und startet den Docker-Stack
+- Master-Admins koennen Releases unter `Mehr -> Updates` pruefen und anfordern;
+  `scripts/update.sh --apply-requested` installiert signierte Fast-Forward-Tags
+  mit Vorab-Backup, separatem Candidate-Build, Migration und Healthcheck
+- Der PWA-Installationshinweis kann dauerhaft pro Benutzer ausgeblendet werden
+- Hash-vollstaendiger Python-Lockfile, CodeQL, Secret-/Dependency-/Container-Scan
+  sowie SBOM und Build-Provenance in der Release-Pipeline
+- Sicherheitsupdates fuer `cryptography` 50.0.0 und Pillow 12.3.0; der lokale
+  `pip-audit`-Lauf meldet danach keine bekannten Schwachstellen
+- Reproduzierbare Ruff-0.16.1-Baseline als CI-Gate; Import-/Typbereinigung und
+  gezieltere Fehlerbehandlung fuer Passkeys, AES-GCM und Hintergrund-Worker
+- Docker-Installation und Update warten mit Compose `--wait` auf Healthchecks;
+  der Image-Build installiert nur noch hash-gesperrte Python-Abhaengigkeiten
+
 - **Muellkalender-ICS-Fallback (Roadmap Schritt 3)** – optionale, stationsspezifische
   Felder `waste_calendar_url` + `waste_calendar_enabled`; neues `WasteCollection`-Modell
   speichert die aus der ICS-Quelle importierten Abfuhrtermine; Management-Befehl

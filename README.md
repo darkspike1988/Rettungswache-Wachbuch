@@ -17,6 +17,8 @@ Einsatzleit-, Alarmierungs-, Dienstplanungs- oder Patientendokumentationssystem.
 - stationsbezogene Rollen und nachvollziehbare Audit-Ereignisse
 - lokaler Login mit persoenlichen Konten
 - installierbare PWA fuer Handy und Wachenterminals
+- token-geschuetzte, gefuehrte Ersteinrichtung im Browser
+- manuell angestossene Updates mit Backup, Build, Migration und Healthcheck
 - responsive App-Shell mit Offline-Hinweis fuer gelesene Seiten
 
 ## Stack
@@ -43,19 +45,21 @@ Voraussetzungen sind Docker Engine mit Compose v2 und ein freier lokaler Port.
 ```bash
 git clone https://github.com/Darkspike1988/Rettungswache-Wachbuch.git
 cd Rettungswache-Wachbuch
-cp .env.example .env
+./scripts/install.sh
 ```
 
-In `.env` muessen alle Platzhalter durch unabhaengige Zufallswerte ersetzt
-werden. Geeignete Werte erzeugt beispielsweise `openssl rand -hex 32`. Das
-Backup-Verzeichnis muss fuer den PostgreSQL-Benutzer im Container schreibbar
-sein:
+Das Installationsskript erzeugt `.env` mit unabhaengigen Zufallswerten, baut die
+Container und zeigt die lokale Adresse sowie den einmaligen Einrichtungs-Code.
+Im Browser fuehrt ein Assistent durch Wachenname, ersten Master-Admin,
+Modulauswahl und die verbindliche Produktgrenze.
+
+Wer die Konfiguration bewusst manuell verwalten will, kopiert stattdessen
+`.env.example`, ersetzt **alle** Platzhalter und startet Compose selbst:
 
 ```bash
+cp .env.example .env
 sudo chown 70:70 backups
 docker compose up --build -d
-docker compose exec web python manage.py createsuperuser
-docker compose exec web python manage.py grant_station_admin BENUTZERNAME
 ```
 
 Danach ist die oeffentliche Startseite unter `http://127.0.0.1:8090/` und die
@@ -70,6 +74,19 @@ Kontoanfrage erlauben; Freigabe bleibt beim Master-Admin unter `/team/`.
 Technische Systemkonten bleiben unter `/django-admin/`. `createsuperuser` erzeugt
 einen globalen technischen Administrator; die stationsbezogene Master-Admin-Rolle
 allein vergibt keine Django-Superuser-Rechte.
+
+Unter `Mehr → Updates` kann ein Master-Admin ein neues, freigegebenes GitHub-
+Release pruefen und anfordern. Die eigentliche Installation wird auf dem Host
+bewusst manuell gestartet:
+
+```bash
+./scripts/update.sh --apply-requested
+```
+
+Der Runner akzeptiert nur Fast-Forward-Release-Tags des konfigurierten
+Repositories. Standardmaessig muss der Tag mit einem lokal vertrauten
+GPG-Schluessel signiert sein. Vor Migration und Neustart wird ein frisches
+Backup erzeugt. Details und Fehlergrenzen stehen in `docs/OPERATIONS.md`.
 
 ### Demo-Modus (Musterdaten)
 

@@ -11,6 +11,7 @@ import logging
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect
 
 from .errors import (
     REQUEST_ATTR_CORRELATION_ID,
@@ -101,4 +102,38 @@ class ClientIPMiddleware:
         return ip
 
 
-__all__ = ["SecurityHeadersMiddleware", "CorrelationIdMiddleware", "ClientIPMiddleware"]
+class SetupRequiredMiddleware:
+    """Route a fresh installation into the token-protected setup wizard."""
+
+    ALLOWED_PREFIXES = (
+        "/einrichtung/",
+        "/healthz/",
+        "/static/",
+        "/manifest.webmanifest",
+        "/service-worker.js",
+        "/offline/",
+        "/datenschutz/",
+        "/django-admin/",
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from .setup import installation_complete
+
+        if (
+            getattr(settings, "SETUP_WIZARD_ENABLED", True)
+            and not request.path.startswith(self.ALLOWED_PREFIXES)
+            and not installation_complete()
+        ):
+            return redirect("initial_setup")
+        return self.get_response(request)
+
+
+__all__ = [
+    "ClientIPMiddleware",
+    "CorrelationIdMiddleware",
+    "SecurityHeadersMiddleware",
+    "SetupRequiredMiddleware",
+]

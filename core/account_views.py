@@ -10,14 +10,21 @@ import qrcode
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from webauthn.helpers import bytes_to_base64url
+from webauthn.helpers.exceptions import WebAuthnException
 
-from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
+from .access import (
+    CONTENT_ROLES,
+    get_membership,
+    membership_required,
+    station_module_required,
+)
 from .api.views import generate_api_token
 from .mfa import mfa_enabled, mfa_required, user_has_confirmed_mfa, user_has_totp
 from .models import (
@@ -38,7 +45,6 @@ from .webauthn_auth import (
     verify_authentication,
     webauthn_enabled,
 )
-
 
 MFA_MAX_FAILURES = 8
 
@@ -140,7 +146,7 @@ def passkey_login_verify(request):
         return JsonResponse({"ok": False, "error": "Ungültige Anfrage."}, status=400)
     try:
         user = verify_authentication(json.dumps(body["credential"]), challenge)
-    except Exception:
+    except (TypeError, ValueError, WebAuthnException):
         return JsonResponse({"ok": False, "error": "Passkey konnte nicht geprüft werden."}, status=400)
     request.session.pop("webauthn_login_challenge", None)
     login(request, user, backend="axes.backends.AxesStandaloneBackend")
@@ -179,7 +185,7 @@ def passkey_mfa_verify(request):
         verified = verify_authentication(
             json.dumps(body["credential"]), challenge, expected_user=user
         )
-    except Exception:
+    except (TypeError, ValueError, WebAuthnException):
         locked = _mfa_failure(request)
         error = "Zu viele Fehlversuche." if locked else "Passkey ungültig."
         return JsonResponse({"ok": False, "error": error}, status=400)
@@ -215,7 +221,7 @@ def passkey_register_verify(request):
             challenge,
             device_name=body.get("device_name", "")[:120],
         )
-    except Exception:
+    except (IntegrityError, TypeError, ValueError, WebAuthnException):
         return JsonResponse({"ok": False, "error": "Registrierung fehlgeschlagen."}, status=400)
     request.session.pop("webauthn_register_challenge", None)
     membership = get_membership(request.user)

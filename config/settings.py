@@ -4,10 +4,9 @@ from pathlib import Path
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
+from core.version import APP_VERSION as DEFAULT_APP_VERSION
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-from core.version import APP_VERSION as DEFAULT_APP_VERSION  # noqa: E402
 
 
 def env_bool(name, default=False):
@@ -44,6 +43,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.SetupRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.CorrelationIdMiddleware",
@@ -200,6 +200,12 @@ SOURCE_URL = os.getenv(
     "SOURCE_URL", "https://github.com/Darkspike1988/Rettungswache-Wachbuch"
 ).strip()
 APP_VERSION = os.getenv("APP_VERSION", DEFAULT_APP_VERSION).strip()
+SETUP_WIZARD_ENABLED = env_bool("SETUP_WIZARD_ENABLED", default=True)
+SETUP_TOKEN = os.getenv("SETUP_TOKEN", "")
+UPDATE_CHECK_ENABLED = env_bool("UPDATE_CHECK_ENABLED", default=True)
+UPDATE_REPOSITORY = os.getenv(
+    "UPDATE_REPOSITORY", "Darkspike1988/Rettungswache-Wachbuch"
+).strip()
 FEED_ALLOWED_HOSTS = {
     value.strip().lower()
     for value in os.getenv("FEED_ALLOWED_HOSTS", "").split(",")

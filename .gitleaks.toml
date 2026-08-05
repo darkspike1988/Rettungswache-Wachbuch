@@ -1,0 +1,12 @@
+title = "Wachbuch Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Ignore the retired documentation placeholder, never real key material"
+regexTarget = "secret"
+regexes = ['''^replace-with-64-hex-characters$''']

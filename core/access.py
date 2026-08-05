@@ -8,7 +8,6 @@ from django.urls import reverse
 
 from .models import Membership
 
-
 CONTENT_ROLES = {
     Membership.Role.MEMBER,
     Membership.Role.SHIFT_LEAD,

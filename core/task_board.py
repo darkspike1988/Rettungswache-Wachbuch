@@ -10,7 +10,6 @@ from django.utils import timezone
 from .models import Station, StationTask, StationTaskCompletion
 from .services import audit
 
-
 DEFAULT_TASKS = (
     # Gruene Zone: taegliche Routine
     ("Fahrzeugcheck", StationTask.Band.DAILY, None, "", 10),

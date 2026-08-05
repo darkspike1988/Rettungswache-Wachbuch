@@ -1,7 +1,12 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from core.demo import demo_accounts_for_display, demo_mode_enabled, demo_password, load_demo_data
+from core.demo import (
+    demo_accounts_for_display,
+    demo_mode_enabled,
+    demo_password,
+    load_demo_data,
+)
 
 
 class Command(BaseCommand):

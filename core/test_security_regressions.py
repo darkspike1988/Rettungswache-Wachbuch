@@ -1,20 +1,19 @@
 from pathlib import Path
 
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.test import Client, RequestFactory, SimpleTestCase, override_settings
 from django.utils.html import json_script
 
 from .errors import (
     CORRELATION_ID_PATTERN,
-    ERROR_CODES,
     ERROR_CODE_FORBIDDEN,
     ERROR_CODE_NOT_FOUND,
+    ERROR_CODES,
     RESPONSE_CORRELATION_HEADER,
     correlation_id_for_request,
     json_error,
 )
 from .middleware import CorrelationIdMiddleware, SecurityHeadersMiddleware
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -187,7 +186,7 @@ class ErrorHandlerRegressionTests(SimpleTestCase):
         self.assertContains(response, response[RESPONSE_CORRELATION_HEADER], status_code=404)
 
     def test_error_templates_exist_and_extend_base(self):
-        for status, name in [
+        for _status, name in [
             (400, "errors/400.html"),
             (403, "errors/403.html"),
             (404, "errors/404.html"),

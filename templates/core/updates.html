@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Updates | {{ app_name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'more' %}">Zurück zu Mehr</a>
+<header class="page-heading narrow">
+  <p class="context-line">Systemverwaltung</p>
+  <h1>Updates</h1>
+  <p class="lead">Aktuelle Version {{ app_version }}. Die Oberfläche fordert ein Update an; installiert wird es bewusst durch den manuellen Host-Runner mit Backup und Healthcheck.</p>
+</header>
+
+<section class="section-block narrow">
+  <h2>Release prüfen</h2>
+  {% if update_check_enabled %}
+    <form method="post" class="inline-form">
+      {% csrf_token %}<input type="hidden" name="action" value="check">
+      <button class="button secondary" type="submit">Jetzt nach Updates suchen</button>
+    </form>
+  {% else %}<p>Die Online-Prüfung ist durch <code>UPDATE_CHECK_ENABLED=false</code> deaktiviert.</p>{% endif %}
+  {% if release %}
+    <div class="update-release" role="status">
+      <strong>Neuestes Release: {{ release.version }}</strong>
+      <a href="{{ release.url }}" rel="noopener noreferrer">Release-Hinweise auf GitHub</a>
+      {% if release_is_newer and not active_update %}
+        <form method="post">
+          {% csrf_token %}<input type="hidden" name="action" value="request">
+          <button class="button primary" type="submit">Update {{ release.version }} anfordern</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+
+{% if active_update %}
+<section class="section-block narrow">
+  <h2>Offener Auftrag</h2>
+  <p><strong>{{ active_update.current_version }} → {{ active_update.target_version }}</strong> · {{ active_update.get_status_display }}</p>
+  {% if active_update.status == 'pending' %}
+    <p>Auf dem Docker-Host ausführen: <code>./scripts/update.sh --apply-requested</code></p>
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="action" value="cancel"><input type="hidden" name="request_id" value="{{ active_update.pk }}">
+      <button class="button secondary" type="submit">Auftrag abbrechen</button>
+    </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="section-block narrow">
+  <h2>Verlauf</h2>
+  <div class="audit-list">
+    {% for item in update_history %}
+      <article><strong>{{ item.current_version }} → {{ item.target_version }}</strong><span>{{ item.get_status_display }} · {{ item.requested_at|date:"d.m.Y H:i" }}</span>{% if item.result_message %}<span>{{ item.result_message }}</span>{% endif %}</article>
+    {% empty %}<p>Noch keine Updateaufträge.</p>{% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -9,13 +9,10 @@ never opens a network connection to a push service.
 from __future__ import annotations
 
 import json
-import logging
 
 from django.conf import settings
 from django.db import transaction
 from django.urls import reverse
-
-logger = logging.getLogger(__name__)
 
 
 def web_push_enabled():
@@ -75,10 +72,5 @@ def notify_urgent_handover(handover, actor):
     if not web_push_enabled():
         return 0
     if handover.priority != handover.Priority.URGENT:
-        return 0
-    try:
-        from .models import PushOutbox  # noqa: F401
-    except Exception as exc:  # pragma: no cover - import guard
-        logger.warning("Web-Push-Outbox nicht verfuegbar: %s", exc)
         return 0
     return _enqueue_outbox_rows(handover, actor)

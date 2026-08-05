@@ -18,5 +18,5 @@ class Command(BaseCommand):
             try:
                 count = sync_station_waste(station)
                 self.stdout.write(f"{station.name}: {count} Abfuhrtermine")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - isolate one external source
                 self.stderr.write(f"{station.name}: {exc}")

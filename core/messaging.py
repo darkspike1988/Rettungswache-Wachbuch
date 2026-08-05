@@ -10,7 +10,6 @@ from django.core.exceptions import ValidationError
 from .access import CONTENT_ROLES
 from .models import UserCryptoIdentity
 
-
 B64_RE = re.compile(r"^[A-Za-z0-9_\-=]+$")
 MAX_CIPHER_CHARS = 8000
 MAX_WRAPS = 80

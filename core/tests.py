@@ -1,13 +1,13 @@
+import json
 from datetime import timedelta
 from decimal import Decimal
 from io import StringIO
 from unittest.mock import patch
-import json
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
-from django.test import Client, TestCase, TransactionTestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -777,9 +777,9 @@ class FeedTests(PilotTestCase):
 
     def test_closure_csv_schema_and_dates(self):
         payload = (
-            "gid;strasse;ortsteil;beginn;ende;art_arb;art_vb;vonbis\n"
-            "42;Teststrasse;Mitte;2026/07/28;2026/08/01;Kanalarbeiten;Vollsperrung;28.07.-01.08.\n"
-        ).encode()
+            b"gid;strasse;ortsteil;beginn;ende;art_arb;art_vb;vonbis\n"
+            b"42;Teststrasse;Mitte;2026/07/28;2026/08/01;Kanalarbeiten;Vollsperrung;28.07.-01.08.\n"
+        )
         self.assertEqual(sync_closure_csv(self.closures, payload), 1)
         item = FeedItem.objects.get()
         self.assertEqual(item.title, "Teststrasse - Mitte")
@@ -830,9 +830,9 @@ class FeedTests(PilotTestCase):
     def test_old_csv_items_are_removed_after_successful_import(self):
         FeedItem.objects.create(source=self.closures, external_id="old", title="Alt")
         payload = (
-            "gid;strasse;ortsteil;beginn;ende;art_arb;art_vb;vonbis\n"
-            "new;Neue Strasse;Mitte;2026/07/28;2026/08/01;Bau;;;\n"
-        ).encode()
+            b"gid;strasse;ortsteil;beginn;ende;art_arb;art_vb;vonbis\n"
+            b"new;Neue Strasse;Mitte;2026/07/28;2026/08/01;Bau;;;\n"
+        )
         sync_closure_csv(self.closures, payload)
         self.assertFalse(FeedItem.objects.filter(external_id="old").exists())
         self.assertTrue(FeedItem.objects.filter(external_id="new").exists())
@@ -1066,8 +1066,9 @@ class RetentionAuditExitAndMfaTests(PilotTestCase):
             title="Neu",
             last_seen_at=timezone.now(),
         )
-        from django.core.management import call_command
         from io import StringIO
+
+        from django.core.management import call_command
 
         out = StringIO()
         call_command("apply_retention", stdout=out)
@@ -1158,6 +1159,51 @@ class PasskeyPushCalendarTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertIn("challenge", payload)
+
+    @override_settings(
+        WEBAUTHN_ENABLED=True,
+        WEBAUTHN_RP_ID="localhost",
+        WEBAUTHN_ORIGIN="http://localhost",
+    )
+    def test_passkey_validation_error_returns_safe_client_error(self):
+        from webauthn.helpers.exceptions import WebAuthnException
+
+        session = self.client.session
+        session["webauthn_login_challenge"] = "test-challenge"
+        session.save()
+        with patch(
+            "core.account_views.verify_authentication",
+            side_effect=WebAuthnException("invalid credential"),
+        ):
+            response = self.client.post(
+                reverse("passkey_login_verify"),
+                data=json.dumps({"credential": {"id": "invalid"}}),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Passkey konnte nicht geprüft werden.")
+
+    @override_settings(
+        WEBAUTHN_ENABLED=True,
+        WEBAUTHN_RP_ID="localhost",
+        WEBAUTHN_ORIGIN="http://localhost",
+    )
+    def test_passkey_unexpected_server_error_is_not_hidden(self):
+        session = self.client.session
+        session["webauthn_login_challenge"] = "test-challenge"
+        session.save()
+        with (
+            patch(
+                "core.account_views.verify_authentication",
+                side_effect=RuntimeError("unexpected failure"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            self.client.post(
+                reverse("passkey_login_verify"),
+                data=json.dumps({"credential": {"id": "invalid"}}),
+                content_type="application/json",
+            )
 
     def test_station_calendar_feed_and_token(self):
         CalendarEvent.objects.create(
@@ -1584,8 +1630,8 @@ class WasteCalendarTests(PilotTestCase):
         self.assertIn("wachbuch-waste-", feed.content.decode())
 
     def test_disabled_waste_calendar_hides_from_agenda(self):
-        from .models import WasteCollection
         from .holidays import station_agenda
+        from .models import WasteCollection
 
         self.station.waste_calendar_enabled = False
         self.station.save(update_fields=["waste_calendar_enabled"])
@@ -2055,7 +2101,7 @@ class CryptoMasterKeyRotationTests(TestCase):
             self.assertEqual(AESGCM(new_key).decrypt(nonce, blob, None).decode(), plaintext)
 
     def test_decrypt_falls_back_to_previous_master_key(self):
-        from .crypto_at_rest import decrypt_secret, derive_master_key, encrypt_secret
+        from .crypto_at_rest import decrypt_secret, encrypt_secret
 
         old_key = bytes.fromhex("11" * 32)
         new_key = bytes.fromhex("22" * 32)
@@ -2073,14 +2119,20 @@ class CryptoMasterKeyRotationTests(TestCase):
 
         with patch.dict("os.environ", {"CRYPTO_MASTER_KEY": bytes.fromhex("11" * 32).hex()}):
             envelope = encrypt_secret("LOST")
-        with patch.dict("os.environ", {"CRYPTO_MASTER_KEY": bytes.fromhex("22" * 32).hex()}):
-            with self.assertRaises(ValueError):
-                decrypt_secret(envelope)
+        with (
+            patch.dict(
+                "os.environ",
+                {"CRYPTO_MASTER_KEY": bytes.fromhex("22" * 32).hex()},
+            ),
+            self.assertRaises(ValueError),
+        ):
+            decrypt_secret(envelope)
 
     def test_rotate_command_reencrypts_totp_secrets(self):
-        from .crypto_at_rest import derive_master_key, encrypt_secret, try_decrypt_with_key
+        from .crypto_at_rest import (
+            try_decrypt_with_key,
+        )
         from .mfa import create_pending_device, totp_plaintext
-        from .models import TotpDevice
 
         old_key = bytes.fromhex("33" * 32)
         new_key = bytes.fromhex("44" * 32)
@@ -2107,7 +2159,6 @@ class CryptoMasterKeyRotationTests(TestCase):
 
     def test_rotate_command_dry_run_makes_no_changes(self):
         from .mfa import create_pending_device
-        from .models import TotpDevice
 
         user = User.objects.create_user("dry@example.org", password="correct-password-1")
         device = create_pending_device(user)
@@ -2130,7 +2181,6 @@ class CryptoMasterKeyRotationTests(TestCase):
         import pyotp
 
         from .mfa import create_pending_device, totp_plaintext, verify_totp
-        from .models import TotpDevice
 
         old_key = bytes.fromhex("55" * 32)
         new_key = bytes.fromhex("66" * 32)
@@ -2263,8 +2313,8 @@ class DemoModeTests(TestCase):
         )
         self.assertTrue(
             any(
-                "ALTER DEFAULT PRIVILEGES FOR ROLE rwsth_owner IN SCHEMA public "
-                "GRANT SELECT ON TABLES TO rwsth_backup" == statement
+                statement == "ALTER DEFAULT PRIVILEGES FOR ROLE rwsth_owner IN SCHEMA public "
+                "GRANT SELECT ON TABLES TO rwsth_backup"
                 for statement in executed
             ),
             executed,

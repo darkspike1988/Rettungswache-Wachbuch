@@ -7,7 +7,6 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
-from django.core.cache import cache
 from django.db import transaction
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,7 +14,12 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
+from .access import (
+    CONTENT_ROLES,
+    get_membership,
+    membership_required,
+    station_module_required,
+)
 from .avatars import initials_for
 from .forms import AvatarForm, ChatMessageForm, ProfileForm, RegistrationForm
 from .models import ChatMessage, Membership, RegistrationRequest, UserProfile
@@ -181,7 +185,12 @@ def avatar_image(request, user_id):
 def chat(request):
     import json
 
-    from .messaging import public_keys_for_users, serialize_message_for_client, station_content_users, validate_encrypted_payload
+    from .messaging import (
+        public_keys_for_users,
+        serialize_message_for_client,
+        station_content_users,
+        validate_encrypted_payload,
+    )
     from .models import UserCryptoIdentity
 
     station = request.membership.station

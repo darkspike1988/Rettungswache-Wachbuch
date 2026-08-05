@@ -12,13 +12,18 @@ from django.db.models import Case, IntegerField, Sum, Value, When
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
+from .access import (
+    CONTENT_ROLES,
+    get_membership,
+    membership_required,
+    station_module_required,
+)
 from .errors import (
     ERROR_CODE_FORBIDDEN,
     ERROR_CODE_NOT_FOUND,
@@ -32,7 +37,6 @@ from .errors import (
     label_for_code,
     log_exception,
 )
-
 from .forms import (
     BirthdayForm,
     CalendarEventForm,
@@ -41,12 +45,21 @@ from .forms import (
     HandoverEditForm,
     HandoverForm,
     HandoverStatusForm,
+    MasterAdminCreateUserForm,
     MembershipAssignmentForm,
     MembershipEditForm,
-    MasterAdminCreateUserForm,
     StationSettingsForm,
     StationTaskForm,
     TotpConfirmForm,
+)
+from .mfa import (
+    confirm_device,
+    create_pending_device,
+    mfa_enabled,
+    mfa_required,
+    provisioning_uri,
+    totp_plaintext,
+    verify_totp,
 )
 from .models import (
     AuditEvent,
@@ -62,16 +75,6 @@ from .models import (
     StationTask,
     TotpDevice,
     WebAuthnCredential,
-)
-from .mfa import (
-    confirm_device,
-    create_pending_device,
-    mfa_enabled,
-    mfa_required,
-    provisioning_uri,
-    totp_plaintext,
-    user_has_confirmed_mfa,
-    verify_totp,
 )
 from .services import (
     audit,
@@ -1102,7 +1105,7 @@ def mfa_setup(request):
         raise Http404
     if not request.user.is_authenticated:
         return redirect(f"{reverse('login')}?{urlencode({'next': reverse('mfa_setup')})}")
-    from .webauthn_auth import user_has_passkey, webauthn_enabled
+    from .webauthn_auth import webauthn_enabled
 
     existing = TotpDevice.objects.filter(user=request.user, is_confirmed=True).first()
     passkeys = list(WebAuthnCredential.objects.filter(user=request.user)) if webauthn_enabled() else []

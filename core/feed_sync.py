@@ -1,10 +1,10 @@
 import calendar
 import csv
 import hashlib
-import ipaddress
 import io
+import ipaddress
 import socket
-from datetime import datetime, timezone as datetime_timezone
+from datetime import UTC, date, datetime
 from urllib.parse import urlparse
 
 import certifi
@@ -135,7 +135,7 @@ def sync_rss(source, payload):
         published = None
         if entry.get("published_parsed"):
             published = datetime.fromtimestamp(
-                calendar.timegm(entry.published_parsed), tz=datetime_timezone.utc
+                calendar.timegm(entry.published_parsed), tz=UTC
             )
         upsert_feed_item(
             source,
@@ -200,4 +200,4 @@ def parse_csv_date(value):
     value = (value or "").strip()
     if not value:
         return None
-    return datetime.strptime(value, "%Y/%m/%d").date()
+    return date.fromisoformat(value.replace("/", "-"))

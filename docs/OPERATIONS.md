@@ -284,6 +284,53 @@ akzeptiert das System ausschliesslich den neuen Key.
 Canonical Version steht in `core/version.py` und kann mit `APP_VERSION` in `.env`
 ueberschrieben werden. Die Version erscheint im Footer und unter `/healthz/`.
 
+### Gefuehrte Erstinstallation
+
+Fuer eine neue, noch nicht konfigurierte Installation ist der bevorzugte Weg:
+
+```bash
+./scripts/install.sh
+```
+
+Das Skript bricht ab, sobald `.env` bereits existiert, und ueberschreibt damit
+keine bestehende Installation. Es erzeugt getrennte Datenbank-, Django-, Worker-,
+Krypto- und Setup-Geheimnisse, validiert Compose, baut den Stack und zeigt den
+Einrichtungs-Code. `docker compose up --wait` meldet Erfolg erst, wenn die
+langlaufenden Dienste laufen beziehungsweise ihre Healthchecks bestanden haben.
+Ohne einen mindestens 32 Zeichen langen `SETUP_TOKEN` bleibt der Webassistent
+gesperrt. Sobald ein aktiver Master-Admin existiert, sind Einrichtungsrouten
+nicht mehr nutzbar.
+
+### Manuell angestossener Updateauftrag
+
+1. Master-Admin oeffnet `Mehr -> Updates`, prueft das neueste GitHub-Release und
+   fordert es an.
+2. Eine fuer Docker und den Checkout verantwortliche Person startet auf dem Host:
+
+   ```bash
+   ./scripts/update.sh --apply-requested
+   ```
+
+3. Der Runner prueft sauberen Checkout, fest konfiguriertes `origin`, SemVer,
+   Release-Tag, Fast-Forward-Beziehung und standardmaessig die GPG-Signatur.
+4. Das Ziel-Image wird in einem temporaeren Git-Worktree gebaut, bevor Live-Daten
+   oder laufende Container geaendert werden.
+5. Danach folgen Sofort-Backup, Migration und Container-Neustart. Compose wartet
+   auf die Healthchecks von Web- und Push-Dienst; Status und Ergebnis werden im
+   Wachbuch protokolliert.
+
+`UPDATE_REQUIRE_SIGNED_TAG=true` bleibt fuer Produktion vorgeschrieben. Der
+Signaturschluessel des Release-Verantwortlichen muss im GPG-Keyring des
+Host-Benutzers als vertrauenswuerdig vorhanden sein. Bei einem Fehler vor der
+Migration laufen die alten Container weiter. Scheitert der Healthcheck nach dem
+Neustart, setzt der Runner das vorherige Image wieder ein. Migrationen werden
+nicht automatisch rueckwaerts ausgefuehrt; eine inkompatible Datenmigration
+erfordert den dokumentierten Restore-/Rollback-Prozess und fachliche Freigabe.
+
+Der Webcontainer erhaelt absichtlich weder den Docker-Socket noch Schreibzugriff
+auf den Checkout. Ein Ein-Klick-Update mit solchen Rechten wuerde eine
+Kompromittierung der Webanwendung zur Host-Uebernahme eskalieren lassen.
+
 ### Release vorbereiten
 
 1. SemVer in `core/version.py` setzen und `CHANGELOG.md` aktualisieren.

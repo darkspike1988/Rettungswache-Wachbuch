@@ -1,7 +1,8 @@
 from django.conf import settings
 
 from .access import CONTENT_ROLES, get_membership
-from .models import HandoverEntry
+from .models import DismissedNotice, HandoverEntry
+from .notice_views import INSTALL_NOTICE_KEY
 
 
 def current_membership(request):
@@ -16,9 +17,18 @@ def current_membership(request):
             .exclude(status=HandoverEntry.Status.DONE)
             .count()
         )
+    show_install_notice = bool(
+        membership
+        and membership.role in CONTENT_ROLES
+        and not DismissedNotice.objects.filter(
+            user=request.user,
+            notice_key=INSTALL_NOTICE_KEY,
+        ).exists()
+    )
     return {
         "current_membership": membership,
         "nav_urgent_count": nav_urgent_count,
+        "show_install_notice": show_install_notice,
     }
 
 

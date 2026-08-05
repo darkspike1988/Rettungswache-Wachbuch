@@ -22,6 +22,7 @@ import hmac
 import os
 import secrets
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
@@ -126,7 +127,7 @@ def decrypt_secret(value: str) -> str:
     for key in _candidate_keys():
         try:
             plaintext = AESGCM(key).decrypt(nonce, blob, None)
-        except Exception:
+        except InvalidTag:
             continue
         return plaintext.decode("utf-8")
     raise ValueError("Gespeichertes Geheimnis konnte nicht entschlüsselt werden.")

@@ -1,6 +1,6 @@
 # Review-Remediation-Roadmap
 
-Stand: 3. August 2026. Grundlage: technische und Design-Review des `main`-Stands
+Stand: 4. August 2026. Grundlage: technische und Design-Review des `main`-Stands
 0.14.2. Diese Roadmap ist die operative Quelle fuer Folgeagenten. Sie ersetzt
 keine externe Sicherheits-, Datenschutz- oder Barrierefreiheitspruefung.
 
@@ -103,12 +103,16 @@ Chat-/Empfaengerziele und einspaltige Wochenliste unter 48 rem.
 **Abnahme:** 320 CSS-Pixel ohne horizontale Wochenmatrix; Tastaturfokus auf hellen
 und dunklen Flaechen sichtbar.
 
-### [ ] R-009 Zugaenglicher Entsperrdialog statt `window.prompt`
+### [~] R-009 Zugaenglicher Entsperrdialog statt `window.prompt`
 
 **Plan:** eigenes `<dialog>` mit Label, Fehlerstatus, Anzeigen/Verbergen,
 Abbrechen, Fokusmanagement und „jetzt sperren“. `window.prompt` komplett entfernen.
 
 **Tests:** Tastatur, Escape, VoiceOver/NVDA, falsche Passphrase, Session-Lock.
+
+**Umsetzung:** Eigenes `<dialog>` mit Label, Fehlerstatus, Escape/Abbrechen und
+Fokusmanagement ersetzt `window.prompt`; Quelltext-Regressionstests sind gruen.
+Die manuelle VoiceOver-/NVDA-Abnahme bleibt R-018.
 
 ## Wave 2 – Betrieb und Lieferkette
 
@@ -142,29 +146,62 @@ SHA-256-gehashte Schlüssel via `RATELIMIT_KEY_SALT`, IP-Extraktion in
 
 ### [~] R-012 CI-/Supply-Chain-Gates
 
-**Begonnen:** Python-Compile, JavaScript-Syntax und `check --deploy` wurden in den
-bestehenden CI-Workflow aufgenommen.
+**Umsetzung:** Python-Compile, JavaScript-/Shell-Syntax, `check --deploy`,
+hash-vollstaendige Python-Installation und `pip check` laufen im bestehenden
+CI-Workflow. Ein eigener Security-Workflow fuehrt Dependency Review,
+`pip-audit`, CodeQL, Gitleaks und einen HIGH/CRITICAL-Trivy-Scan aus. Release-
+Images werden mit SBOM und Build-Provenance erzeugt; die verwendeten Actions
+sind auf unveraenderliche Commit-SHAs gepinnt. Eine reproduzierbare
+`ruff.toml`-Baseline bereinigt den historischen Bestand, dokumentiert nur die
+Django-deklarativen Ausnahmen und wird mit fest gesetzter Ruff-Version in CI
+erzwungen. Passkey- und AES-GCM-Pfade fangen dabei nur noch erwartete
+Validierungsfehler ab; unerwartete Programmfehler bleiben sichtbar.
 
-**Weitere Schritte in getrennten kleinen PRs:**
+**Verbleibende Abnahme:**
 
-1. Ruff Format/Lint mit dokumentierter Baseline
-2. Dependency-Audit und Container-Scan
-3. CodeQL/SAST und Secret Scan
-4. SBOM plus Build-Provenance
-5. Browser-Smoke-Test, CSP-Konsole und Axe-Core
+1. Ruff-Formatpruefung nach einem separaten, rein mechanischen Format-Commit aktivieren
+2. Browser-Smoke-Test, CSP-Konsole und Axe-Core automatisieren
 
-Actions und Images weiterhin auf unveraenderliche SHAs/Digests pinnen.
+Neue Actions und Images weiterhin auf unveraenderliche SHAs/Digests pinnen.
 
-### [~] R-013 Push-Outbox
+### [x] R-013 Push-Outbox
 
 **Plan:** Transaktion schreibt einen Outbox-Datensatz; separater Worker sendet
 Push mit Retry, Backoff, Idempotenz und begrenzter Aufbewahrung. Kein externer
 Netzaufruf im Gunicorn-Request.
 
-### [ ] R-014 Fehlerseiten und API-Konsistenz
+**Umsetzung:** `PushOutbox`, separater Least-Privilege-Worker, transaktionale
+Erzeugung, Retry/Backoff, abgelaufene Subscription-Bereinigung und Retention-
+Kommando sind implementiert und durch Django-/Rollback-Tests belegt.
+
+### [x] R-014 Fehlerseiten und API-Konsistenz
 
 **Plan:** eigene 400/403/404/429/500-Seiten, einheitliche JSON-Fehlercodes,
 Korrelations-ID ohne personenbezogene Nutzdaten, keine Stacktraces.
+
+**Umsetzung:** Eigene HTML-Fehlerseiten und kanonische API-Fehler enthalten eine
+validierte/erzeugte Korrelations-ID; Middleware, Handler und Regressionstests
+decken normale sowie fehlerhafte Requests ab.
+
+### [x] R-021 Gefuehrte Ersteinrichtung
+
+Token-geschuetzter Assistent erstellt Wache und ersten Master-Admin in einer
+Transaktion. Parallele Abschlussversuche sperren die stabile Stationszeile.
+Produktgrenze und Betreiberverantwortung muessen explizit bestaetigt werden.
+
+### [x] R-022 Wegklickbarer App-Hinweis
+
+Der optionale PWA-Installationshinweis kann mit einer klar beschrifteten Aktion
+dauerhaft pro Benutzer ausgeblendet werden. Die Praeferenz liegt serverseitig
+und wird durch einen CSRF-geschuetzten POST gesetzt.
+
+### [~] R-023 Kontrollierte manuelle Updates
+
+Master-Admins koennen Releases pruefen und Updateauftraege auditierbar anfordern.
+Der Host-Runner prueft Repository, SemVer, Fast-Forward und Signatur, baut ein
+Candidate-Image und fuehrt Backup, Migration, Restart und Healthcheck aus.
+Offen bleibt der dokumentierte End-to-End-Probelauf mit einem real signierten
+Release und einer isolierten Restore-Uebung.
 
 ## Wave 3 – Pilot- und Produktionsabnahme
 
