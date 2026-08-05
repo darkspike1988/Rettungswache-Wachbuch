@@ -1,3 +1,7 @@
+# Python dependencies for Rettungswache-Wachbuch
+# Generated with: pip-compile --allow-unsafe --generate-hashes requirements.txt
+# To update: pip-compile --upgrade --allow-unsafe --generate-hashes requirements.txt
+
 Pillow==11.3.0
 Django==6.0.7
 django-axes==8.3.1

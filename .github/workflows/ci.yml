@@ -24,6 +24,10 @@ jobs:
           if grep -q '^--hash' requirements.lock 2>/dev/null; then
             pip install --require-hashes -r requirements.lock
           fi
+      - name: Run pre-commit checks
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files --show-diff-on-failure
       - name: Compile Python sources
         run: python -m compileall -q config core
       - name: Check JavaScript syntax

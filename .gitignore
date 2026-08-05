@@ -12,6 +12,12 @@ backups/*
 !backups/.gitkeep
 .DS_Store
 
+# pip-tools
+requirements.lock
+
+# pre-commit
+.pre-commit-cache/
+
 # Flutter / Dart client
 clients/**/.dart_tool/
 clients/**/build/
