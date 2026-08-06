@@ -731,6 +731,13 @@ class PaymentHintsTests(PilotTestCase):
         self.assertNotContains(response, "Zahlungswege")
         self.assertNotContains(response, "copy-iban")
 
+    def test_coffee_page_has_no_inline_script(self):
+        self.station.iban = "DE89370400440532013000"
+        self.station.save(update_fields=["iban"])
+        html = self.client.get(reverse("coffee")).content.decode()
+        self.assertIn("copy-iban", html)
+        self.assertEqual(html.count("<script"), html.count("<script src="))
+
     def test_external_links_use_noopener(self):
         self.station.wero_link = "https://wero.eu/pay/team"
         self.station.save(update_fields=["wero_link"])
@@ -1197,13 +1204,40 @@ class PasskeyPushCalendarTests(PilotTestCase):
         response = self.client.post(
             reverse("push_settings"),
             data=json.dumps({
-                "endpoint": "https://push.example/subscription/1",
+                "endpoint": "https://fcm.googleapis.com/fcm/send/abc123",
                 "keys": {"p256dh": "abc", "auth": "def"},
             }),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(PushSubscription.objects.filter(user=self.user).exists())
+
+    @override_settings(
+        WEB_PUSH_ENABLED=True,
+        VAPID_PUBLIC_KEY="BPtest",
+        VAPID_PRIVATE_KEY="private",
+    )
+    def test_push_subscription_rejects_endpoint_outside_allowlist(self):
+        response = self.client.post(
+            reverse("push_settings"),
+            data=json.dumps({
+                "endpoint": "http://169.254.169.254/latest/meta-data",
+                "keys": {"p256dh": "abc", "auth": "def"},
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(PushSubscription.objects.filter(user=self.user).exists())
+        internal = self.client.post(
+            reverse("push_settings"),
+            data=json.dumps({
+                "endpoint": "https://intern.example.local:8443/push",
+                "keys": {"p256dh": "abc", "auth": "def"},
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(internal.status_code, 400)
+        self.assertFalse(PushSubscription.objects.filter(user=self.user).exists())
 
     def test_urgent_push_noop_when_disabled(self):
         from .push import notify_urgent_handover
@@ -1667,6 +1701,22 @@ class ApiMobileFoundationTests(PilotTestCase):
         self.assertEqual(me.status_code, 200)
         self.assertEqual(me.json()["user"]["username"], self.user.username)
         self.assertEqual(me.json()["membership"]["station"]["slug"], self.station.slug)
+
+    @override_settings(MFA_REQUIRED=True)
+    def test_token_exchange_denied_when_mfa_required_but_not_set_up(self):
+        from .models import ApiToken
+
+        password = "StrongPass-12345"
+        self.user.set_password(password)
+        self.user.save()
+        response = self.client.post(
+            reverse("api_v1_token"),
+            data=json.dumps({"username": self.user.username, "password": password}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["error"]["code"], "mfa_setup_required")
+        self.assertEqual(ApiToken.objects.count(), 0)
 
     def test_handovers_require_token_and_respect_station(self):
         raw, _token = self._create_token()
