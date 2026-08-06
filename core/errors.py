@@ -29,6 +29,8 @@ ERROR_CODE_FORBIDDEN = "forbidden"
 ERROR_CODE_NOT_FOUND = "not_found"
 ERROR_CODE_RATE_LIMIT = "rate_limit"
 ERROR_CODE_SERVER_ERROR = "server_error"
+ERROR_CODE_MFA_REQUIRED = "mfa_required"
+ERROR_CODE_MFA_SETUP_REQUIRED = "mfa_setup_required"
 
 ERROR_CODES: dict[str, dict[str, Any]] = {
     ERROR_CODE_VALIDATION: {"status": 400, "label": "Ungueltige Anfrage."},
@@ -37,6 +39,8 @@ ERROR_CODES: dict[str, dict[str, Any]] = {
     ERROR_CODE_NOT_FOUND: {"status": 404, "label": "Nicht gefunden."},
     ERROR_CODE_RATE_LIMIT: {"status": 429, "label": "Zu viele Anfragen."},
     ERROR_CODE_SERVER_ERROR: {"status": 500, "label": "Serverfehler."},
+    ERROR_CODE_MFA_REQUIRED: {"status": 403, "label": "Zwei-Faktor-Anmeldung erforderlich."},
+    ERROR_CODE_MFA_SETUP_REQUIRED: {"status": 403, "label": "Zwei-Faktor-Anmeldung muss zuerst eingerichtet werden."},
 }
 
 
@@ -156,6 +160,8 @@ __all__ = [
     "ERROR_CODE_NOT_FOUND",
     "ERROR_CODE_RATE_LIMIT",
     "ERROR_CODE_SERVER_ERROR",
+    "ERROR_CODE_MFA_REQUIRED",
+    "ERROR_CODE_MFA_SETUP_REQUIRED",
     "ERROR_CODES",
     "is_api_request",
     "correlation_id_for_request",

@@ -62,6 +62,41 @@ Script-Reihenfolge, Navigation und Redirect-Schutz.
 
 **Abnahme:** Django- und Docker-CI auf Commit `6af6689` (Run 59) gruen.
 
+### [x] R-021 MFA-Durchsetzung, Push-Endpoint-Allowlist, CSP-Kaffekasse
+
+**Problem:** Drei Ergebnisse eines externen Reviews:
+
+1. `obtain_token` stellte API-Tokens auch fuer Konten ohne MFA aus, wenn
+   `MFA_REQUIRED=true` galt (Umgehung der MFA-Pflicht im Mobile-API).
+2. Der Push-Subscription-Endpoint wurde unvalidiert gespeichert; der
+   Push-Worker haette damit beliebige (auch interne) HTTPS-Ziele aufrufen
+   koennen (SSRF).
+3. Das IBAN-Kopie-Skript in `coffee.html` war ein Inline-Skript und wurde
+   durch `script-src 'self'` blockiert (Funktion stillgelegt).
+
+**Umsetzung:**
+
+- `obtain_token` verweigert Tokens, wenn `mfa_required()` gilt und das Konto
+  keine bestaetigte MFA hat (Fehlercode `mfa_setup_required`).
+- Neue Host-Allowlist `PUSH_ALLOWED_ENDPOINT_HOSTS` (bekannte Browser-Push-
+  Dienste, ueberschreibbar); `push_endpoint_allowed()` prueft Schema HTTPS,
+  Port 443, keine Credentials und Host-Suffix vor dem Speichern.
+- IBAN-Kopie-Handler nach `core/static/core/app.js` verschoben, Inline-
+  Skript entfernt.
+- MFA-Fehlercodes (`mfa_required`, `mfa_setup_required`) in `ERROR_CODES`
+  registriert, damit sie nicht zu `server_error` degradiert werden.
+
+**Abnahme:**
+
+- Negative Tests: `test_token_exchange_denied_when_mfa_required_but_not_set_up`,
+  `test_push_subscription_rejects_endpoint_outside_allowlist`,
+  `test_coffee_page_has_no_inline_script`.
+- `python manage.py test --settings=config.test_settings` gruen.
+
+**Verbleibende Grenze:** Der Web-Login leitet nach `super().form_valid` auf
+`mfa_setup` weiter, erzwingt das Setup aber nicht per Middleware; ein
+Folgeitem soll die Durchsetzung fuer Web-Sessions pruefen.
+
 ## Wave 1 – Anwendung und UX
 
 ### [x] R-004 E2EE-Versprechen an Bedrohungsmodell angleichen

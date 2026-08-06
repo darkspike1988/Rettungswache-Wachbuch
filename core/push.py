@@ -10,12 +10,41 @@ from __future__ import annotations
 
 import json
 import logging
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.db import transaction
 from django.urls import reverse
 
 logger = logging.getLogger(__name__)
+
+
+def push_endpoint_allowed(endpoint):
+    """Validate a browser push subscription endpoint against the HTTPS allowlist.
+
+    Rejects non-HTTPS URLs, credentials in the URL, non-443 ports and hosts
+    outside ``settings.PUSH_ALLOWED_ENDPOINT_HOSTS`` so stored endpoints cannot
+    be abused for SSRF by the push worker.
+    """
+    if not endpoint:
+        return False
+    try:
+        parsed = urlparse(endpoint)
+    except ValueError:
+        return False
+    host = (parsed.hostname or "").lower()
+    if not host or parsed.scheme != "https" or parsed.username or parsed.password:
+        return False
+    if parsed.port not in {None, 443}:
+        return False
+    allowed = getattr(settings, "PUSH_ALLOWED_ENDPOINT_HOSTS", set())
+    for entry in allowed:
+        if entry.startswith("."):
+            if host.endswith(entry.lower()) or host == entry[1:].lower():
+                return True
+        elif host == entry:
+            return True
+    return False
 
 
 def web_push_enabled():

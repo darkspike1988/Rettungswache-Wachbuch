@@ -703,4 +703,25 @@
       }
     })();
   }
+
+  doc.addEventListener("click", (event) => {
+    const btn = event.target.closest && event.target.closest(".copy-iban");
+    if (!btn) {
+      return;
+    }
+    const el = doc.getElementById(btn.dataset.target);
+    if (!el) {
+      return;
+    }
+    const text = el.textContent.trim().replace(/\s+/g, "");
+    navigator.clipboard.writeText(text).then(() => {
+      const old = btn.textContent;
+      btn.textContent = "Kopiert";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.textContent = old;
+        btn.classList.remove("copied");
+      }, 2000);
+    });
+  });
 })();
