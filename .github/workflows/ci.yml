@@ -24,6 +24,14 @@ jobs:
           if grep -q '^--hash' requirements.lock 2>/dev/null; then
             pip install --require-hashes -r requirements.lock
           fi
+      - name: Run pre-commit checks
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files --show-diff-on-failure
+      - name: Run mypy type checking
+        run: |
+          pip install mypy mypy-django django-stubs
+          mypy --config-file mypy.ini config core
       - name: Compile Python sources
         run: python -m compileall -q config core
       - name: Check JavaScript syntax

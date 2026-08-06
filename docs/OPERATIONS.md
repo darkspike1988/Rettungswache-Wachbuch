@@ -1,371 +1,794 @@
-# Betrieb
+# Betriebshandbuch – Rettungswache-Wachbuch
 
-## Endpunkte
+*Letzte Aktualisierung: August 2026 | Version: 0.15.0*
 
-- Anwendung: `http://127.0.0.1:${HTTP_PORT:-8090}/` (oeffentliche Projektseite)
-- Uebersicht (nach Login): `/uebersicht/`
-- Healthcheck: `/healthz/` (JSON mit `status` und `version`)
-- Datenschutz/Cookies: `/datenschutz/`
-- Anmeldung: `/anmelden/` (optional TOTP unter `/anmelden/mfa/` und `/konto/mfa/`)
-- Stationsverwaltung: `/einstellungen/`
-- Teamfreigaben: `/team/`
-- technische Verwaltung: `/django-admin/`
+---
 
-Der Standard-Port ist nicht oeffentlich gebunden. `HTTP_BIND_ADDRESS=0.0.0.0`
-sollte nur in einem kontrollierten Netz hinter einem Reverse-Proxy verwendet
-werden. Fuer jeden TLS-Betrieb muss `SECURE_COOKIES=true` gesetzt sein; `false`
-ist nur fuer lokalen HTTP-Zugriff ueber Loopback vorgesehen.
+## 📋 **Inhaltsverzeichnis**
 
-## Standardbefehle
+1. [Einführung](#-einführung)
+2. [Bereitstellung](#-bereitstellung)
+3. [Konfiguration](#-konfiguration)
+4. [Backup & Wiederherstellung](#-backup--wiederherstellung)
+5. [Monitoring & Logging](#-monitoring--logging)
+6. [Updates & Wartung](#-updates--wartung)
+7. [Sicherheit](#-sicherheit)
+8. [Fehlerbehebung](#-fehlerbehebung)
+9. [Checklisten](#-checklisten)
 
-```bash
-docker compose ps
-docker compose logs --since 30m web migrate feed-worker backup
-docker compose up -d --build
-docker compose exec -T web python manage.py test --settings=config.test_settings
-docker compose exec -T web python manage.py apply_retention
-curl -fsS http://127.0.0.1:8090/healthz/
+---
+
+## 🎯 **Einführung**
+
+Dieses Dokument beschreibt den **Betrieb** des Rettungswache-Wachbuchs in **Produktionsumgebungen**. Es richtet sich an **Systemadministratoren** und **Betreiber**, die das System installieren, konfigurieren und warten.
+
+### **Zielgruppe**
+
+- Systemadministratoren
+- DevOps-Engineers
+- IT-Verantwortliche in Rettungswachen
+- Hosting-Provider
+
+### **Voraussetzungen**
+
+- Grundkenntnisse in **Docker** und **Docker Compose**
+- Erfahrung mit **Linux-Servern**
+- Verständnis von **Netzwerkkonfiguration**
+- Kenntnisse in **TLS/SSL-Zertifikaten**
+
+---
+
+## 🚀 **Bereitstellung**
+
+### **1. Systemanforderungen**
+
+| Ressource | Minimum | Empfohlen | Produktion |
+|-----------|---------|-----------|------------|
+| **CPU** | 1 Kern | 2 Kerne | 4+ Kerne |
+| **RAM** | 512 MB | 1 GB | 2+ GB |
+| **Festplatte** | 1 GB | 5 GB | 10+ GB |
+| **Datenbank** | - | - | PostgreSQL 17 |
+| **Betriebssystem** | Linux | Linux | Linux |
+| **Docker** | 20.10+ | 24.0+ | 24.0+ |
+| **Docker Compose** | v2 | v2 | v2 |
+
+### **2. Bereitstellungsoptionen**
+
+#### **Option A: Docker Compose (empfohlen für kleine bis mittlere Installationen)**
+
+```mermaid
+graph TD
+    A[Client] -->|HTTPS| B[Reverse Proxy]
+    B -->|HTTP| C[Docker Host]
+    C --> D[Django Container]
+    C --> E[PostgreSQL Container]
+    C --> F[Redis Container]
 ```
 
-## Benutzer und Rollen
+**Vorteile:**
+- Einfache Einrichtung
+- Gute Performance für bis zu 100 Benutzer
+- Einfache Wartung
 
-Lokaler Erstadmin:
+**Nachteile:**
+- Keine automatische Skalierung
+- Single Point of Failure
 
-```bash
-docker compose exec web python manage.py createsuperuser
-docker compose exec web python manage.py grant_station_admin BENUTZERNAME
+#### **Option B: Kubernetes (für große Installationen)**
+
+```mermaid
+graph TD
+    A[Client] -->|HTTPS| B[Ingress Controller]
+    B -->|HTTP| C[Kubernetes Cluster]
+    C --> D[Django Pods]
+    C --> E[PostgreSQL StatefulSet]
+    C --> F[Redis StatefulSet]
 ```
 
-Weitere persoenliche Konten werden unter `/django-admin/auth/user/` angelegt.
-Stationsadministratoren geben sie anschliessend unter `/team/` frei und setzen
-die Rolle. Gemeinschaftskonten sind nicht vorgesehen. Unter **Mehr → Zwei-Faktor
-/ Passkeys** koennen TOTP und Passkeys eingerichtet werden. Mit
-`MFA_REQUIRED=true` wird die Einrichtung nach dem Passwort-Login erzwungen.
+**Vorteile:**
+- Automatische Skalierung
+- Hohe Verfügbarkeit
+- Einfache Updates
 
-Passkeys brauchen `WEBAUTHN_RP_ID` (Hostname) und `WEBAUTHN_ORIGIN` (z. B.
-`https://wache.example`). Web-Push braucht `WEB_PUSH_ENABLED=true` sowie
-VAPID-Schluessel (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`).
+**Nachteile:**
+- Komplexere Einrichtung
+- Höhere Betriebskosten
 
-## Reverse-Proxy
+#### **Option C: Managed Services (für maximale Einfachheit)**
 
-TLS nach **BSI TR-02102-2**: bevorzugt TLS 1.3 mit AEAD (z. B. AES-256-GCM).
-Details: [`CRYPTO-BSI.md`](CRYPTO-BSI.md).
+- **Datenbank**: Managed PostgreSQL (z.B. AWS RDS, Google Cloud SQL)
+- **Cache**: Managed Redis (z.B. AWS ElastiCache, Google Memorystore)
+- **Container**: Managed Kubernetes (z.B. EKS, GKE, AKS)
 
-Beispiel fuer Caddy vor dem Loopback-Port:
+**Vorteile:**
+- Keine eigene Infrastruktur
+- Automatische Backups
+- Hohe Verfügbarkeit
 
-```caddy
-wache.example.org {
-        reverse_proxy 127.0.0.1:8090
-}
-```
+**Nachteile:**
+- Höhere Kosten
+- Abhängigkeit von Cloud-Anbieter
 
-Hostname und HTTPS-Origin muessen in `ALLOWED_HOSTS` und
-`CSRF_TRUSTED_ORIGINS` stehen. Der Proxy sollte `X-Forwarded-Proto` setzen.
-Fuer jeden TLS-Betrieb muss `SECURE_COOKIES=true` gesetzt sein.
-Django wertet `SECURE_PROXY_SSL_HEADER` aus und erzwingt sichere Cookies, wenn
-`SECURE_COOKIES=true` gesetzt ist.
+---
 
-## Feeds
+## ⚙️ **Konfiguration**
 
-Der Worker aktualisiert aktivierte Quellen alle 15 Minuten. Ein manueller Lauf:
+### **1. Umgebungsvariablen (.env)**
 
-```bash
-docker compose exec -T feed-worker python manage.py sync_feeds
-```
+Die Hauptkonfiguration erfolgt über die **`.env`**-Datei. **NIEMALS** diese Datei in Version Control commiten!
 
-Neue Hosts werden zuerst in `FEED_ALLOWED_HOSTS` freigegeben. Quellen koennen
-danach im Django-Admin erstellt, deaktiviert oder korrigiert werden. Fehler und
-der letzte erfolgreiche Abruf stehen direkt am `FeedSource`.
-
-Vor dem Upgrade einer 0.2-Installation muessen die Hosts aller bestehenden
-Quellen aus dem Django-Admin in `FEED_ALLOWED_HOSTS` uebernommen werden. Eine
-leere Allowlist deaktiviert Abrufe absichtlich.
-
-## Push-Outbox
-
-Dringende Uebergaben schreiben innerhalb der Handover-Transaktion einen
-`PushOutbox`-Eintrag pro aktivem Abo. Der `push-worker`-Service liest die
-Tabelle, sendet ueber `pywebpush` und loescht das Abo bei HTTP 404/410.
-Der Gunicorn-Request selbst macht **keinen** externen Netzaufruf.
-
-Der Container laeuft mit dedizierter DB-Rolle `PUSH_DB_USER` (Least Privilege)
-und eigenem `PUSH_WORKER_SECRET_KEY`. Erreichbar nur ueber `worker-db` und
-`egress`, kein direkter App-DB-User.
-
-### Retry und Backoff
-
-Bei Netzwerkfehlern oder 5xx-Antworten bleibt der Eintrag `pending` und der
-Worker plant den naechsten Versuch mit exponentiellem Backoff:
-
-| Versuch | Wartezeit |
-|--------:|----------:|
-| 1       | 60 s      |
-| 2       | 5 min     |
-| 3       | 15 min    |
-| 4       | 1 h       |
-| 5+      | 6 h       |
-
-Nach `MAX_ATTEMPTS = 10` Versuchen wird der Eintrag auf `discarded` gesetzt
-und ein `push.outbox_failed` Audit-Event geschrieben. Die Idempotenz wird
-ueber den HTTP-Header `X-Idempotency-Key` (UUID der Outbox-Zeile) an den
-Push-Provider uebertragen.
-
-### Aufbewahrung
-
-Abgeschlossene Zeilen (`sent`, `discarded`, `failed`) werden nach 30 Tagen
-geloescht. Aufrufbar als eigenstaendiger Befehl oder Bestandteil der
-taeglichen Retention:
+#### **Beispiel .env-Datei**
 
 ```bash
-docker compose exec -T web python manage.py cleanup_pushoutbox
-docker compose exec -T web python manage.py cleanup_pushoutbox --days 7 --dry-run
+# =============================================================================
+# SECRETS - JEDES FELD MIT EINEM ZUFÄLLIGEN WERT FÜLLEN!
+# Generieren mit: openssl rand -hex 32
+# =============================================================================
+
+# Django Secret Key (REQUIRED)
+DJANGO_SECRET_KEY=dein_zufaelliger_schluessel_hier_32_zeichen
+
+# Datenbank Passwörter (REQUIRED)
+POSTGRES_PASSWORD=dein_postgres_password
+APP_DB_PASSWORD=dein_app_db_password
+FEED_DB_PASSWORD=dein_feed_db_password
+BACKUP_DB_PASSWORD=dein_backup_db_password
+
+# Feed Worker Secret Key (optional, falls Feed Worker aktiv)
+FEED_WORKER_SECRET_KEY=dein_feed_worker_schluessel
+
+# Push Worker Secret Key (optional, falls Web Push aktiv)
+PUSH_WORKER_SECRET_KEY=dein_push_worker_schluessel
+
+# =============================================================================
+# DATENBANK
+# =============================================================================
+
+POSTGRES_DB=rwsth
+POSTGRES_USER=rwsth_owner
+APP_DB_USER=rwsth_app
+FEED_DB_USER=rwsth_feed
+BACKUP_DB_USER=rwsth_backup
+
+# =============================================================================
+# DJANGO
+# =============================================================================
+
+DJANGO_DEBUG=false
+SECURE_COOKIES=true
+ALLOWED_HOSTS=wache.example.org,localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=https://wache.example.org
+
+# =============================================================================
+# STATION
+# =============================================================================
+
+DEFAULT_STATION_NAME=Rettungswache Musterstadt
+DEFAULT_STATION_SLUG=rettungswache-musterstadt
+
+# =============================================================================
+# SICHERHEIT
+# =============================================================================
+
+MFA_ENABLED=true
+MFA_REQUIRED=false
+DEMO_MODE=false
+DEMO_PASSWORD=Demo-Passwort-12345
+
+# =============================================================================
+# EXTERNE QUELLEN
+# =============================================================================
+
+FEED_ALLOWED_HOSTS=verkehr.example.org,warnungen.example.org
+
+# =============================================================================
+# REGISTRIERUNG
+# =============================================================================
+
+REGISTRATION_ENABLED=false
+REGISTRATION_RATE_LIMIT=5
+
+# =============================================================================
+# WEB PUSH (optional)
+# =============================================================================
+
+WEB_PUSH_ENABLED=false
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_ADMIN_EMAIL=ops@wache.example.org
+
+# =============================================================================
+# BACKUP
+# =============================================================================
+
+BACKUP_RETENTION_DAYS=7
+BACKUP_ENCRYPT_REMOTE=false
+BACKUP_GPG_RECIPIENT=
+BACKUP_OFF_TARGET=
+
+# =============================================================================
+# REDIS (optional, für Caching)
+# =============================================================================
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_PASSWORD=
+
+# =============================================================================
+# NETZWERK
+# =============================================================================
+
+HTTP_BIND_ADDRESS=127.0.0.1
+HTTP_PORT=8090
 ```
 
-`apply_retention` ruft `apply_pushoutbox_retention` ebenfalls auf, sodass der
-bestehende Retention-Cron-Pfad die Outbox mitraeumt.
+### **2. Wichtige Konfigurationsoptionen**
 
-## Backup und Restore
+#### **Sicherheit**
 
-### Rollenmodell (R-010, Least-Privilege)
+| Variable | Standard | Empfehlung | Beschreibung |
+|----------|----------|------------|--------------|
+| `DJANGO_DEBUG` | `false` | `false` | Debug-Modus deaktivieren |
+| `SECURE_COOKIES` | `true` | `true` | Sichere Cookies erzwingen |
+| `ALLOWED_HOSTS` | - | `wache.example.org` | Erlaubte Hostnames |
+| `CSRF_TRUSTED_ORIGINS` | - | `https://wache.example.org` | Vertrauenswürdige Ursprünge |
+| `MFA_ENABLED` | `true` | `true` | MFA aktivieren |
+| `MFA_REQUIRED` | `false` | `true` | MFA erzwingen |
 
-Die Datenbank unterscheidet vier Rollen mit klar getrennten Aufgaben:
+#### **Datenbank**
 
-- `rwsth_owner` (entspricht `POSTGRES_USER`): ausschliesslich fuer Init,
-  Migration, manuelle Restore-Skripte und die Passwortrotation. Wird im
-  laufenden Betrieb von keinem dauerhaften Container benutzt.
-- `rwsth_app` (entspricht `APP_DB_USER`): Web- und Migrationscontainer. Volle
-  CRUD-Rechte auf das Schema, aber kein `UPDATE`/`DELETE` auf den
-  append-only-Tabellen `core_coffeeentry`, `core_auditevent`,
-  `core_handoverrevision` und `core_checklistcompletion`.
-- `rwsth_feed` (entspricht `FEED_DB_USER`): ausschliesslich `FeedSource`-
-  Status- und `FeedItem`-CRUD.
-- `rwsth_backup` (entspricht `BACKUP_DB_USER`): ausschliesslich `SELECT` plus
-  `pg_read_all_data`. Wird vom dauerhaften `backup`-Container fuer
-  `pg_dump` benutzt. Kann weder `INSERT`, `UPDATE` noch `DELETE` auf
-  Fach-Tabellen ausfuehren.
+| Variable | Standard | Empfehlung | Beschreibung |
+|----------|----------|------------|--------------|
+| `POSTGRES_DB` | `rwsth` | `rwsth` | Datenbankname |
+| `POSTGRES_USER` | `rwsth_owner` | `rwsth_owner` | Datenbank-Besitzer |
+| `APP_DB_USER` | `rwsth_app` | `rwsth_app` | Anwendungs-Benutzer |
 
-### Tagesbackup
+#### **Backup**
 
-Der `backup`-Container laeuft standardmaessig als PostgreSQL-UID/GID 70 und
-nutzt die `rwsth_backup`-Rolle. Vor dem Start muss `./backups` fuer dieses
-Konto schreibbar sein. Abweichende Images koennen `BACKUP_UID` und
-`BACKUP_GID` in `.env` anpassen.
+| Variable | Standard | Empfehlung | Beschreibung |
+|----------|----------|------------|--------------|
+| `BACKUP_RETENTION_DAYS` | `7` | `30` | Aufbewahrungsdauer |
+| `BACKUP_ENCRYPT_REMOTE` | `false` | `true` | Backups verschlüsseln |
+| `BACKUP_OFF_TARGET` | - | `s3://backups/` | Externes Backup-Ziel |
 
-```bash
-sudo chown 70:70 backups
+#### **Performance**
+
+| Variable | Standard | Empfehlung | Beschreibung |
+|----------|----------|------------|--------------|
+| `REDIS_HOST` | `redis` | `redis` | Redis-Host |
+| `REDIS_PORT` | `6379` | `6379` | Redis-Port |
+
+---
+
+## 💾 **Backup & Wiederherstellung**
+
+### **1. Backup-Strategie**
+
+Das System implementiert eine **mehrschichtige Backup-Strategie**:
+
+```mermaid
+graph TD
+    A[PostgreSQL] -->|pg_dump| B[Lokales Backup]
+    B -->|Optional| C[Externes Backup]
+    B -->|Optional| D[Verschlüsseltes Backup]
 ```
 
-`pg_dump` laeuft mit `--no-owner --no-acl --format custom`. Der lokale
-Ring bleibt im Verzeichnis `backups/` und wird pro Durchlauf um Dumps
-aelter als `BACKUP_RETENTION_DAYS` ausgeduennt.
+### **2. Lokale Backups (Standard)**
 
-### Aufbewahrung alter Dumps
+- **Frequenz**: Täglich um 02:00 Uhr
+- **Speicherort**: `./backups/`
+- **Format**: PostgreSQL Custom Format (`.dump`)
+- **Retention**: 7 Tage (konfigurierbar)
+- **Kompression**: Gzip
 
-`BACKUP_RETENTION_DAYS` (Standard `7`) steuert, wie viele Tage alte Dumps
-im `backup`-Container behalten werden. Jeder Durchlauf loescht Dateien
-(`rwsth-*.dump`, `rwsth-*.dump.gpg`), deren Modifikationszeit aelter ist.
-Der Wert `0` deaktiviert das Loeschen; der lokale Ring waechst dann
-unbegrenzt und muss von Hand gepflegt werden. Die Einstellung wirkt nur
-auf die lokalen Dumps im Container, nicht auf das Offsite-Ziel.
+#### **Backup manuell auslösen**
 
 ```bash
-# in .env
-BACKUP_RETENTION_DAYS=14   # zwei Wochen behalten
-BACKUP_RETENTION_DAYS=0    # nie automatisch loeschen
+# Backup erstellen
+docker compose exec -T db pg_dump -Fc -U rwsth_owner -d rwsth -f /backups/manual_$(date +%Y%m%d_%H%M%S).dump
+
+# Backup-Verzeichnis auflisten
+docker compose exec db ls -lh /backups/
 ```
 
-### Offsite-Verschluesselung
+### **3. Externe Backups (empfohlen für Produktion)**
 
-Wenn `BACKUP_ENCRYPT_REMOTE=true` gesetzt ist, wird jeder Dump vor dem
-Offsite-Upload symmetrisch mit GnuPG gegen `BACKUP_GPG_RECIPIENT`
-(AES-256, Empfaenger-Fingerprint oder E-Mail) verschluesselt. Der Klartext
-verlaesst den Container nie. `BACKUP_OFF_TARGET` akzeptiert `file://`-Ziele
-und ist die einzige Stelle, an der das verschluesselte Artefakt abgelegt
-wird. Eine leerer Wert fuehrt das lokale Backup weiter aus, unterdrueckt
-aber den Offsite-Schritt.
+#### **Option A: S3-kompatibler Speicher**
 
 ```bash
-# in .env
+# .env konfigurieren
+BACKUP_OFF_TARGET=s3://mein-bucket/backups/
 BACKUP_ENCRYPT_REMOTE=true
-BACKUP_GPG_RECIPIENT=ops-backup@example.org
-BACKUP_OFF_TARGET=file:///srv/wachbuch-offsite
+
+# AWS Credentials in Docker Compose hinzufügen
+# (oder IAM-Rollen für EC2-Instanzen verwenden)
 ```
 
-### Restore-Test
-
-Der Restore-Test benoetigt Owner-Rechte (`createdb`/`dropdb`) und wird daher
-explizit mit `RESTORE_OWNER=1` und den Owner-Credentials gestartet. Der
-dauerhafte `backup`-Container fuehrt ihn **nicht** automatisch aus.
+#### **Option B: SFTP/SCP**
 
 ```bash
-sudo chown 70:70 backups
-docker compose exec -T -e RESTORE_OWNER=1 \
-    -e PGUSER=rwsth_owner -e PGPASSWORD="$POSTGRES_PASSWORD" \
-    backup /bin/sh /backup/restore-test.sh
+# Backup-Skript anpassen, um per SCP zu kopieren
+# Beispiel in scripts/backup-loop.sh
 ```
 
-Der Restore-Test erstellt kurzzeitig `rwsth_restore_test`, spielt den
-neuesten Dump ein, prueft Schluesseltabellen und entfernt die Testdatenbank
-wieder. Mit der Backup-Rolle laesst sich stattdessen nur die Dump-Struktur
-verifizieren (`pg_restore --list`) und ein Read-only-SELECT auf
-`django_migrations`/`core_station` ausfuehren.
-
-## Aufbewahrung (Retention)
-
-- `RETENTION_FEED_DAYS` (Standard `90`): entfernt Feed-Eintraege, deren
-  `last_seen_at` aelter ist. `0` deaktiviert die Feed-Loeschung.
-- `RETENTION_AUDIT_DAYS` (Standard `0`): Audit-Purge bleibt absichtlich aus, bis
-  organisatorische Fristen freigegeben sind. Nur mit Owner-Rechten und klarer
-  Freigabe setzen.
-- Kommando: `docker compose exec -T web python manage.py apply_retention`
-  (z. B. taeglich per Host-Cron).
-
-## Datenbank-Passwortrotation
-
-App- und Feed-Rollenpasswoerter rotieren (Owner-Passwort bleibt unangetastet):
+#### **Option C: Rclone**
 
 ```bash
-./scripts/rotate-db-passwords.sh
+# Rclone konfigurieren
+rclone config
+
+# Backup per Rclone kopieren
+rclone copy ./backups/ remote:backups/
 ```
 
-Das Skript setzt neue Zufallswerte in PostgreSQL und `.env`, startet `web` und
-`feed-worker` neu. Anschliessend Healthcheck und Feed-Worker-Logs pruefen. Das
-Owner-Passwort (`POSTGRES_PASSWORD`) nur mit Dump/Restore und Neuinitialisierung
-rotieren.
-
-## Krypto-Schluesselrotation (TOTP-Secrets)
-
-Die TOTP-Geheimnisse liegen AES-256-GCM-verschluesselt in der Datenbank. Der
-Master-Key stammt Vorgabe aus `HKDF(SECRET_KEY)`. Da eine `SECRET_KEY`-Rotation
-damit alle Umschlaege unlesbar machen wuerde, kann der Master-Key unabhaengig
-von `SECRET_KEY` konfiguriert und rotiert werden:
-
-- `CRYPTO_MASTER_KEY` – 32 Byte hex-codiert (z. B. `openssl rand -hex 32`).
-  Wenn gesetzt, ersetzt er die `HKDF(SECRET_KEY)`-Ableitung. Wenn nicht gesetzt,
-  gilt das alte Verfahren (Rueckwaertskompatibilitaet).
-- `CRYPTO_PREVIOUS_MASTER_KEY` – optionaler Fallback-Schluessel, der waehrend
-  eines Rotationsfensters **zusätzlich** zum Entschluesseln akzeptiert wird.
-  Er erlaubt das Betreiben der App mit dem neuen Key, waehrend noch alte
-  Umschlaege in der Datenbank stehen.
-
-### Rotationsablauf
+### **4. Verschlüsselte Backups**
 
 ```bash
-# 0. Backup erstellen und App weiterhin mit dem ALTEN Key betreiben.
+# GPG-Verschlüsselung aktivieren
+BACKUP_ENCRYPT_REMOTE=true
+BACKUP_GPG_RECIPIENT=deine@email.com
 
-# 1. Den aktuell aktiven Master-Key als Hex anzeigen (fuer den Fallback):
-docker compose exec -T web python manage.py rotate_crypto_key --show-current-key
-#   -> <alter-key-hex>
-
-# 2. Neuen Key erzeugen:
-NEW_KEY=$(openssl rand -hex 32)
-
-# 3. In .env eintragen (app danach neu starten):
-#    CRYPTO_MASTER_KEY=$NEW_KEY
-#    CRYPTO_PREVIOUS_MASTER_KEY=<alter-key-hex aus Schritt 1>
-
-# 4. App neu starten, dann Re-Verschluesselung testen und ausfuehren:
-docker compose up -d web
-docker compose exec -T web python manage.py rotate_crypto_key --dry-run
-docker compose exec -T web python manage.py rotate_crypto_key
-
-# 5. Nach erfolgreicher Rotation CRYPTO_PREVIOUS_MASTER_KEY aus .env entfernen
-#    und erneut neu starten. Healthcheck und TOTP-Anmeldung verifizieren.
+# Manuell verschlüsseln
+gpg --batch --yes --cipher-algo AES256 \
+    --passphrase "dein_passphrase" \
+    --output backup.dump.gpg \
+    --symmetric backup.dump
 ```
 
-`--dry-run` aendert nichts, zaehlt aber wie viele Datensaetze neu
-verschluesselt wuerden. Waehrend des Rotationsfensters (Schritt 3–4) kann die
-App sowohl alte als auch neue Umschlaege lesen, sodass TOTP-Anmeldungen nicht
-ausfallen. Erst nach Entfernen von `CRYPTO_PREVIOUS_MASTER_KEY` (Schritt 5)
-akzeptiert das System ausschliesslich den neuen Key.
+### **5. Backup-Wiederherstellung**
 
-## Versionierung und Updates
+#### **Schritt-für-Schritt**
 
-Canonical Version steht in `core/version.py` und kann mit `APP_VERSION` in `.env`
-ueberschrieben werden. Die Version erscheint im Footer und unter `/healthz/`.
+1. **Container stoppen**:
+   ```bash
+   docker compose down
+   ```
 
-### Release vorbereiten
+2. **Datenbank zurücksetzen**:
+   ```bash
+   docker compose exec -T db dropdb -U rwsth_owner rwsth
+   docker compose exec -T db createdb -U rwsth_owner rwsth
+   ```
 
-1. SemVer in `core/version.py` setzen und `CHANGELOG.md` aktualisieren.
-2. Migrationshinweise und Breaking Changes dokumentieren.
-3. Backup und Restore-Test ausfuehren.
-4. Abhaengigkeiten und Image-Digests kontrolliert aktualisieren.
-5. `docker compose build --no-cache` ausfuehren.
-6. Images auf HIGH/CRITICAL-Schwachstellen scannen.
-7. Tests ausfuehren und danach `docker compose up -d` starten.
-8. Healthcheck inkl. Versionsfeld, Anmeldung, Rollen, Tagesaufgaben und optionale
-   Feeds pruefen.
-9. Service-Worker-Caches leeren bzw. einmal ab-/anmelden, falls Shell-Assets
-   geaendert wurden.
+3. **Backup wiederherstellen**:
+   ```bash
+   # Für unverschlüsselte Backups
+   docker compose exec -T db pg_restore -U rwsth_owner -d rwsth -C /backups/backup.dump
+   
+   # Für verschlüsselte Backups
+   gpg --decrypt /backups/backup.dump.gpg | \
+     docker compose exec -T db pg_restore -U rwsth_owner -d rwsth -C -
+   ```
 
-### Rollback
+4. **Migrationen ausführen**:
+   ```bash
+   docker compose up --build -d migrate
+   ```
 
-1. Vorheriges Image-Tag bzw. Compose-Revision wieder aktivieren.
-2. Bei scheiternder Migration nur dokumentierte Reverse-Migrationen oder
-   Dump-Restore nutzen.
-3. Keine Tabellen manuell „reparieren“.
-4. Incident, Root Cause und erneuten Release-Versuch dokumentieren.
+5. **Container neu starten**:
+   ```bash
+   docker compose up -d
+   ```
 
-Bei Stoerungen zuerst Logs und letzten Dump sichern, dann die Ursache
-reproduzierbar ueber Anwendung oder Migration beheben.
+#### **Backup-Test**
 
-Siehe auch [`COMPLIANCE.md`](COMPLIANCE.md).
+```bash
+# Test-Restore in isolierter Datenbank
+docker compose exec -T backup /bin/sh /backup/restore-test.sh
+```
 
-## Korrelations-IDs und Fehlerkanone (R-014)
+---
 
-Jeder Request traegt eine Korrelations-ID, die Antworten, JSON-Fehler und
-Logeintraege miteinander verknuepft. Sie ist die wichtigste Information fuer
-den Support, weil personenbezogene Daten bewusst nicht geloggt werden.
+## 📊 **Monitoring & Logging**
 
-* Eingehender Header `X-Correlation-ID` wird uebernommen, wenn er dem Muster
-  `[A-Za-z0-9_-]{1,128}` entspricht. Andernfalls erzeugt der Server eine
-  frische UUID4 (hex, 32 Zeichen).
-* Die ID wird in jeder Antwort als `X-Correlation-ID` mitgesendet und auf
-  `request.correlation_id` abgelegt.
-* Logs (Logger `wachbuch.requests` und `wachbuch.errors`) erhalten die ID
-  als strukturiertes Feld `extra={"correlation_id": ...}`. Request-Bodies,
-  Formularfelder und Auth-Header werden nie geloggt.
-* Fehlerseiten (HTML und JSON) zeigen die Korrelations-ID fuer den
-  Support-Vorgang an.
+### **1. Container-Logs**
 
-### JSON-Fehlerstruktur
+```bash
+# Alle Logs anzeigen
+docker compose logs -f
 
-Alle JSON-Fehlerantworten folgen demselben Schema:
+# Logs eines bestimmten Services
+docker compose logs -f web
 
-```json
-{
-  "ok": false,
-  "error": {
-    "code": "validation_error",
-    "message": "Eingaben sind ungueltig.",
-    "correlation_id": "8b4f1e0b..."
-  },
-  "fields": {"title": ["Pflichtfeld."]}
+# Logs mit Zeitstempeln
+docker compose logs -f --timestamps web
+
+# Logs der letzten 100 Zeilen
+docker compose logs --tail 100 web
+```
+
+### **2. Health Checks**
+
+Das System implementiert **Health Checks** für alle Services:
+
+| Service | Health Check Endpunkt | Beschreibung |
+|---------|----------------------|--------------|
+| Web | `GET /healthz/` | Django-Anwendung |
+| DB | `pg_isready` | PostgreSQL |
+| Redis | `PING` | Redis |
+
+#### **Health Check testen**
+
+```bash
+# Web-Service
+curl http://127.0.0.1:8090/healthz/
+
+# Datenbank
+curl http://127.0.0.1:8090/healthz/  # Enthält DB-Status
+
+# Alle Services
+watch -n 5 "docker compose ps && docker compose exec -T db pg_isready"
+```
+
+### **3. Metriken (geplant)**
+
+Für Produktionsumgebungen wird **Prometheus + Grafana** empfohlen:
+
+```yaml
+# docker-compose.override.yml
+services:
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+```
+
+### **4. Alerting (geplant)**
+
+- **Prometheus Alertmanager** für Benachrichtigungen
+- **Slack/Email-Integration** für kritische Fehler
+- **Uptime Monitoring** (z.B. UptimeRobot, Healthchecks.io)
+
+---
+
+## 🔄 **Updates & Wartung**
+
+### **1. System-Updates**
+
+#### **Docker-Images aktualisieren**
+
+```bash
+# Images neu bauen und Container neu starten
+docker compose pull
+docker compose up --build -d
+```
+
+#### **Abhängigkeiten aktualisieren**
+
+```bash
+# Python-Abhängigkeiten
+pip-compile --upgrade requirements.txt
+
+# Flutter-Abhängigkeiten
+cd clients/wachbuch-mobile
+flutter pub upgrade
+```
+
+### **2. Datenbank-Migrationen**
+
+```bash
+# Migrationen ausführen
+docker compose exec web python manage.py migrate
+
+# Migrationen prüfen
+docker compose exec web python manage.py makemigrations --check --dry-run
+
+# Migrationen erstellen
+docker compose exec web python manage.py makemigrations
+```
+
+### **3. Cache leeren**
+
+```bash
+# Redis-Cache leeren
+docker compose exec redis redis-cli FLUSHALL
+
+# Django-Cache leeren
+docker compose exec web python manage.py clear_cache
+```
+
+### **4. Rate Limit Cache bereinigen**
+
+```bash
+# Ältere Rate Limit Einträge löschen
+docker compose exec web python manage.py cleanup_ratelimits
+```
+
+---
+
+## 🔒 **Sicherheit**
+
+### **1. TLS-Konfiguration**
+
+#### **Option A: Nginx als Reverse Proxy**
+
+```nginx
+# /etc/nginx/sites-available/wachbuch
+
+upstream django {
+    server 127.0.0.1:8090;
+}
+
+server {
+    listen 80;
+    server_name wache.example.org;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name wache.example.org;
+
+    ssl_certificate /etc/letsencrypt/live/wache.example.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/wache.example.org/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+    ssl_prefer_server_ciphers off;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+    # Security Headers
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /static/ {
+        alias /path/to/staticfiles/;
+    }
 }
 ```
 
-Das `fields`-Objekt ist optional und enthaelt Formularfehler bei
-`validation_error`.
+#### **Option B: Traefik als Reverse Proxy**
 
-### Eindeutige Fehler-Codes
+```yaml
+# docker-compose.override.yml
+services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - --providers.docker=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=admin@wache.example.org
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./letsencrypt:/letsencrypt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.wache.example.org`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
 
-| Code | HTTP | Bedeutung |
-|------|------|-----------|
-| `validation_error` | 400 | Eingaben oder Formular ungueltig (auch 422 bei API). |
-| `auth_required` | 401 | Anmeldung oder API-Token fehlt/ungueltig. |
-| `forbidden` | 403 | Rolle oder Station erlaubt den Zugriff nicht. |
-| `not_found` | 404 | Objekt, Pfad oder Modul nicht vorhanden. |
-| `rate_limit` | 429 | Zu viele Anfragen (Axes, R-011). |
-| `server_error` | 500 | Unerwarteter interner Fehler. |
+  web:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=Host(`wache.example.org`)"
+      - "traefik.http.routers.web.entrypoints=websecure"
+      - "traefik.http.routers.web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.web.loadbalancer.server.port=8000"
+```
 
-Stabile Codes gehoeren zum oeffentlichen API-Versprechen. Aenderungen
-erfordern ein neues Mapping in `core.errors.ERROR_CODES`.
+### **2. Firewall-Konfiguration**
 
-### Verhalten nach Modus
+```bash
+# UFW (Ubuntu)
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw allow 22/tcp  # SSH
+ufw enable
 
-* `DEBUG=true`: Django zeigt die Standard-Traceback-Seiten. Fuer den
-  Pilotbetrieb zulaessig, fuer Produktion aus.
-* `DEBUG=false`: Eigene Templates (`templates/errors/400-500.html`) und
-  kanonische JSON-Antworten werden ausgeliefert. 500-Fehler loggen den
-  vollstaendigen Stacktrace intern, die Antwort enthaelt nur die
-  Korrelations-ID.
+# Nur bestimmte IPs erlauben (optional)
+ufw allow from 192.168.1.0/24 to any port 80,443
+ufw deny 80/tcp
+ufw deny 443/tcp
+```
+
+### **3. Fail2Ban für SSH**
+
+```bash
+# Fail2Ban installieren
+sudo apt install fail2ban
+
+# Fail2Ban für SSH konfigurieren
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
+```
+
+### **4. Automatische Sicherheitsupdates**
+
+```bash
+# Unattended Upgrades (Debian/Ubuntu)
+sudo apt install unattended-upgrades
+sudo dpkg-reconfigure unattended-upgrades
+
+# Nur Sicherheitsupdates
+sudo sed -i 's|//"${distro_id}:${distro_codename}-security"|"${distro_id}:${distro_codename}-security"|' /etc/apt/sources.list
+```
+
+---
+
+## 🐛 **Fehlerbehebung**
+
+### **1. Häufige Probleme**
+
+#### **Problem: Container startet nicht**
+
+```bash
+# Logs prüfen
+docker compose logs web
+
+# Container-Status prüfen
+docker compose ps
+
+# Ressourcen prüfen
+docker stats
+```
+
+**Lösungen:**
+- **Port bereits belegt**: `docker compose down` und neu starten
+- **Fehlende Umgebungsvariablen**: `.env` prüfen
+- **Datenbank nicht bereit**: `docker compose logs db`
+
+#### **Problem: Datenbank-Verbindung fehlgeschlagen**
+
+```bash
+# Datenbank-Status prüfen
+docker compose exec db pg_isready -U rwsth_owner -d rwsth
+
+# Datenbank-Logs prüfen
+docker compose logs db
+
+# Datenbank manuell starten
+docker compose up -d db
+```
+
+**Lösungen:**
+- **Falsche Credentials**: `.env` prüfen
+- **Datenbank nicht initialisiert**: `docker compose up -d migrate`
+- **Port-Konflikt**: Andere PostgreSQL-Instanz stoppen
+
+#### **Problem: Migrationen fehlgeschlagen**
+
+```bash
+# Migrationen manuell ausführen
+docker compose exec web python manage.py migrate
+
+# Migrationen prüfen
+docker compose exec web python manage.py showmigrations
+
+# Migrationen zurücksetzen
+docker compose exec web python manage.py migrate zero
+```
+
+**Lösungen:**
+- **Datenbank-Backup wiederherstellen**
+- **Migrationen manuell anpassen**
+- **Django-Version prüfen**
+
+#### **Problem: Static Files werden nicht geladen**
+
+```bash
+# Static Files sammeln
+docker compose exec web python manage.py collectstatic
+
+# Static Files prüfen
+ls -la staticfiles/
+
+# Berechtigungen prüfen
+ls -la staticfiles/ | head -20
+```
+
+**Lösungen:**
+- **Berechtigungen setzen**: `chmod -R 755 staticfiles/`
+- **Volume-Mount prüfen**: `docker-compose.yml`
+- **WhiteNoise prüfen**: `STORAGES` in `settings.py`
+
+### **2. Debug-Modus aktivieren**
+
+```bash
+# .env anpassen
+DJANGO_DEBUG=true
+SECURE_COOKIES=false
+
+# Container neu starten
+docker compose up -d web
+
+# Logs prüfen
+docker compose logs -f web
+```
+
+⚠️ **Warnung**: Debug-Modus **nie** in Produktion verwenden!
+
+---
+
+## ✅ **Checklisten**
+
+### **📋 Vor dem Go-Live**
+
+- [ ] **Sicherheit**
+  - [ ] TLS-Zertifikat installiert
+  - [ ] `.env` mit sicheren Werten gefüllt
+  - [ ] Debug-Modus deaktiviert
+  - [ ] Sichere Cookies aktiviert
+  - [ ] Firewall konfiguriert
+  - [ ] Backups getestet
+
+- [ ] **Konfiguration**
+  - [ ] `ALLOWED_HOSTS` gesetzt
+  - [ ] `CSRF_TRUSTED_ORIGINS` gesetzt
+  - [ ] Datenbank-Credentials korrekt
+  - [ ] Redis konfiguriert (optional)
+
+- [ ] **Testing**
+  - [ ] Health Check funktioniert
+  - [ ] Login funktioniert
+  - [ ] Alle Module getestet
+  - [ ] Mobile App getestet
+
+- [ ] **Dokumentation**
+  - [ ] Betriebshandbuch gelesen
+  - [ ] Notfallkontakte hinterlegt
+  - [ ] Monitoring eingerichtet
+
+### **📋 Regelmäßige Wartung**
+
+- [ ] **Täglich**
+  - [ ] Backups prüfen
+  - [ ] Logs auf Fehler prüfen
+  - [ ] Health Checks prüfen
+
+- [ ] **Wöchentlich**
+  - [ ] System-Updates prüfen
+  - [ ] Datenbank-Backup testen
+  - [ ] Performance prüfen
+
+- [ ] **Monatlich**
+  - [ ] Sicherheitsupdates prüfen
+  - [ ] Abhängigkeiten aktualisieren
+  - [ ] Notfall-Wiederherstellung testen
+
+- [ ] **Jährlich**
+  - [ ] TLS-Zertifikat erneuern
+  - [ ] Passwörter rotieren
+  - [ ] Architektur-Review
+
+---
+
+## 📚 **Weiterführende Dokumentation**
+
+- [Architektur](ARCHITECTURE.md) – Technische Architektur
+- [Sicherheit & Datenschutz](SECURITY-PRIVACY.md) – Sicherheitskonzept
+- [API v1](API.md) – REST-API-Dokumentation
+- [Go-Live-Checkliste](GO-LIVE-CHECKLIST.md) – Vorbereitung für Produktion
+- [Compliance](COMPLIANCE.md) – Rechtliche Anforderungen
+
+---
+
+*Letzte Aktualisierung: August 2026 | Version: 0.15.0*

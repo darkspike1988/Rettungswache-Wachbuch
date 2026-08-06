@@ -9,14 +9,15 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.core.paginator import Paginator
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Case, IntegerField, Sum, Value, When
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.utils.text import slugify
-from django.views.decorators.cache import never_cache
+from django.views.decorators.cache import cache_page, never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.vary import vary_on_cookie, vary_on_headers
 
 from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
 from .errors import (
@@ -89,14 +90,14 @@ from .task_board import (
 )
 
 
-def healthz(request):
+def healthz(request: HttpRequest) -> JsonResponse:
     with connection.cursor() as cursor:
         cursor.execute("SELECT 1")
         cursor.fetchone()
     return JsonResponse({"status": "ok", "version": settings.APP_VERSION})
 
 
-def _render_error(request, *, status, code, template_name):
+def _render_error(request: HttpRequest, *, status: int, code: str, template_name: str) -> HttpResponse:
     """Rendert eine Fehlerseite oder liefert JSON fuer API-Anfragen."""
     if is_api_request(request):
         return json_error(request, code, status=status)
@@ -348,6 +349,8 @@ def access(request):
 
 
 @membership_required(CONTENT_ROLES)
+@cache_page(settings.DASHBOARD_CACHE_TIMEOUT)
+@vary_on_cookie
 def dashboard(request):
     station = request.membership.station
     now = timezone.now()

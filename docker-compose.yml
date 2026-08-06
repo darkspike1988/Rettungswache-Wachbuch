@@ -7,6 +7,24 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
+  redis:
+    image: redis:7.4-alpine@sha256:5833837d9355e2895440a56555155478c21597847357292433004373579637
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-db
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
   db:
     image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     restart: unless-stopped
@@ -31,6 +49,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/10-rwsth-roles.sh:ro
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     networks:
       - app-db
       - worker-db
@@ -86,6 +105,9 @@ services:
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
       SECURE_COOKIES: ${SECURE_COOKIES:-true}
       DB_HOST: db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
       DB_NAME: ${POSTGRES_DB}
       DB_USER: ${APP_DB_USER}
       DB_PASSWORD: ${APP_DB_PASSWORD}
@@ -125,6 +147,9 @@ services:
     networks:
       - app-db
       - web-ingress
+    depends_on:
+      redis:
+        condition: service_healthy
     tmpfs:
       - /tmp
     read_only: true
@@ -245,3 +270,4 @@ networks:
 
 volumes:
   postgres-data:
+  redis-data:

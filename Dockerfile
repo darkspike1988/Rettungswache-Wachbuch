@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.7
 
 # --- Build: dependencies + collectstatic ---
 FROM python:3.14.6-slim-bookworm@sha256:86f975aca15cf04a40b399eebede9aea7c82eae084d1f1a0a6ef6bcaae871a30 AS builder
@@ -11,9 +11,10 @@ WORKDIR /app
 
 RUN python -m venv /opt/venv
 
-COPY requirements.txt .
+COPY requirements.txt requirements.lock .
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && pip install -r requirements.txt
+    pip install --upgrade pip && \
+    pip install --require-hashes -r requirements.lock
 
 COPY manage.py .
 COPY config config
@@ -57,4 +58,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz/', timeout=3)"]
 
-CMD ["/app/scripts/start-web.sh"]
+CMD ["gunicorn", "--config", "/app/config/gunicorn.py", "config.wsgi:application"]

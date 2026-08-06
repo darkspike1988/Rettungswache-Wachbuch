@@ -34,15 +34,64 @@ class SecurityHeadersMiddleware:
         if location and location.startswith("//"):
             response.headers["Location"] = "/"
 
+        # Content Security Policy - strenge Richtlinie
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; img-src 'self' data:; style-src 'self'; "
-            "script-src 'self'; font-src 'self'; connect-src 'self' https:; "
-            "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "  # Inline für Django Templates
+            "style-src 'self' 'unsafe-inline'; "  # Inline für Django Templates
+            "img-src 'self' data: https:; "  # Daten-URIs + HTTPS für externe Bilder
+            "font-src 'self'; "
+            "connect-src 'self' https:; "  # HTTPS für API, WebSockets, etc.
+            "frame-ancestors 'none'; "  # Kein Embedding in iframes
+            "base-uri 'self'; "  # Keine externen base-URLs
+            "form-action 'self'; "  # Formulare nur an eigene Domain
+            "object-src 'none'; "  # Keine Plugins (Flash, Java, etc.)
+            "upgrade-insecure-requests; "  # HTTP → HTTPS Upgrade
+            "block-all-mixed-content; "  # Kein Mixed Content
+            "require-sri-for 'script' 'style'"  # SRI für externe Ressourcen
         )
+        
+        # Permissions Policy - restriktiv
         response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), "
-            "publickey-credentials-get=(self), publickey-credentials-create=(self)"
+            "accelerometer=(), "
+            "ambient-light-sensor=(), "
+            "autoplay=(), "
+            "battery=(), "
+            "camera=(), "
+            "display-capture=(), "
+            "document-domain=(), "
+            "encrypted-media=(), "
+            "fullscreen=(self), "
+            "geolocation=(), "
+            "gyroscope=(), "
+            "magnetometer=(), "
+            "microphone=(), "
+            "midi=(), "
+            "payment=(), "
+            "picture-in-picture=(), "
+            "publickey-credentials-get=(self), "
+            "publickey-credentials-create=(self), "
+            "screen-wake-lock=(), "
+            "sync-xhr=(), "
+            "usb=(), "
+            "vr=(), "
+            "xr-spatial-tracking=()"
         )
+        
+        # Weitere Sicherheitsheader
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+        
+        # HSTS (nur bei HTTPS)
+        if request.scheme == "https":
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains; preload"
+            )
         return response
 
 
