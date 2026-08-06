@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 
 from .models import (
+    AppVersion,
     AuditEvent,
     BirthdayPreference,
     CalendarEvent,
@@ -245,3 +246,32 @@ class AuditEventAdmin(ReadOnlyAdmin):
 
 admin.site.site_header = "Wachbuch-Verwaltung"
 admin.site.site_title = "Wachbuch"
+
+
+@admin.register(AppVersion)
+class AppVersionAdmin(admin.ModelAdmin):
+    list_display = (
+        "platform",
+        "version",
+        "version_code",
+        "is_active",
+        "is_forced",
+        "release_date",
+    )
+    list_filter = ("platform", "is_active", "is_forced")
+    search_fields = ("platform", "version")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (None, {
+            "fields": ("platform", "version", "version_code", "is_active", "is_forced")
+        }),
+        ("Veröffentlichung", {
+            "fields": ("release_date", "download_url", "min_required_version")
+        }),
+        ("Änderungsprotokoll", {
+            "fields": ("changelog",)
+        }),
+        ("Metadaten", {
+            "fields": ("created_at", "updated_at")
+        }),
+    )
