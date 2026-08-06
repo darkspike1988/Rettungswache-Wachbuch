@@ -765,3 +765,108 @@ def checklist_complete_api(request, pk):
         "completed_by": _person(request.user),
         "created_at": completion.created_at.isoformat(),
     }, status=201)
+
+
+@csrf_exempt
+@require_GET
+def check_update(request):
+    """Check if a new version is available for the client.
+    
+    This endpoint allows clients to check if there's a newer version available.
+    It returns version information, changelog, and download URL if applicable.
+    
+    Query Parameters:
+    - current_version: The current version of the client
+    - platform: The platform (web, android, ios)
+    
+    Returns:
+    - has_update: Whether a newer version is available
+    - latest_version: The latest version available
+    - changelog: List of changes since the current version
+    - download_url: URL to download the latest version (if applicable)
+    - force_update: Whether the update is mandatory
+    """
+    from ..models import AppVersion
+    import re
+
+    current_version = request.GET.get("current_version", "")
+    platform = request.GET.get("platform", "web")
+
+    try:
+        # Get the latest active version for this platform
+        latest_version_obj = AppVersion.objects.filter(
+            platform=platform,
+            is_active=True
+        ).order_by("-release_date").first()
+
+        if latest_version_obj is None:
+            return JsonResponse({
+                "ok": True,
+                "has_update": False,
+                "message": "No version information available for this platform",
+                "current_version": current_version,
+                "platform": platform,
+            })
+
+        has_update = current_version != latest_version_obj.version
+        
+        # Check if this is a forced update
+        force_update = latest_version_obj.is_forced
+        
+        # Check if current version is below minimum required
+        if latest_version_obj.min_required_version:
+            if _compare_versions(current_version, latest_version_obj.min_required_version) < 0:
+                force_update = True
+
+        return JsonResponse({
+            "ok": True,
+            "has_update": has_update,
+            "current_version": current_version,
+            "latest_version": latest_version_obj.version,
+            "version_code": latest_version_obj.version_code,
+            "platform": platform,
+            "release_date": latest_version_obj.release_date.isoformat(),
+            "changelog": latest_version_obj.parsed_changelog,
+            "download_url": latest_version_obj.download_url,
+            "force_update": force_update,
+            "min_required_version": latest_version_obj.min_required_version,
+        })
+    except Exception as e:
+        return JsonResponse({
+            "ok": False,
+            "error": str(e),
+        }, status=500)
+
+
+def _compare_versions(v1: str, v2: str) -> int:
+    """Compare two version strings.
+    
+    Returns:
+    - 1 if v1 > v2
+    - 0 if v1 == v2
+    - -1 if v1 < v2
+    """
+    def parse_version(v: str) -> tuple:
+        # Split version string and convert to integers
+        parts = []
+        for part in v.split('.'):
+            try:
+                parts.append(int(part))
+            except ValueError:
+                parts.append(0)
+        return tuple(parts)
+    
+    v1_parts = parse_version(v1)
+    v2_parts = parse_version(v2)
+    
+    # Pad with zeros to make equal length
+    max_len = max(len(v1_parts), len(v2_parts))
+    v1_parts = v1_parts + (0,) * (max_len - len(v1_parts))
+    v2_parts = v2_parts + (0,) * (max_len - len(v2_parts))
+    
+    if v1_parts > v2_parts:
+        return 1
+    elif v1_parts < v2_parts:
+        return -1
+    else:
+        return 0

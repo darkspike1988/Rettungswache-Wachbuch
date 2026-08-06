@@ -868,3 +868,103 @@ class RateLimit(models.Model):
 
     def __str__(self):
         return f"{self.bucket}:{self.key_hash}:{self.window_start.isoformat()}"
+
+
+class AppVersion(models.Model):
+    """Stores version information for different platforms with changelogs."""
+
+    class Platform(models.TextChoices):
+        WEB = "web", "Web"
+        ANDROID = "android", "Android"
+        IOS = "ios", "iOS"
+
+    platform = models.CharField(
+        max_length=20,
+        choices=Platform.choices,
+        verbose_name="Plattform"
+    )
+    version = models.CharField(max_length=20, verbose_name="Version")
+    version_code = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="Versionscode"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Aktiv",
+        help_text="Nur aktive Versionen werden für Updates angezeigt"
+    )
+    release_date = models.DateField(verbose_name="Veröffentlichungsdatum")
+    download_url = models.URLField(
+        max_length=500,
+        blank=True,
+        verbose_name="Download-URL",
+        help_text="URL zum Herunterladen dieser Version"
+    )
+    changelog = models.TextField(
+        blank=True,
+        verbose_name="Änderungsprotokoll",
+        help_text="Markdown-Format: ## Version (Datum)\n- Änderung 1\n- Änderung 2"
+    )
+    is_forced = models.BooleanField(
+        default=False,
+        verbose_name="Erzwungenes Update",
+        help_text="Nutzer müssen diese Version installieren"
+    )
+    min_required_version = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="Mindestversion",
+        help_text="Nutzer mit älteren Versionen müssen updaten"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
+
+    class Meta:
+        ordering = ["-release_date"]
+        unique_together = ["platform", "version"]
+        verbose_name = "App-Version"
+        verbose_name_plural = "App-Versionen"
+
+    def __str__(self):
+        return f"{self.get_platform_display()} {self.version}"
+
+    @property
+    def parsed_changelog(self) -> list[dict]:
+        """Parse the changelog text into structured data."""
+        import re
+        if not self.changelog:
+            return []
+
+        lines = self.changelog.strip().split('\n')
+        result = []
+        current_entry = None
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            # Check if this is a version header (e.g., "## 0.15.0 (2026-08-05)")
+            version_match = re.match(r'^##\s*(\d+\.\d+\.\d+)\s*\(([^)]+)\)$', line)
+            if version_match:
+                if current_entry is not None:
+                    result.append(current_entry)
+                current_entry = {
+                    "version": version_match.group(1),
+                    "date": version_match.group(2),
+                    "changes": [],
+                }
+            elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
+                # This is a change item
+                if current_entry is not None:
+                    change_text = line[2:].strip() if line.startswith('- ') else line[1:].strip()
+                    current_entry["changes"].append(change_text)
+            else:
+                # This is a regular line - add to last change
+                if current_entry is not None and current_entry["changes"]:
+                    current_entry["changes"][-1] += ' ' + line
+
+        if current_entry is not None:
+            result.append(current_entry)
+
+        return result
