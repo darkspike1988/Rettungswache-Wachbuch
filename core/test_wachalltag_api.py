@@ -197,6 +197,29 @@ class WachalltagApiTests(TestCase):
         )
         self.assertEqual(bad.status_code, 415)
 
+    def test_defect_photo_count_quota_prevents_unbounded_database_growth(self):
+        defect = Defect.objects.create(station=self.station, title="Foto-Kontingent", created_by=self.user)
+        jpeg = b"\xff\xd8\xff" + b"quota-test"
+        payload = {
+            "filename": "mangel.jpg",
+            "content_type": "image/jpeg",
+            "data_base64": base64.b64encode(jpeg).decode("ascii"),
+        }
+        for index in range(8):
+            response = self._json(
+                "post",
+                f"/api/v1/defects/{defect.pk}/attachments/",
+                {**payload, "filename": f"mangel-{index}.jpg"},
+            )
+            self.assertEqual(response.status_code, 201)
+        ninth = self._json(
+            "post",
+            f"/api/v1/defects/{defect.pk}/attachments/",
+            {**payload, "filename": "mangel-9.jpg"},
+        )
+        self.assertEqual(ninth.status_code, 409)
+        self.assertEqual(defect.attachments.count(), 8)
+
     def test_reports_aggregate_real_station_state(self):
         Defect.objects.create(station=self.station, title="Offen", created_by=self.user, due_at=timezone.now() - timedelta(days=1))
         StationAsset.objects.create(station=self.station, asset_id="rtw-1", label="RTW 1", kind="vehicle", status="ready")
