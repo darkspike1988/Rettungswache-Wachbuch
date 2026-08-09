@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 
 from django.db import IntegrityError, transaction
-from django.db.models import Count
+from django.db.models import Count, Sum
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -42,6 +42,8 @@ from core.wachalltag_models import (
 from . import views as base
 
 MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024
+MAX_ATTACHMENTS_PER_DEFECT = 8
+MAX_ATTACHMENT_TOTAL_BYTES = 12 * 1024 * 1024
 ALLOWED_ATTACHMENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
@@ -114,6 +116,9 @@ def _member_user(station, value):
 
 
 def _defect_json(item):
+    attachment_count = getattr(item, "attachment_total", None)
+    if attachment_count is None:
+        attachment_count = item.attachments.count() if item.pk else 0
     return {
         "id": item.pk,
         "title": item.title,
@@ -126,7 +131,7 @@ def _defect_json(item):
         "category": item.category,
         "created_at": item.created_at.isoformat(),
         "updated_at": item.updated_at.isoformat(),
-        "attachment_count": item.attachments.count() if item.pk else 0,
+        "attachment_count": attachment_count,
     }
 
 
@@ -344,7 +349,11 @@ def defects_list(request):
     if request.method == "GET":
         if (error := _scope(request, "read:handovers")) or (error := _content_role(request)):
             return error
-        qs = Defect.objects.filter(station=station).select_related("owner").prefetch_related("attachments")
+        qs = (
+            Defect.objects.filter(station=station)
+            .select_related("owner")
+            .annotate(attachment_total=Count("attachments"))
+        )
         status = request.GET.get("status")
         priority = request.GET.get("priority")
         if status in Defect.Status.values:
@@ -726,8 +735,28 @@ def defect_attachments(request, pk):
     if not _image_matches(raw, content_type):
         return base._json_error(request, "Dateiinhalt passt nicht zum Bildtyp.", status=415)
     with transaction.atomic():
+        locked_defect = Defect.objects.select_for_update().filter(pk=pk, station=station).first()
+        if locked_defect is None:
+            return base._json_error(request, "Mangel nicht gefunden.", status=404)
+        stats = DefectAttachment.objects.filter(defect=locked_defect).aggregate(
+            count=Count("id"),
+            total=Sum("size"),
+        )
+        if int(stats["count"] or 0) >= MAX_ATTACHMENTS_PER_DEFECT:
+            return base._json_error(
+                request,
+                f"Maximal {MAX_ATTACHMENTS_PER_DEFECT} Fotos pro Mangel sind erlaubt.",
+                status=409,
+            )
+        current_total = int(stats["total"] or 0)
+        if current_total + len(raw) > MAX_ATTACHMENT_TOTAL_BYTES:
+            return base._json_error(
+                request,
+                "Gesamtgroesse der Fotos pro Mangel darf 12 MiB nicht ueberschreiten.",
+                status=413,
+            )
         item = DefectAttachment.objects.create(
-            defect=defect,
+            defect=locked_defect,
             station=station,
             filename=filename,
             content_type=content_type,
@@ -736,13 +765,19 @@ def defect_attachments(request, pk):
             uploaded_by=request.user,
         )
         DefectEvent.objects.create(
-            defect=defect,
+            defect=locked_defect,
             station=station,
             kind=DefectEvent.Kind.ATTACHMENT,
             actor=request.user,
             metadata={"attachment_id": item.pk, "content_type": content_type, "size": len(raw)},
         )
-        audit(request.user, station, "defect.attachment_added", defect, {"attachment_id": item.pk, "size": len(raw)})
+        audit(
+            request.user,
+            station,
+            "defect.attachment_added",
+            locked_defect,
+            {"attachment_id": item.pk, "size": len(raw)},
+        )
     return JsonResponse({"ok": True, **_attachment_json(item)}, status=201)
 
 
