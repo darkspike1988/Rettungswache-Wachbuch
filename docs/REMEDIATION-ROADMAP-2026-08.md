@@ -1,226 +1,168 @@
 # Review-Remediation-Roadmap
 
-Stand: 3. August 2026. Grundlage: technische und Design-Review des `main`-Stands
-0.14.2. Diese Roadmap ist die operative Quelle fuer Folgeagenten. Sie ersetzt
-keine externe Sicherheits-, Datenschutz- oder Barrierefreiheitspruefung.
+Stand: 10. August 2026. Grundlage: technische, Sicherheits-, Design- und Integrationsreviews bis Server `0.16.x` / Client `0.6.x`. Diese Roadmap ist die operative Quelle für Folgeagenten. Sie ersetzt keine externe Sicherheits-, Datenschutz- oder Barrierefreiheitsprüfung.
+
+## Statuslegende
+
+- `[x]` umgesetzt und durch vorhandene Regressionstests/CI abgesichert
+- `[~]` wesentliche Teile umgesetzt, externe/manuelle Abnahme oder Restarbeit offen
+- `[ ]` offen
 
 ## Zielzustand
 
-Das Wachbuch erreicht einen reproduzierbar getesteten Pilotstand mit klarer
-Produktgrenze, sicherer Webausgabe, belastbaren Betriebsprozessen, zugänglichen
-Kernablaeufen und nachvollziehbarer Lieferkette. Produktionsfreigabe erfolgt erst,
-wenn Wave 0–3 abgenommen und die `GO-LIVE-CHECKLIST.md` abgeschlossen sind.
+Das Wachbuch erreicht einen reproduzierbar getesteten Pilotstand mit klarer Produktgrenze, sicherer Webausgabe, belastbaren Betriebsprozessen, zugänglichen Kernabläufen und nachvollziehbarer Lieferkette. Produktionsfreigabe erfolgt erst, wenn die technischen Gates grün sind und `GO-LIVE-CHECKLIST.md` sowie die externen Wave-3-Abnahmen abgeschlossen sind.
 
 ## Reihenfolge
 
 ```text
 Wave 0  Sofortige Web-Sicherheitsfehler
-Wave 1  Code-, UX- und Dokumentationshaertung
+Wave 1  Code-, UX- und Dokumentationshärtung
 Wave 2  Betrieb, Lieferkette und asynchrone Verarbeitung
-Wave 3  Unabhaengige Abnahme und Produktionsfreigabe
-Wave 4  Staerkeres E2EE-Vertrauensmodell
+Wave 3  Unabhängige Abnahme und Produktionsfreigabe
+Wave 4  Stärkeres E2EE-Vertrauensmodell
 ```
 
 ## Wave 0 – P0 Web-Sicherheit
 
-### [~] R-001 CSP-kompatible verschluesselte Post
+### [~] R-001 CSP-kompatible verschlüsselte Post
 
-**Problem:** Die Empfaengerauswahl wurde durch ein Inline-Skript erzeugt, waehrend
-`script-src 'self'` Inline-Skripte blockiert.
-
-**Umsetzung:** Empfaenger werden in `core/static/core/json_data.js` mit DOM-APIs
-erzeugt. Das Inline-Skript wurde entfernt.
-
-**Abnahme:**
-
-- keine ausführbaren Inline-Skripte im Posteingang
-- Empfaenger mit Schluesseln erscheinen als Checkboxen
-- keine CSP-Verletzung im Browser
-- Versand mit mindestens einem Empfaenger funktioniert
-
-**Dateien:** `templates/core/secure_mail_inbox.html`,
-`core/static/core/json_data.js`, `templates/base.html`.
+Empfängerauswahl und JSON-Einbettung wurden CSP-kompatibel auf DOM-APIs/`json_script` umgestellt. Offen bleibt die vollständige manuelle Browser-/Screenreader-Abnahme des gesamten E2EE-Flows.
 
 ### [x] R-002 Sichere JSON-Einbettung
 
-**Problem:** `|safe` in JSON-Scriptbloecken ermoeglichte HTML-/Stored-XSS-Risiken.
-
-**Umsetzung:** Alle betroffenen Chat-/Post-Templates verwenden Djangos
-`json_script`. Die Kompatibilitaet mit den derzeit vorserialisierten
-Context-Werten wird ohne HTML-Parsing hergestellt.
-
-**Abnahme:**
-
-- kein `|safe` in den vier E2EE-Templates
-- kein `innerHTML` fuer Benutzer-, Nachrichten- oder Empfaengerdaten
-- Testdaten mit `</script><img src=x onerror=alert(1)>` bleiben Text/JSON
+Betroffene Chat-/Post-Templates verwenden Djangos `json_script`; unsichere `|safe`-JSON-Sinks wurden entfernt und Benutzerwerte werden nicht als HTML interpretiert.
 
 ### [x] R-003 Sicherheitsregressionstests
 
-**Umsetzung:** `core/test_security_regressions.py` prueft JSON-Sinks, CSP,
-Script-Reihenfolge, Navigation und Redirect-Schutz.
+`core/test_security_regressions.py` prüft JSON-Sinks, CSP, Script-Reihenfolge, Navigation und Redirect-Schutz. Die Gates laufen in der regulären CI.
 
-**Abnahme:** Django- und Docker-CI auf Commit `6af6689` (Run 59) gruen.
+### [x] R-021 MFA-Durchsetzung, Push-Endpoint-Allowlist, CSP-Kaffeekasse
 
-### [x] R-021 MFA-Durchsetzung, Push-Endpoint-Allowlist, CSP-Kaffekasse
+Umgesetzt und in den 0.16-Integrationsstand übernommen:
 
-**Problem:** Drei Ergebnisse eines externen Reviews:
+- Token-Ausgabe respektiert die MFA-Pflicht und unterscheidet `mfa_required` / `mfa_setup_required`.
+- Push-Subscriptions akzeptieren nur HTTPS/443 ohne Credentials und nur Hosts aus `PUSH_ALLOWED_ENDPOINT_HOSTS` bzw. zulässige Host-Suffixe.
+- IBAN-Kopie-Handler liegt in `core/static/core/app.js`; kein CSP-blockiertes Inline-Skript.
+- MFA-Fehlercodes sind Teil des kanonischen API-Fehlervertrags.
 
-1. `obtain_token` stellte API-Tokens auch fuer Konten ohne MFA aus, wenn
-   `MFA_REQUIRED=true` galt (Umgehung der MFA-Pflicht im Mobile-API).
-2. Der Push-Subscription-Endpoint wurde unvalidiert gespeichert; der
-   Push-Worker haette damit beliebige (auch interne) HTTPS-Ziele aufrufen
-   koennen (SSRF).
-3. Das IBAN-Kopie-Skript in `coffee.html` war ein Inline-Skript und wurde
-   durch `script-src 'self'` blockiert (Funktion stillgelegt).
-
-**Umsetzung:**
-
-- `obtain_token` verweigert Tokens, wenn `mfa_required()` gilt und das Konto
-  keine bestaetigte MFA hat (Fehlercode `mfa_setup_required`).
-- Neue Host-Allowlist `PUSH_ALLOWED_ENDPOINT_HOSTS` (bekannte Browser-Push-
-  Dienste, ueberschreibbar); `push_endpoint_allowed()` prueft Schema HTTPS,
-  Port 443, keine Credentials und Host-Suffix vor dem Speichern.
-- IBAN-Kopie-Handler nach `core/static/core/app.js` verschoben, Inline-
-  Skript entfernt.
-- MFA-Fehlercodes (`mfa_required`, `mfa_setup_required`) in `ERROR_CODES`
-  registriert, damit sie nicht zu `server_error` degradiert werden.
-
-**Abnahme:**
-
-- Negative Tests: `test_token_exchange_denied_when_mfa_required_but_not_set_up`,
-  `test_push_subscription_rejects_endpoint_outside_allowlist`,
-  `test_coffee_page_has_no_inline_script`.
-- `python manage.py test --settings=config.test_settings` gruen.
-
-**Verbleibende Grenze:** Der Web-Login leitet nach `super().form_valid` auf
-`mfa_setup` weiter, erzwingt das Setup aber nicht per Middleware; ein
-Folgeitem soll die Durchsetzung fuer Web-Sessions pruefen.
+**Restgrenze:** Web-MFA-Setup/Durchsetzung weiterhin separat im manuellen Auth-Review prüfen.
 
 ## Wave 1 – Anwendung und UX
 
 ### [x] R-004 E2EE-Versprechen an Bedrohungsmodell angleichen
 
-**Umsetzung:** UI- und Sicherheitsdokumentation unterscheiden Schutz gespeicherter
-Daten von einem aktiven kompromittierten Server/Webclient. Keine Aussage mehr,
-dass der Server generell keine Klartexte erlangen koenne.
+UI- und Sicherheitsdokumentation unterscheiden Schutz gespeicherter Daten von einem aktiv kompromittierten Server/Webclient. Stärkeres Vertrauensmodell bleibt R-020.
 
-**Restgrenze:** Fingerprints, Key Transparency und unabhaengig signierte Clients
-sind R-020.
+### [~] R-005 Aufgaben-Race-Conditions schließen
 
-### [~] R-005 Aufgaben-Race-Conditions schliessen
-
-**Umsetzung:** Initialisierung sperrt die stabile Stationszeile; Abschluss/
-Wiedereroeffnung sperrt die Aufgabenzeile, auch wenn noch keine Completion existiert.
-
-**Abnahme:** parallele Erstaufrufe erzeugen eine Standardvorlage; paralleles
-Abhaken erzeugt maximal einen Abschluss und keinen 500-Fehler.
+Initialisierung und Abschluss/Wiedereröffnung verwenden Datenbanksperren. Parallele Last-/Resilienzabnahme bleibt Teil R-019.
 
 ### [x] R-006 Scheme-relative Redirects blockieren
 
-**Umsetzung:** Security-Middleware ersetzt `Location: //...` durch `/`; Regressionstest und CI sind gruen.
-
-**Folgearbeit:** Direkte Zielvalidierung mit `url_has_allowed_host_and_scheme`
-bei jeder nutzerbeeinflussten Weiterleitung bleibt bevorzugt, sobald die betroffene
-View refaktoriert wird.
+Security-Middleware neutralisiert `Location: //…`; Regressionstest und CI sind vorhanden. Direkte Zielvalidierung mit `url_has_allowed_host_and_scheme` bleibt Best Practice bei künftigen View-Refactorings.
 
 ### [~] R-007 Vier globale Navigationsziele
 
-**Umsetzung:** Mobile/desktop Hauptnavigation folgt wieder der Designregel
-`Uebersicht`, `Uebergaben`, `Kalender`, `Mehr`. Chat bleibt unter `Mehr` erreichbar;
-Chatseiten markieren `Mehr` als aktiv.
+Mobile/Desktop-Hauptnavigation folgt `Übersicht`, `Übergaben`, `Kalender`, `Mehr`. Reale Nutzerabnahme bleibt Wave 3.
 
 ### [~] R-008 Fokus und mobile Wochenansicht
 
-**Umsetzung:** zweifarbiger Fokusindikator, Forced-Colors-Fallback, 44-Pixel-
-Chat-/Empfaengerziele und einspaltige Wochenliste unter 48 rem.
+Fokusindikator, Forced-Colors-Fallback, ausreichende Zielgrößen und mobile Wochenliste sind implementiert. 400-%-Zoom/Screenreader-Abnahme bleibt R-018.
 
-**Abnahme:** 320 CSS-Pixel ohne horizontale Wochenmatrix; Tastaturfokus auf hellen
-und dunklen Flaechen sichtbar.
+### [x] R-009 Zugänglicher Entsperrdialog statt `window.prompt`
 
-### [ ] R-009 Zugaenglicher Entsperrdialog statt `window.prompt`
+Der Entsperrflow verwendet einen eigenen zugänglichen Dialog mit beschriftetem Eingabefeld, Fehlerstatus, Anzeigen/Verbergen, Abbrechen, Fokusmanagement und Session-Lock. `window.prompt` wurde aus diesem Kernpfad entfernt. Regressionstests sichern den Flow ab.
 
-**Plan:** eigenes `<dialog>` mit Label, Fehlerstatus, Anzeigen/Verbergen,
-Abbrechen, Fokusmanagement und „jetzt sperren“. `window.prompt` komplett entfernen.
+### [x] R-014 Fehlerseiten und API-Konsistenz
 
-**Tests:** Tastatur, Escape, VoiceOver/NVDA, falsche Passphrase, Session-Lock.
+Umgesetzt:
+
+- zentrale strukturierte JSON-Fehlerantworten
+- stabile Fehlercodes einschließlich MFA-Codes
+- Korrelations-ID in API-Antworten/Logging
+- eigene Fehlerhandler statt Stacktrace-Ausgabe an Clients
+- Client kann neuen Vertrag und Legacy-Fehler lesen
+
+Kanonischer Vertrag ist in `docs/API.md` und `core/api/openapi_v1.yaml` dokumentiert.
 
 ## Wave 2 – Betrieb und Lieferkette
 
 ### [~] R-010 Least-Privilege-Backuprolle
 
-**Plan:** dauerhaften Backup-Container vom DB-Owner trennen. Eigene Login-Rolle
-mit nur fuer `pg_dump` benoetigten Rechten; Owner-Zugang nur fuer kurzlebige,
-manuell gestartete Restore-/Migrationsschritte.
+Dauerhafte Rolle `rwsth_backup` besitzt nur die für Dumps notwendigen Leserechte; Web läuft als `rwsth_app`. Restore mit Owner-Rechten ist explizit/kurzlebig. Offen bleiben verschlüsseltes Offsite-Ziel und regelmäßig nachgewiesener Restore (R-017).
 
-**Umsetzung:** dauerhafte Rolle `rwsth_backup` mit ausschliesslich `SELECT` und
-`pg_read_all_data` auf das App-Schema. Der `backup`-Service verbindet sich mit
-dieser Rolle; der `web`-Service bleibt auf `rwsth_app`. Restore-Tests muessen
-explizit mit `docker compose run --rm -e RESTORE_OWNER=1` und Owner-Credentials
-gestartet werden, damit der dauerhafte Container keinen Owner-Zugang besitzt.
-
-**Abnahme:** Backup gelingt; Backuprolle kann keine Fachzeile aendern/loeschen;
-Restore-Test in isolierter DB ist gruen; Offsite-Ziel ist verschluesselt.
 ### [x] R-011 Gemeinsames Rate Limiting und Proxy-Vertrauen
 
-**Plan:** registrierungsbezogene Limits in Redis oder transaktionaler DB-Tabelle,
-IP nur hinter explizit vertrautem Proxy auswerten, gehashten Schluessel verwenden,
-Aufbewahrung dokumentieren.
-
-**Umsetzung:** DB-basiertes `RateLimit`-Model mit `select_for_update`,
-SHA-256-gehashte Schlüssel via `RATELIMIT_KEY_SALT`, IP-Extraktion in
-`ClientIPMiddleware` (nutzt `X-Forwarded-For` nur bei `TRUSTED_PROXY=true`),
-`community_views.register` als erste Anwendungsstelle.
-
-**Abnahme:** mehrere Gunicorn-Worker teilen denselben Zaehler; gefaelschtes
-`X-Forwarded-For` umgeht das Limit nicht.
+DB-basiertes `RateLimit`-Model mit `select_for_update`, gehashte Schlüssel über `RATELIMIT_KEY_SALT` und explizites `TRUSTED_PROXY` für `X-Forwarded-For`. Regressionstests verhindern triviale Proxy-/Worker-Umgehung.
 
 ### [~] R-012 CI-/Supply-Chain-Gates
 
-**Begonnen:** Python-Compile, JavaScript-Syntax und `check --deploy` wurden in den
-bestehenden CI-Workflow aufgenommen.
+Vorhanden sind u. a. Python-Compile, JavaScript-Syntax, Django-Migrationscheck, `check --deploy`, Tests und isolierter PostgreSQL/Docker-Pfad. Clientseitig existieren Flutter-/Android-/iOS-/Dependency-Security-Gates und SBOM-Artefakte.
 
-**Weitere Schritte in getrennten kleinen PRs:**
+Noch offen/zu vertiefen:
 
 1. Ruff Format/Lint mit dokumentierter Baseline
-2. Dependency-Audit und Container-Scan
+2. vollständiger Dependency-/Container-Scan
 3. CodeQL/SAST und Secret Scan
-4. SBOM plus Build-Provenance
+4. Server-SBOM + Build-Provenance
 5. Browser-Smoke-Test, CSP-Konsole und Axe-Core
 
-Actions und Images weiterhin auf unveraenderliche SHAs/Digests pinnen.
+Actions und Images weiterhin auf unveränderliche SHAs/Digests pinnen.
 
-### [~] R-013 Push-Outbox
+### [x] R-013 Push-Outbox
 
-**Plan:** Transaktion schreibt einen Outbox-Datensatz; separater Worker sendet
-Push mit Retry, Backoff, Idempotenz und begrenzter Aufbewahrung. Kein externer
-Netzaufruf im Gunicorn-Request.
+Externe Push-Aufrufe laufen nicht mehr im Gunicorn-Fachrequest. `PushOutbox` speichert deduplizierte Jobs; der Worker verarbeitet Retry/Backoff, entfernt ungültige 404/410-Subscriptions und besitzt begrenzte Aufbewahrung/Cleanup. Betriebsmonitoring der Queue bleibt R-016.
 
-### [ ] R-014 Fehlerseiten und API-Konsistenz
+## 0.16 Wachalltag – Integrationsstatus
 
-**Plan:** eigene 400/403/404/429/500-Seiten, einheitliche JSON-Fehlercodes,
-Korrelations-ID ohne personenbezogene Nutzdaten, keine Stacktraces.
+### [x] Persistente Demo-Parität
+
+Server und Client besitzen denselben produktiven Kernvertrag für:
+
+- Mängel + Ereignis-/Audit-Verlauf
+- authentifizierte Mängelfotos
+- Fahrzeug-/Gerätestatus
+- Schlüssel-/Pool-Ausgabe
+- Übergabe-Quittierung
+- wiederkehrende Checklisten
+- leichte Stationsauswertung
+- token-/servergebundenes Offline-Lesen im Client
+
+### [x] Mobile Source of Truth
+
+`darkspike1988/Wachbuch-Client` ist die kanonische Flutter-/iOS-/Android-Quelle. Der historische `clients/wachbuch-mobile/`-Spiegel im Server-Repo darf nicht zurückpubliziert werden; das frühere Force-Publish-Skript ist deaktiviert.
+
+### [x] Request-Wiederholung / Datenintegrität
+
+Nicht-idempotente Client-Mutationen wie Token-Erzeugung, Mangelanlage, Foto-Upload, Asset-/Inventar-Stammdaten und Checklistenabschluss werden nicht automatisch erneut gesendet. Sichere Reads bzw. serverseitig idempotente Zustandsoperationen dürfen Retry verwenden.
+
+### [~] Post-Merge-Hardening
+
+PR #54 schließt zwei in der Nachkontrolle gefundene Edge Cases:
+
+- stark überfällige wiederkehrende Checks werden nach Abschluss entlang ihrer Kadenz bis zur ersten zukünftigen Fälligkeit fortgeschrieben
+- Bilder werden zusätzlich zu MIME/Signatur mit Pillow vollständig validiert und auf 25 Megapixel begrenzt
+- Owner-Zuordnung verlangt aktiven Django-User plus aktive Stationsmitgliedschaft
+
+Status erst nach grünem finalem PR-Head auf `[x]` setzen.
 
 ## Wave 3 – Pilot- und Produktionsabnahme
 
-### [ ] R-015 Externe ASVS-5.0-L2-Pruefung und Penetrationstest
+### [ ] R-015 Externe ASVS-L2-Prüfung und Penetrationstest
 
-Schwerpunkte: Rollen-/Stationsisolation, Auth/MFA/Passkeys, API-Tokens, SSRF,
-PWA-Cache, Upload, E2EE-Schnittstellen, CSP und Admin-Grenzen.
+Schwerpunkte: Rollen-/Stationsisolation, Auth/MFA/Passkeys, API-Tokens, SSRF, PWA-/Mobile-Cache, Upload, E2EE-Schnittstellen, CSP und Admin-Grenzen.
 
 ### [ ] R-016 Monitoring und Incident-Probe
 
-Health, Fehlerquote, Queue/Worker, DB, Backupalter, Zertifikate, Speicher und
-ungewoehnliche Auth-Fehler alarmieren. Incident-Runbook praktisch ueben.
+Health, Fehlerquote, Queue/Worker, DB, Backupalter, Zertifikate, Speicher und ungewöhnliche Auth-Fehler alarmieren. Incident-Runbook praktisch üben.
 
-### [ ] R-017 Verschluesseltes Offsite-Backup und Restore-Nachweis
+### [ ] R-017 Verschlüsseltes Offsite-Backup und Restore-Nachweis
 
-RPO/RTO festlegen; automatisierter Restore in isolierter Umgebung; Ergebnis und
-Backupalter sichtbar. Lokales Sieben-Tage-Verzeichnis allein reicht nicht.
+RPO/RTO festlegen; automatisierter Restore in isolierter Umgebung; Ergebnis und Backupalter sichtbar. Lokales Kurzzeit-Backup allein reicht nicht.
 
 ### [ ] R-018 Barrierefreiheitsabnahme
 
-- Tastatur und 400-Prozent-Zoom
+- Tastatur und 400-%-Zoom
 - Reflow bei 320 CSS-Pixel
 - NVDA/JAWS unter Windows
 - VoiceOver auf iPhone/iPad
@@ -229,32 +171,22 @@ Backupalter sichtbar. Lokales Sieben-Tage-Verzeichnis allein reicht nicht.
 
 ### [ ] R-019 Last- und Resilienztest
 
-Gunicorn/DB-Grenzen, grosse Teams, Chat-/Auditwachstum, Feedfehler, langsame
-Pushziele, Neustart waehrend Migration und Wiederanlauf nach DB-Ausfall pruefen.
+Gunicorn/DB-Grenzen, große Teams, Chat-/Auditwachstum, Feedfehler, langsame Pushziele, parallele Fachmutationen, Neustart während Migration und Wiederanlauf nach DB-Ausfall prüfen.
 
-## Wave 4 – staerkeres E2EE-Vertrauensmodell
+## Wave 4 – stärkeres E2EE-Vertrauensmodell
 
-### [ ] R-020 Schluesselverifikation und unabhaengiger Client
+### [ ] R-020 Schlüsselverifikation und unabhängiger Client
 
 Optionen bewerten und dokumentieren:
 
-- sichtbare Schluessel-Fingerprints/Sicherheitsnummern
+- sichtbare Schlüssel-Fingerprints/Sicherheitsnummern
 - QR-Verifikation zwischen Kollegen
-- Key-Change-Warnungen und nachvollziehbares Schluesselverzeichnis
+- Key-Change-Warnungen und nachvollziehbares Schlüsselverzeichnis
 - signierter nativer Client mit reproduzierbaren Builds
-- Migration/Backup bei Schluesselwechsel
+- Migration/Backup bei Schlüsselwechsel
 
-Erst danach darf ein Schutzversprechen gegen einen aktiv boeswilligen
-Serverbetreiber erwogen werden.
+Erst danach darf ein Schutzversprechen gegen einen aktiv böswilligen Serverbetreiber erwogen werden.
 
 ## Agenten-Handoff
 
-Bei jeder Fortsetzung zuerst `AGENTS.md` lesen und genau eine Roadmap-ID waehlen.
-PR-Titel beginnen mit der ID, zum Beispiel:
-
-```text
-R-010: restrict backup database privileges
-```
-
-PR-Beschreibung enthaelt Ursache, Risiko, Umsetzung, negative Tests,
-Betriebsauswirkung, Rollback und verbleibende Grenzen.
+Bei jeder Fortsetzung zuerst `AGENTS.md`, diese Roadmap, `docs/API.md` und `docs/CLIENT.md` lesen. Keine Mobile-Änderung im historischen Server-Mirror beginnen. Sicherheits- oder Betriebsänderungen erhalten eine Roadmap-ID bzw. einen klar abgegrenzten PR mit Ursache, Risiko, Umsetzung, negativen Tests, Betriebsauswirkung, Rollback und verbleibenden Grenzen.
