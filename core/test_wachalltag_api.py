@@ -1,7 +1,9 @@
 import base64
 import json
 from datetime import timedelta
+from io import BytesIO
 
+from PIL import Image
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
@@ -54,6 +56,12 @@ class WachalltagApiTests(TestCase):
             content_type="application/json",
             **self.auth,
         )
+
+    def _image_bytes(self, image_format="JPEG"):
+        output = BytesIO()
+        mode = "RGBA" if image_format == "PNG" else "RGB"
+        Image.new(mode, (4, 4), color="white").save(output, format=image_format)
+        return output.getvalue()
 
     def test_canonical_errors_and_mfa_code_are_stable(self):
         response = self.client.get("/api/v1/me/")
@@ -170,12 +178,28 @@ class WachalltagApiTests(TestCase):
         complete = self._json("post", f"/api/v1/checklisten/{checklist.pk}/abschluss/")
         self.assertEqual(complete.status_code, 201)
         schedule = ChecklistSchedule.objects.get(checklist=checklist)
-        self.assertGreater(schedule.due_next, due)
+        self.assertGreater(schedule.due_next, timezone.now())
         self.assertEqual(complete.json()["interval"], "daily")
 
-    def test_defect_photo_roundtrip_with_size_and_type_guard(self):
+    def test_very_overdue_recurring_check_fast_forwards_to_future(self):
+        checklist = Checklist.objects.create(station=self.station, title="Monatscheck")
+        due = timezone.now() - timedelta(days=95)
+        schedule_response = self._json(
+            "put",
+            f"/api/v1/checklisten/{checklist.pk}/schedule/",
+            {"interval": "monthly", "due_next": due.isoformat()},
+        )
+        self.assertEqual(schedule_response.status_code, 200)
+
+        complete = self._json("post", f"/api/v1/checklisten/{checklist.pk}/abschluss/")
+        self.assertEqual(complete.status_code, 201)
+        schedule = ChecklistSchedule.objects.get(checklist=checklist)
+        self.assertGreater(schedule.due_next, timezone.now())
+        self.assertFalse(complete.json()["overdue"])
+
+    def test_defect_photo_roundtrip_with_size_type_and_decode_guard(self):
         defect = Defect.objects.create(station=self.station, title="Foto-Test", created_by=self.user)
-        jpeg = b"\xff\xd8\xff" + b"demo-image-bytes"
+        jpeg = self._image_bytes("JPEG")
         upload = self._json(
             "post",
             f"/api/v1/defects/{defect.pk}/attachments/",
@@ -190,16 +214,21 @@ class WachalltagApiTests(TestCase):
         download = self.client.get(f"/api/v1/attachments/{attachment_id}/", **self.auth)
         self.assertEqual(download.status_code, 200)
         self.assertEqual(download.content, jpeg)
+
         bad = self._json(
             "post",
             f"/api/v1/defects/{defect.pk}/attachments/",
-            {"filename": "fake.jpg", "content_type": "image/jpeg", "data_base64": base64.b64encode(b"not-jpeg").decode("ascii")},
+            {
+                "filename": "fake.jpg",
+                "content_type": "image/jpeg",
+                "data_base64": base64.b64encode(b"\xff\xd8\xffnot-a-real-jpeg").decode("ascii"),
+            },
         )
         self.assertEqual(bad.status_code, 415)
 
     def test_defect_photo_count_quota_prevents_unbounded_database_growth(self):
         defect = Defect.objects.create(station=self.station, title="Foto-Kontingent", created_by=self.user)
-        jpeg = b"\xff\xd8\xff" + b"quota-test"
+        jpeg = self._image_bytes("JPEG")
         payload = {
             "filename": "mangel.jpg",
             "content_type": "image/jpeg",
