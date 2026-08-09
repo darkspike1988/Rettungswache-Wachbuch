@@ -1,77 +1,89 @@
 # AGPL-Client (iOS / Android)
 
-Stand: 31. Juli 2026.
+Stand: 10. August 2026.
 
-## Zwei Repositories (aufeinander abgestimmt)
+## Kanonische Repositories
 
 | | |
 | --- | --- |
-| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch (≥ **0.14.1**) |
-| **Client** | https://github.com/darkspike1988/Wachbuch-Client (App **0.5.1+** (kompatibel mit Server ab 0.14.1)) |
-| **Spiegel im Server** | `clients/wachbuch-mobile/` |
-| **Push Server → Client** | `./scripts/publish-mobile-client-repo.sh` |
-| **Pull Client → Server** | `./scripts/pull-mobile-client-repo.sh` |
+| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch · `0.16.x` |
+| **Client** | https://github.com/darkspike1988/Wachbuch-Client · `0.6.x` |
+| **API** | `/api/v1/` · OpenAPI `1.2.1` |
+| **Historischer Spiegel** | `clients/wachbuch-mobile/` – nicht als Quelle verwenden |
+
+**Wachbuch-Client ist die einzige Quelle der Wahrheit für Flutter/iOS/Android.** Der Server koppelt sich über den versionierten API-Vertrag an die App. Der historische Client-Ordner im Server-Repository darf keine neueren Client-Commits überschreiben; der frühere Publish-Workflow ist deshalb deaktiviert.
 
 ## Versionspaarung
 
 | Server | Client | Hinweis |
 | --- | --- | --- |
-| ≥ 0.15.0 | 0.5.1+ | Demo-Modus, Kaffeekasse-Zahlungshinweise, SECRET_KEY-Rotation |
-| ≥ 0.14.1 | 0.5.0+ | API v1, App-Tokens, i18n |
-| ≥ 0.14.0 | 0.5.0+ | API v1 vereinheitlicht, Checklisten-API |
-| ≥ 0.12.0 | 0.2.x | Mobile-Startflow (Server-Adresse oder QR) |
+| `0.16.x` | `0.6.x` | realer Wachalltag: Mängel, Fotos, Assets, Inventar, Quittierungen, wiederkehrende Checks, Reports, Offline-Lesen |
+| `0.15.x` | `0.5.1+` | vorheriger Kern-/Demo-Stand |
+| `0.14.1` | `0.5.0+` | API v1, App-Tokens, MFA |
 
-Canonical für die App-Entwicklung ist **Wachbuch-Client**. Der Ordner
-`clients/wachbuch-mobile/` bleibt als Spiegel für Docs/CI im Server-Repo.
-
-### Cursor / GitHub-App
-
-Schreibzugriff auf `Wachbuch-Client` freigeben:
-
-https://github.com/settings/installations → Cursor → Configure → Repo hinzufügen
-
-## Kopplung
+## Verbindungsablauf
 
 ```text
-App                      Wachbuch-Server
-─────────────────────    ────────────────────────────
-1. Adresse oder QR
-   └─ Bestätigen         GET  /api/v1/          Discovery
-2. Login User/Passwort   POST /api/v1/token/    (Alias: /anmeldung/)
-                         oder App-Token unter /konto/api/
-3. Sitzung               GET  /api/v1/me/       User + eine Station
-                         GET  /api/v1/uebersicht/
-4. Fachdaten             /handovers/ oder /uebergaben/,
-                         /kalender/, /kaffeekasse/, /checklisten/
+App                         Wachbuch-Server
+────────────────────────    ──────────────────────────────────
+1. Adresse oder QR          GET  /api/v1/             Discovery
+2. App-Token / Login        POST /api/v1/token/       MFA-Regeln gelten
+3. Sitzung                  GET  /api/v1/me/          User + Station + Module
+4. Übergaben                /handovers/ + /acks/
+5. Wachalltag               /defects/ /assets/ /inventory/
+6. Checks/Reports           /checklisten/ /reports/
+7. Mängelfotos              /defects/{id}/attachments/
 ```
 
-Header: `Authorization: Token <wb_…>` (widerrufbar)
-
-## Wachenspezifisch
-
-- Mitgliedschaft nur auf dem Server
-- App liest `membership.station` aus `/me/`
-- Kein Multi-Wachen-Switcher
+Header: `Authorization: Token <wb_…>`.
 
 ## MFA
 
-App-Token im Web unter `/konto/api/` (QR der Server-Adresse dort ebenfalls).
+Für produktive Nutzung ist ein im Web unter `/konto/api/` erzeugtes App-Token der bevorzugte Weg. Der Login-/Token-Endpunkt unterscheidet `mfa_required` und `mfa_setup_required`, damit der Client einen konkreten Hinweis statt eines generischen Fehlers anzeigen kann.
 
-## Android / Play
+## Offline-Modell
 
-- Package `de.wachbuch.mobile`, minSdk 24, targetSdk 36
-- Start: Adresse/QR → Login
-- [INSTALL-ANDROID.md](../clients/wachbuch-mobile/docs/INSTALL-ANDROID.md)
-- [PLAY-STORE.md](../clients/wachbuch-mobile/docs/PLAY-STORE.md)
-- Client: [SERVER.md](../clients/wachbuch-mobile/docs/SERVER.md)
+Der `0.6.x`-Client besitzt einen verschlüsselten Lesecache, der an Server und Token gebunden ist. Er wird nur bei Netzwerkfehlern als Fallback benutzt. Authentifizierungs-/Autorisierungsfehler (`401`/`403`) dürfen nicht durch Cache-Daten kaschiert werden.
 
-## Vorbilder (Ideen)
+Offline-Schreiben bzw. eine allgemeine Synchronisationswarteschlange ist bewusst nicht Teil dieses Vertrags; damit entstehen keine schwer auflösbaren Konflikte bei Mängeln, Fotos, Inventar oder Checklisten.
 
-| Projekt | Übernehmen |
-| --- | --- |
-| paperless-go | Self-host URL, Token, Secure Storage |
-| Nextcloud | Server zuerst, dann Login |
+## Mutationen und Wiederholung
+
+Automatische Retries sind nur für GETs bzw. serverseitig nachweislich idempotente Aktionen erlaubt. Token-Erzeugung, neue Mängel, Foto-Uploads, Stammdaten und Checklistenabschluss werden nicht automatisch erneut gesendet. Quittierung und bestimmte Zustandsoperationen besitzen serverseitige Schutzmechanismen gegen Duplikate.
+
+## Produktiver Wachalltag
+
+Der Client `0.6.x` kann gegen Server `0.16.x`:
+
+- Übergaben lesen, filtern und quittieren
+- eine Übergabe als Mangel übernehmen
+- Mängel anlegen, priorisieren, terminieren und bearbeiten
+- Mängelfotos aus Kamera/Mediathek hochladen
+- Fahrzeug-/Gerätestatus anzeigen und ändern
+- Schlüssel-/Poolgeräte ausgeben/zurückgeben
+- wiederkehrende Checklisten abarbeiten
+- Stationsauswertung öffnen
+- erfolgreiche Leseantworten offline verfügbar halten
+
+Demo-Profile verwenden denselben fachlichen UI-Pfad, werden aber lokal simuliert. Ziel der Demo ist damit nicht mehr ein separater Funktionsumfang, sondern die Vorschau auf reale Serverfunktionen.
+
+## Wachenspezifisch
+
+- Mitgliedschaften werden nur auf dem Server verwaltet.
+- Die App liest `membership.station` und aktivierte Module aus `/me/`.
+- Alle produktiven Ressourcen sind stationsisoliert.
+- Es gibt keinen stillen stationsübergreifenden Offline-Fallback.
+
+## Android / iOS
+
+Android und iOS werden ausschließlich im `Wachbuch-Client`-Repository gebaut und getestet. Vor Freigabe müssen Flutter-Analyse/Tests, Android-Build/Lint/Sicherheitsgates, iOS-CI und Dependency-Security grün sein.
+
+Für Pilot-/Store-Abläufe gelten die aktuellen Dokumente im Client-Repository, insbesondere `docs/E2E-WACHALLTAG.md`, `docs/PILOT-WACHALLTAG.md`, `docs/PLAY-STORE.md` und `docs/IOS-TESTFLIGHT.md`.
+
+## Produktgrenze
+
+Nicht Teil des Clients/API-Vertrags sind Patienten-/Einsatz-/Alarmierungsdaten, ePCR, Personalakten, vollständige Dienstplanung, Abrechnung oder individuelle Leistungskennzahlen.
 
 ## Lizenz
 
-AGPL-3.0-or-later in beiden Repos.
+AGPL-3.0-or-later in beiden Repositories.
