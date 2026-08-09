@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import account_views, community_views, secure_views, views
+from . import account_views, community_views, secure_views, views, wachalltag_media, wachalltag_web
 
 
 urlpatterns = [
@@ -12,6 +12,13 @@ urlpatterns = [
     path("uebergaben/<int:pk>/", views.handover_detail, name="handover_detail"),
     path("uebergaben/<int:pk>/bearbeiten/", views.handover_edit, name="handover_edit"),
     path("uebergaben/<int:pk>/status/", views.handover_status, name="handover_status"),
+    path("maengel/", wachalltag_web.defects, name="defects_web"),
+    path("maengel/neu/", wachalltag_web.defect_create, name="defect_create_web"),
+    path("maengel/<int:pk>/", wachalltag_web.defect_detail, name="defect_detail_web"),
+    path("maengel/anhaenge/<int:pk>/", wachalltag_media.defect_attachment, name="defect_attachment_web"),
+    path("geraete/", wachalltag_web.assets_inventory, name="assets_inventory_web"),
+    path("checklisten/intervalle/", wachalltag_web.checklist_schedules, name="checklist_schedules_web"),
+    path("auswertung/", wachalltag_web.reports, name="wachalltag_reports_web"),
     path("kalender/", views.calendar_view, name="calendar"),
     path("kalender/neu/", views.calendar_create, name="calendar_create"),
     path("kalender/feed.ics", account_views.calendar_feed_ics, name="calendar_feed_ics"),

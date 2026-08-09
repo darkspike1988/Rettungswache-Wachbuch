@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Mangel anlegen | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading">
+  <p class="context-line">Wachalltag</p>
+  <h1>Mangel anlegen</h1>
+  <p class="lead">Nur Informationen zur Wachenorganisation, zu Material, Fahrzeugen oder Gebäuden.</p>
+</header>
+<form method="post" class="form-card">
+  {% csrf_token %}
+  <div class="field"><label for="id_title">Titel</label><input id="id_title" name="title" maxlength="160" required value="{{ request.POST.title }}"></div>
+  <div class="field"><label for="id_description">Beschreibung</label><textarea id="id_description" name="description" maxlength="3000" rows="5">{{ request.POST.description }}</textarea></div>
+  <div class="field"><label for="id_asset_ref">Bezug (z. B. RTW 1, Defi, Gerätehaus)</label><input id="id_asset_ref" name="asset_ref" maxlength="160" value="{{ request.POST.asset_ref }}"></div>
+  <div class="field"><label for="id_priority">Priorität</label><select id="id_priority" name="priority">{% for value,label in priorities %}<option value="{{ value }}"{% if request.POST.priority == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="id_category">Kategorie</label><select id="id_category" name="category">{% for value,label in categories %}<option value="{{ value }}"{% if request.POST.category == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="id_due_at">Frist (optional)</label><input id="id_due_at" name="due_at" type="datetime-local" value="{{ request.POST.due_at }}"></div>
+  <div class="field checkbox-field"><label><input type="checkbox" name="owner_self" value="1" checked> Mir zuordnen</label></div>
+  <div class="form-actions"><button class="button primary" type="submit">Mangel speichern</button><a class="button secondary" href="{% url 'defects_web' %}">Abbrechen</a></div>
+</form>
+{% endblock %}

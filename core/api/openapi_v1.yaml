@@ -3,23 +3,33 @@ info:
   title: Wachbuch API
   description: |
     Versionierte JSON-API für selbst gehostetes Wachbuch.
-    Widerrufbare App-Tokens (wb_…, Paperless/Nextcloud-Stil) plus deutsche
-    Alias-Pfade für den AGPL-Client (Wachbuch-Client).
-  version: "1.1.0"
+    Widerrufbare App-Tokens (`wb_…`) und stationsbezogene Rechte.
+    Wachalltag umfasst Schichtübergaben, Mängel, Fahrzeug-/Gerätestatus,
+    Checklisten, Schlüssel-/Pool-Geräte, Quittierungen und leichte Auswertung.
+    Patienten-, Einsatz-, Alarmierungs- und Vorgangsdaten sind ausdrücklich
+    nicht Teil dieser API.
+  version: "1.2.1"
 servers:
   - url: /api/v1
     description: Relative to the Wachbuch origin
+security:
+  - TokenAuth: []
 paths:
   /:
     get:
-      summary: API discovery
+      summary: API discovery and capabilities
       security: []
       responses:
-        "200":
-          description: Discovery document
+        "200": { description: Discovery document }
+  /openapi.yaml:
+    get:
+      summary: This OpenAPI schema
+      security: []
+      responses:
+        "200": { description: OpenAPI YAML }
   /token/:
     post:
-      summary: Obtain API token (username + password)
+      summary: Obtain API token using username and password
       security: []
       requestBody:
         required: true
@@ -30,190 +40,304 @@ paths:
               required: [username, password]
               properties:
                 username: { type: string }
-                password: { type: string }
-                label: { type: string }
+                password: { type: string, format: password }
+                label: { type: string, maxLength: 120 }
       responses:
-        "200":
-          description: Token created (shown once)
-        "401":
-          description: Invalid credentials
-        "403":
-          description: No membership or MFA requires UI token
+        "200": { description: Token created and shown once }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   /anmeldung/:
     post:
       summary: German alias for /token/
       security: []
       responses:
-        "200":
-          description: Token created (shown once)
+        "200": { description: Token created and shown once }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   /me/:
     get:
-      summary: Current user, membership and station modules
-      security:
-        - TokenAuth: []
+      summary: Current user, membership, station modules and Wachalltag capabilities
       responses:
-        "200":
-          description: Profile payload
-        "401":
-          description: Missing/invalid token
+        "200": { description: Profile payload }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
   /status/:
     get:
-      summary: Lightweight auth/membership status (optional token)
+      summary: Lightweight auth/membership status
       security: []
       responses:
-        "200":
-          description: Status payload
+        "200": { description: Status payload }
   /uebersicht/:
     get:
-      summary: Dashboard overview for the token user's station
-      security:
-        - TokenAuth: []
+      summary: Dashboard overview including Wachalltag counters
       responses:
-        "200":
-          description: Overview with open handovers and modules
+        "200": { description: Overview payload }
+        "403": { $ref: "#/components/responses/Error" }
   /handovers/:
     get:
-      summary: Active handovers for the token user's station
-      security:
-        - TokenAuth: []
+      summary: Active handovers
       responses:
-        "200":
-          description: Paginated-style list (results array)
-        "403":
-          description: Missing scope or role
+        "200": { description: Handover list }
+        "403": { $ref: "#/components/responses/Error" }
     post:
       summary: Create handover
-      security:
-        - TokenAuth: []
       responses:
-        "201":
-          description: Created
-        "403":
-          description: Missing scope or role
+        "201": { description: Handover created }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
   /handovers/{id}/:
     get:
       summary: Handover detail
-      security:
-        - TokenAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
       responses:
-        "200":
-          description: Detail payload
+        "200": { description: Handover detail }
+        "404": { $ref: "#/components/responses/Error" }
   /handovers/{id}/status/:
     post:
-      summary: Set handover status (shift lead / admin)
-      security:
-        - TokenAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+      summary: Set handover status
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
       responses:
-        "200":
-          description: Updated
-  /uebergaben/:
+        "200": { description: Handover updated }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /handovers/{id}/acks/:
     get:
-      summary: German alias for GET /handovers/
-      security:
-        - TokenAuth: []
+      summary: List acknowledgements for a handover
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
       responses:
         "200":
-          description: List
+          description: Acknowledgement list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/HandoverAck" }
+        "404": { $ref: "#/components/responses/Error" }
+  /handovers/{id}/ack/:
     post:
-      summary: German alias for POST /handovers/
-      security:
-        - TokenAuth: []
+      summary: Acknowledge a handover; idempotent per user
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
       responses:
-        "201":
-          description: Created
-  /uebergaben/{id}/:
+        "200": { description: Existing acknowledgement }
+        "201": { description: Acknowledgement created }
+        "404": { $ref: "#/components/responses/Error" }
+  /defects/:
     get:
-      summary: German alias for handover detail
-      security:
-        - TokenAuth: []
+      summary: List station defects
       parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: priority, schema: { type: string } }
+        - { in: query, name: overdue, schema: { type: boolean } }
       responses:
         "200":
-          description: Detail
-  /uebergaben/{id}/status/:
+          description: Defect list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  count: { type: integer }
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/Defect" }
     post:
-      summary: German alias for status change
-      security:
-        - TokenAuth: []
+      summary: Create a defect
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DefectWrite" }
+      responses:
+        "201": { description: Defect created }
+        "422": { $ref: "#/components/responses/Error" }
+  /defects/{id}/:
+    get:
+      summary: Defect detail including events and attachment metadata
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Defect detail }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      summary: Update owner, due date, priority or descriptive fields
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DefectWrite" }
+      responses:
+        "200": { description: Defect updated }
+        "422": { $ref: "#/components/responses/Error" }
+  /defects/{id}/status/:
+    post:
+      summary: Change defect status; closing requires shift lead/admin
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [open, in_progress, waiting, done] }
+      responses:
+        "200": { description: Defect updated }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /defects/{id}/attachments/:
+    get:
+      summary: List image attachments for a defect
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Attachment metadata list }
+    post:
+      summary: Upload JPEG, PNG or WebP up to 2 MiB each; max 8 images and 12 MiB total per defect
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename, content_type, data_base64]
+              properties:
+                filename: { type: string, maxLength: 180 }
+                content_type: { type: string, enum: [image/jpeg, image/png, image/webp] }
+                data_base64: { type: string, format: byte }
+      responses:
+        "201": { description: Attachment created }
+        "409": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+        "415": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /attachments/{id}/:
+    get:
+      summary: Download an authenticated defect image
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Image bytes }
+        "404": { $ref: "#/components/responses/Error" }
+  /assets/:
+    get:
+      summary: Vehicle/device status board
+      responses:
+        "200": { description: Asset list }
+    post:
+      summary: Create an asset (shift lead/admin)
+      responses:
+        "201": { description: Asset created }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /assets/{asset_id}/status/:
+    post:
+      summary: Change asset status (shift lead/admin)
       parameters:
         - in: path
-          name: id
+          name: asset_id
           required: true
-          schema: { type: integer }
+          schema: { type: string }
       responses:
-        "200":
-          description: Updated
+        "200": { description: Asset updated }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /inventory/:
+    get:
+      summary: List keys and pooled devices
+      responses:
+        "200": { description: Inventory list }
+    post:
+      summary: Create inventory item (shift lead/admin)
+      responses:
+        "201": { description: Inventory item created }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /inventory/{item_id}/checkout/:
+    post:
+      summary: Check out an item to the current user
+      parameters:
+        - in: path
+          name: item_id
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Item state }
+        "409": { $ref: "#/components/responses/Error" }
+  /inventory/{item_id}/checkin/:
+    post:
+      summary: Return an item
+      parameters:
+        - in: path
+          name: item_id
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Item state }
+        "403": { $ref: "#/components/responses/Error" }
   /kalender/:
     get:
-      summary: Upcoming calendar events (module calendar)
-      security:
-        - TokenAuth: []
+      summary: Upcoming station calendar events
       responses:
-        "200":
-          description: Event list
-        "404":
-          description: Module disabled
+        "200": { description: Calendar list }
+        "404": { $ref: "#/components/responses/Error" }
     post:
-      summary: Create calendar event (shift lead / admin)
-      security:
-        - TokenAuth: []
+      summary: Create calendar event
       responses:
-        "201":
-          description: Created
+        "201": { description: Calendar event created }
   /kaffeekasse/:
     get:
       summary: Coffee ledger balance and recent entries
-      security:
-        - TokenAuth: []
       responses:
-        "200":
-          description: Balance and results
-        "404":
-          description: Module disabled
+        "200": { description: Coffee ledger }
+        "404": { $ref: "#/components/responses/Error" }
     post:
-      summary: Append coffee ledger entry (cashier / admin)
-      security:
-        - TokenAuth: []
+      summary: Append coffee ledger entry
       responses:
-        "201":
-          description: Created
+        "201": { description: Coffee entry created }
   /checklisten/:
     get:
-      summary: Active checklists for the station
-      security:
-        - TokenAuth: []
+      summary: Active checklists including recurring schedule state
       responses:
-        "200":
-          description: Checklist templates
-        "404":
-          description: Module disabled
+        "200": { description: Checklist list }
+        "404": { $ref: "#/components/responses/Error" }
   /checklisten/{id}/erledigt/:
     post:
-      summary: Mark checklist completed (append-only)
-      security:
-        - TokenAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
+      summary: Complete checklist and advance recurring due date
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
       responses:
-        "201":
-          description: Completion recorded
+        "201": { description: Completion recorded }
+  /checklisten/{id}/abschluss/:
+    post:
+      summary: Alias for /erledigt/
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "201": { description: Completion recorded }
+  /checklisten/{id}/schedule/:
+    get:
+      summary: Read recurring checklist schedule
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Schedule }
+    put:
+      summary: Set recurring checklist schedule (shift lead/admin)
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Schedule updated }
+    delete:
+      summary: Remove recurring schedule (shift lead/admin)
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Schedule removed }
+  /reports/:
+    get:
+      summary: Lightweight station Wachalltag report
+      responses:
+        "200": { description: Aggregated counts and readiness percentage }
 components:
   securitySchemes:
     TokenAuth:
@@ -221,3 +345,58 @@ components:
       in: header
       name: Authorization
       description: "Format: Token <secret> or Bearer <secret>"
+  parameters:
+    IntegerId:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer }
+  responses:
+    Error:
+      description: Canonical API error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [ok, error]
+      properties:
+        ok: { type: boolean, enum: [false] }
+        error:
+          type: object
+          required: [code, message, correlation_id]
+          properties:
+            code:
+              type: string
+              enum: [validation_error, auth_required, forbidden, mfa_required, mfa_setup_required, not_found, rate_limit, server_error]
+            message: { type: string }
+            correlation_id: { type: string }
+    Defect:
+      allOf:
+        - { $ref: "#/components/schemas/DefectWrite" }
+        - type: object
+          required: [id, status, created_at, updated_at]
+          properties:
+            id: { type: integer }
+            status: { type: string, enum: [open, in_progress, waiting, done] }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+            attachment_count: { type: integer }
+    DefectWrite:
+      type: object
+      properties:
+        title: { type: string, maxLength: 160 }
+        description: { type: string, maxLength: 3000 }
+        asset_ref: { type: string, maxLength: 160 }
+        priority: { type: string, enum: [normal, important, urgent] }
+        owner: { type: string, description: Username of an active station member }
+        due_at: { type: string, format: date-time, nullable: true }
+        category: { type: string, enum: [vehicle, material, safety, facility, key, device, task] }
+    HandoverAck:
+      type: object
+      required: [handover_id, by, at]
+      properties:
+        handover_id: { type: integer }
+        by: { type: string }
+        at: { type: string, format: date-time }
