@@ -8,7 +8,7 @@ info:
     Checklisten, Schlüssel-/Pool-Geräte, Quittierungen und leichte Auswertung.
     Patienten-, Einsatz-, Alarmierungs- und Vorgangsdaten sind ausdrücklich
     nicht Teil dieser API.
-  version: "1.2.0"
+  version: "1.2.1"
 servers:
   - url: /api/v1
     description: Relative to the Wachbuch origin
@@ -197,7 +197,7 @@ paths:
       responses:
         "200": { description: Attachment metadata list }
     post:
-      summary: Upload a JPEG, PNG or WebP image up to 2 MiB
+      summary: Upload JPEG, PNG or WebP up to 2 MiB each; max 8 images and 12 MiB total per defect
       parameters: [{$ref: "#/components/parameters/IntegerId"}]
       requestBody:
         required: true
@@ -212,6 +212,7 @@ paths:
                 data_base64: { type: string, format: byte }
       responses:
         "201": { description: Attachment created }
+        "409": { $ref: "#/components/responses/Error" }
         "413": { $ref: "#/components/responses/Error" }
         "415": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
@@ -368,7 +369,7 @@ components:
           properties:
             code:
               type: string
-              enum: [validation_error, auth_required, forbidden, mfa_required, not_found, rate_limit, server_error]
+              enum: [validation_error, auth_required, forbidden, mfa_required, mfa_setup_required, not_found, rate_limit, server_error]
             message: { type: string }
             correlation_id: { type: string }
     Defect:
