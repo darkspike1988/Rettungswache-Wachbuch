@@ -26,6 +26,7 @@ logger = logging.getLogger("wachbuch.errors")
 ERROR_CODE_VALIDATION = "validation_error"
 ERROR_CODE_AUTH_REQUIRED = "auth_required"
 ERROR_CODE_FORBIDDEN = "forbidden"
+ERROR_CODE_MFA_REQUIRED = "mfa_required"
 ERROR_CODE_NOT_FOUND = "not_found"
 ERROR_CODE_RATE_LIMIT = "rate_limit"
 ERROR_CODE_SERVER_ERROR = "server_error"
@@ -34,6 +35,10 @@ ERROR_CODES: dict[str, dict[str, Any]] = {
     ERROR_CODE_VALIDATION: {"status": 400, "label": "Ungueltige Anfrage."},
     ERROR_CODE_AUTH_REQUIRED: {"status": 401, "label": "Anmeldung erforderlich."},
     ERROR_CODE_FORBIDDEN: {"status": 403, "label": "Zugriff verweigert."},
+    ERROR_CODE_MFA_REQUIRED: {
+        "status": 403,
+        "label": "Fuer dieses Konto ist ein App-Token erforderlich.",
+    },
     ERROR_CODE_NOT_FOUND: {"status": 404, "label": "Nicht gefunden."},
     ERROR_CODE_RATE_LIMIT: {"status": 429, "label": "Zu viele Anfragen."},
     ERROR_CODE_SERVER_ERROR: {"status": 500, "label": "Serverfehler."},
@@ -153,6 +158,7 @@ __all__ = [
     "ERROR_CODE_VALIDATION",
     "ERROR_CODE_AUTH_REQUIRED",
     "ERROR_CODE_FORBIDDEN",
+    "ERROR_CODE_MFA_REQUIRED",
     "ERROR_CODE_NOT_FOUND",
     "ERROR_CODE_RATE_LIMIT",
     "ERROR_CODE_SERVER_ERROR",
