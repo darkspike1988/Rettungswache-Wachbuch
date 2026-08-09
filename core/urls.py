@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import account_views, community_views, secure_views, views, wachalltag_web
+from . import account_views, community_views, secure_views, views, wachalltag_media, wachalltag_web
 
 
 urlpatterns = [
@@ -15,6 +15,7 @@ urlpatterns = [
     path("maengel/", wachalltag_web.defects, name="defects_web"),
     path("maengel/neu/", wachalltag_web.defect_create, name="defect_create_web"),
     path("maengel/<int:pk>/", wachalltag_web.defect_detail, name="defect_detail_web"),
+    path("maengel/anhaenge/<int:pk>/", wachalltag_media.defect_attachment, name="defect_attachment_web"),
     path("geraete/", wachalltag_web.assets_inventory, name="assets_inventory_web"),
     path("checklisten/intervalle/", wachalltag_web.checklist_schedules, name="checklist_schedules_web"),
     path("auswertung/", wachalltag_web.reports, name="wachalltag_reports_web"),
