@@ -12,9 +12,11 @@ import base64
 import binascii
 import calendar
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
+from io import BytesIO
 from urllib.parse import quote
 
+from PIL import Image, UnidentifiedImageError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Sum
 from django.http import HttpResponse, JsonResponse
@@ -44,7 +46,13 @@ from . import views as base
 MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024
 MAX_ATTACHMENTS_PER_DEFECT = 8
 MAX_ATTACHMENT_TOTAL_BYTES = 12 * 1024 * 1024
+MAX_ATTACHMENT_PIXELS = 25_000_000
 ALLOWED_ATTACHMENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+EXPECTED_IMAGE_FORMAT = {
+    "image/jpeg": "JPEG",
+    "image/png": "PNG",
+    "image/webp": "WEBP",
+}
 
 
 def _payload(response):
@@ -106,7 +114,12 @@ def _member_user(station, value):
         return None
     username = str(value).strip()
     membership = (
-        Membership.objects.filter(station=station, user__username=username, is_active=True)
+        Membership.objects.filter(
+            station=station,
+            user__username=username,
+            user__is_active=True,
+            is_active=True,
+        )
         .select_related("user")
         .first()
     )
@@ -187,6 +200,23 @@ def _image_matches(data, content_type):
     if content_type == "image/webp":
         return len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP"
     return False
+
+
+def _image_is_decodable(data, content_type):
+    """Reject spoofed/corrupt or unreasonably large images before persistence."""
+    if not _image_matches(data, content_type):
+        return False
+    try:
+        with Image.open(BytesIO(data)) as image:
+            if image.format != EXPECTED_IMAGE_FORMAT.get(content_type):
+                return False
+            width, height = image.size
+            if width <= 0 or height <= 0 or width * height > MAX_ATTACHMENT_PIXELS:
+                return False
+            image.verify()
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        return False
+    return True
 
 
 # ---- Existing API wrappers -------------------------------------------------
@@ -310,14 +340,21 @@ def _next_month(value):
     return value.replace(year=year, month=month, day=day)
 
 
+def _step_schedule(value, interval):
+    if interval == ChecklistSchedule.Interval.DAILY:
+        return value + timedelta(days=1)
+    if interval == ChecklistSchedule.Interval.WEEKLY:
+        return value + timedelta(days=7)
+    return _next_month(value)
+
+
 def _advance_schedule(schedule):
-    base_due = schedule.due_next or timezone.now()
-    if schedule.interval == ChecklistSchedule.Interval.DAILY:
-        schedule.due_next = base_due + timedelta(days=1)
-    elif schedule.interval == ChecklistSchedule.Interval.WEEKLY:
-        schedule.due_next = base_due + timedelta(days=7)
-    else:
-        schedule.due_next = _next_month(base_due)
+    """Advance exactly along the configured cadence to the first future due."""
+    now = timezone.now()
+    next_due = _step_schedule(schedule.due_next or now, schedule.interval)
+    while next_due <= now:
+        next_due = _step_schedule(next_due, schedule.interval)
+    schedule.due_next = next_due
     schedule.save(update_fields=["due_next", "updated_at"])
 
 
@@ -732,8 +769,8 @@ def defect_attachments(request, pk):
         return base._json_error(request, "Bilddaten sind kein gueltiges Base64.", status=422)
     if not raw or len(raw) > MAX_ATTACHMENT_BYTES:
         return base._json_error(request, "Bild darf maximal 2 MiB gross sein.", status=413)
-    if not _image_matches(raw, content_type):
-        return base._json_error(request, "Dateiinhalt passt nicht zum Bildtyp.", status=415)
+    if not _image_is_decodable(raw, content_type):
+        return base._json_error(request, "Datei ist kein gueltiges oder unterstuetztes Bild.", status=415)
     with transaction.atomic():
         locked_defect = Defect.objects.select_for_update().filter(pk=pk, station=station).first()
         if locked_defect is None:
