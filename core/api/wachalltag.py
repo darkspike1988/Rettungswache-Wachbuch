@@ -724,7 +724,7 @@ def handover_acks(request, pk):
 @base.api_token_required
 def handover_ack(request, pk):
     station = request.membership.station
-    if (error := _scope(request, "read:handovers")) or (error := _content_role(request)):
+    if (error := _scope(request, "write:handovers")) or (error := _content_role(request)):
         return error
     handover = HandoverEntry.objects.filter(pk=pk, station=station).first()
     if handover is None:
