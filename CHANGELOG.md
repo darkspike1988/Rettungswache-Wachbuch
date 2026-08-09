@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Sicherheitshaertung R-021** – `obtain_token` verweigert API-Tokens, wenn
+  `MFA_REQUIRED=true` gilt und das Konto keine bestaetigte MFA hat
+  (Fehlercode `mfa_setup_required`); Push-Subscription-Endpoints werden vor dem
+  Speichern gegen eine HTTPS-Host-Allowlist geprueft (`PUSH_ALLOWED_ENDPOINT_HOSTS`,
+  SSRF-Schutz); IBAN-Kopie-Handler aus der Kaffeeseite in `app.js` verschoben,
+  damit `script-src 'self'` die Funktion nicht mehr blockiert; MFA-Fehlercodes
+  in der kanonischen Fehlertabelle registriert
 - **Muellkalender-ICS-Fallback (Roadmap Schritt 3)** – optionale, stationsspezifische
   Felder `waste_calendar_url` + `waste_calendar_enabled`; neues `WasteCollection`-Modell
   speichert die aus der ICS-Quelle importierten Abfuhrtermine; Management-Befehl

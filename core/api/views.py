@@ -236,13 +236,19 @@ def obtain_token(request):
     membership = get_membership(user)
     if membership is None:
         return _json_error(request, "Kein aktiver Wachenzugang.", status=403)
-    from ..mfa import user_has_confirmed_mfa
+    from ..mfa import mfa_required, user_has_confirmed_mfa
 
     if user_has_confirmed_mfa(user):
         return _json_error(request, 
             "Für dieses Konto ist MFA aktiv. Bitte ein App-Token unter /konto/api/ erzeugen.",
             status=403,
             code="mfa_required",
+        )
+    if mfa_required():
+        return _json_error(request,
+            "MFA ist verpflichtend. Bitte zuerst die Zwei-Faktor-Anmeldung unter /konto/mfa/ einrichten.",
+            status=403,
+            code="mfa_setup_required",
         )
     from axes.utils import reset as axes_reset
 

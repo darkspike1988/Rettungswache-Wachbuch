@@ -153,6 +153,7 @@ class ErrorHandlerRegressionTests(SimpleTestCase):
         self.assertEqual(set(ERROR_CODES), {
             "validation_error", "auth_required", "forbidden",
             "not_found", "rate_limit", "server_error",
+            "mfa_required", "mfa_setup_required",
         })
         self.assertEqual(ERROR_CODES["forbidden"]["status"], 403)
         self.assertEqual(ERROR_CODES["not_found"]["status"], 404)
@@ -160,6 +161,8 @@ class ErrorHandlerRegressionTests(SimpleTestCase):
         self.assertEqual(ERROR_CODES["validation_error"]["status"], 400)
         self.assertEqual(ERROR_CODES["auth_required"]["status"], 401)
         self.assertEqual(ERROR_CODES["server_error"]["status"], 500)
+        self.assertEqual(ERROR_CODES["mfa_required"]["status"], 403)
+        self.assertEqual(ERROR_CODES["mfa_setup_required"]["status"], 403)
 
     def test_api_path_returns_json_for_404(self):
         client = Client(HTTP_ACCEPT="application/json")

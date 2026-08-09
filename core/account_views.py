@@ -28,7 +28,7 @@ from .models import (
     PushSubscription,
     WebAuthnCredential,
 )
-from .push import vapid_public_key, web_push_enabled
+from .push import push_endpoint_allowed, vapid_public_key, web_push_enabled
 from .services import audit
 from .webauthn_auth import (
     authentication_options,
@@ -260,6 +260,11 @@ def push_settings(request):
         keys = body.get("keys") or {}
         if not endpoint or not keys.get("p256dh") or not keys.get("auth"):
             return JsonResponse({"ok": False, "error": "Unvollständige Subscription."}, status=400)
+        if not push_endpoint_allowed(str(endpoint)):
+            return JsonResponse(
+                {"ok": False, "error": "Push-Endpunkt ist nicht in der HTTPS-Allowlist."},
+                status=400,
+            )
         PushSubscription.objects.update_or_create(
             endpoint=endpoint[:500],
             defaults={

@@ -227,6 +227,19 @@ WEB_PUSH_ENABLED = env_bool("WEB_PUSH_ENABLED", default=False)
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "").strip()
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "").strip()
 VAPID_ADMIN_EMAIL = os.getenv("VAPID_ADMIN_EMAIL", "ops@localhost").strip() or "ops@localhost"
+# HTTPS host allowlist for browser push subscription endpoints (SSRF guard).
+# Entries match an exact host; entries starting with "." match that suffix
+# (subdomains included). Override via PUSH_ALLOWED_ENDPOINT_HOSTS; an empty
+# value keeps the built-in list of known browser push services.
+PUSH_ALLOWED_ENDPOINT_HOSTS = {
+    value.strip().lower()
+    for value in (
+        os.getenv("PUSH_ALLOWED_ENDPOINT_HOSTS", "").strip()
+        or "fcm.googleapis.com,push.googleapis.com,updates.push.services.mozilla.com,"
+        ".push.apple.com,.notify.windows.com,.notify.live.net"
+    ).split(",")
+    if value.strip()
+}
 
 # Essential auth cookies only. No analytics or advertising cookies are set.
 SESSION_COOKIE_NAME = "rwsth_session"
