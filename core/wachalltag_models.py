@@ -1,0 +1,307 @@
+"""Persistente Wachalltag-Modelle fuer die Mobile-/Web-API.
+
+Die Modelle halten die Produktgrenze bewusst ein: keine Patienten-, Einsatz-,
+Alarmierungs- oder Vorgangsdaten. Statusaenderungen und Bewegungen werden in
+append-only Ereignistabellen nachvollziehbar gemacht.
+"""
+
+from __future__ import annotations
+
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import Q
+
+from .models import Checklist, HandoverEntry, Station
+
+
+class Defect(models.Model):
+    class Priority(models.TextChoices):
+        NORMAL = "normal", "Normal"
+        IMPORTANT = "important", "Wichtig"
+        URGENT = "urgent", "Dringend"
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Offen"
+        IN_PROGRESS = "in_progress", "In Bearbeitung"
+        WAITING = "waiting", "Wartend"
+        DONE = "done", "Erledigt"
+
+    class Category(models.TextChoices):
+        VEHICLE = "vehicle", "Fahrzeug"
+        MATERIAL = "material", "Material"
+        SAFETY = "safety", "Sicherheit"
+        FACILITY = "facility", "Gebaeude"
+        KEY = "key", "Schluessel"
+        DEVICE = "device", "Geraet"
+        TASK = "task", "Aufgabe"
+
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="defects")
+    title = models.CharField(max_length=160)
+    description = models.TextField(max_length=3000, blank=True, default="")
+    asset_ref = models.CharField(max_length=160, blank=True, default="")
+    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.NORMAL)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="owned_station_defects",
+        null=True,
+        blank=True,
+    )
+    due_at = models.DateTimeField(null=True, blank=True)
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.TASK)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="created_station_defects",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["status", "-priority", "due_at", "-updated_at"]
+        indexes = [
+            models.Index(fields=["station", "status", "due_at"], name="defect_station_status_idx"),
+            models.Index(fields=["station", "priority"], name="defect_station_prio_idx"),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class DefectEvent(models.Model):
+    class Kind(models.TextChoices):
+        CREATED = "created", "Angelegt"
+        UPDATED = "updated", "Bearbeitet"
+        STATUS = "status", "Status"
+        ATTACHMENT = "attachment", "Anhang"
+
+    defect = models.ForeignKey(Defect, on_delete=models.PROTECT, related_name="events")
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="defect_events")
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    from_status = models.CharField(max_length=20, blank=True, default="")
+    to_status = models.CharField(max_length=20, blank=True, default="")
+    actor = models.ForeignKey(User, on_delete=models.PROTECT, related_name="defect_events")
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["station", "-created_at"], name="defect_event_station_idx")]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Mangel-Ereignisse duerfen nicht veraendert werden.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Mangel-Ereignisse duerfen nicht geloescht werden.")
+
+
+class StationAsset(models.Model):
+    class Kind(models.TextChoices):
+        VEHICLE = "vehicle", "Fahrzeug"
+        DEVICE = "device", "Geraet"
+        KEY = "key", "Schluessel"
+
+    class Status(models.TextChoices):
+        READY = "ready", "Einsatzklar"
+        LIMITED = "limited", "Eingeschraenkt"
+        OOB = "oob", "Ausser Betrieb"
+        WORKSHOP = "workshop", "Werkstatt"
+
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="station_assets")
+    asset_id = models.SlugField(max_length=64)
+    label = models.CharField(max_length=160)
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.DEVICE)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.READY)
+    note = models.CharField(max_length=300, blank=True, default="")
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="updated_station_assets",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["kind", "label"]
+        constraints = [
+            models.UniqueConstraint(fields=["station", "asset_id"], name="unique_station_asset_id"),
+        ]
+        indexes = [models.Index(fields=["station", "status"], name="asset_station_status_idx")]
+
+    def __str__(self):
+        return self.label
+
+
+class AssetEvent(models.Model):
+    asset = models.ForeignKey(StationAsset, on_delete=models.PROTECT, related_name="events")
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="asset_events")
+    from_status = models.CharField(max_length=20, blank=True, default="")
+    to_status = models.CharField(max_length=20)
+    note = models.CharField(max_length=300, blank=True, default="")
+    actor = models.ForeignKey(User, on_delete=models.PROTECT, related_name="asset_events")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Asset-Ereignisse duerfen nicht veraendert werden.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Asset-Ereignisse duerfen nicht geloescht werden.")
+
+
+class HandoverAck(models.Model):
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="handover_acks")
+    handover = models.ForeignKey(HandoverEntry, on_delete=models.PROTECT, related_name="acknowledgements")
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="handover_acknowledgements")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["handover", "user"], name="unique_handover_user_ack"),
+        ]
+        indexes = [models.Index(fields=["station", "handover"], name="ack_station_handover_idx")]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Quittierungen duerfen nicht veraendert werden.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Quittierungen duerfen nicht geloescht werden.")
+
+
+class InventoryItem(models.Model):
+    class Kind(models.TextChoices):
+        KEY = "key", "Schluessel"
+        DEVICE = "device", "Geraet"
+        VEHICLE = "vehicle", "Fahrzeug"
+
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="inventory_items")
+    item_id = models.SlugField(max_length=64)
+    label = models.CharField(max_length=160)
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.DEVICE)
+    holder = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="checked_out_station_items",
+        null=True,
+        blank=True,
+    )
+    checked_out_at = models.DateTimeField(null=True, blank=True)
+    note = models.CharField(max_length=300, blank=True, default="")
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="updated_inventory_items",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["kind", "label"]
+        constraints = [
+            models.UniqueConstraint(fields=["station", "item_id"], name="unique_station_inventory_id"),
+            models.CheckConstraint(
+                condition=(
+                    (Q(holder__isnull=True) & Q(checked_out_at__isnull=True))
+                    | (Q(holder__isnull=False) & Q(checked_out_at__isnull=False))
+                ),
+                name="inventory_holder_time_match",
+            ),
+        ]
+
+    def __str__(self):
+        return self.label
+
+
+class InventoryEvent(models.Model):
+    class Action(models.TextChoices):
+        CHECKOUT = "checkout", "Ausgabe"
+        CHECKIN = "checkin", "Rueckgabe"
+
+    item = models.ForeignKey(InventoryItem, on_delete=models.PROTECT, related_name="events")
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="inventory_events")
+    action = models.CharField(max_length=20, choices=Action.choices)
+    actor = models.ForeignKey(User, on_delete=models.PROTECT, related_name="inventory_events")
+    holder = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="inventory_event_holdings",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["station", "-created_at"], name="inventory_event_station_idx")]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Inventar-Ereignisse duerfen nicht veraendert werden.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Inventar-Ereignisse duerfen nicht geloescht werden.")
+
+
+class ChecklistSchedule(models.Model):
+    class Interval(models.TextChoices):
+        DAILY = "daily", "Taeglich"
+        WEEKLY = "weekly", "Woechentlich"
+        MONTHLY = "monthly", "Monatlich"
+
+    checklist = models.OneToOneField(Checklist, on_delete=models.PROTECT, related_name="schedule")
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="checklist_schedules")
+    interval = models.CharField(max_length=20, choices=Interval.choices)
+    due_next = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["due_next", "checklist_id"]
+
+    def clean(self):
+        super().clean()
+        if self.checklist_id and self.station_id and self.checklist.station_id != self.station_id:
+            raise ValidationError("Checklistenplan gehoert nicht zu dieser Wache.")
+
+
+class DefectAttachment(models.Model):
+    """Kleiner Bildanhang im DB-Backend; bewusst kein allgemeines Dateiarchiv."""
+
+    defect = models.ForeignKey(Defect, on_delete=models.PROTECT, related_name="attachments")
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="defect_attachments")
+    filename = models.CharField(max_length=180)
+    content_type = models.CharField(max_length=40)
+    data = models.BinaryField(editable=False)
+    size = models.PositiveIntegerField()
+    uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="defect_attachments")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [models.Index(fields=["station", "defect"], name="attachment_station_def_idx")]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Mangel-Anhaenge duerfen nicht veraendert werden.")
+        if self.defect_id and self.station_id and self.defect.station_id != self.station_id:
+            raise ValidationError("Anhang und Mangel muessen zur gleichen Wache gehoeren.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Mangel-Anhaenge duerfen nicht geloescht werden.")
