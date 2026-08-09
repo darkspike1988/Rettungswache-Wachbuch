@@ -15,6 +15,11 @@ from django.db.models import Q
 from .models import Checklist, HandoverEntry, Station
 
 
+def _require_same_station(parent, station_id, label):
+    if parent is not None and station_id and parent.station_id != station_id:
+        raise ValidationError(f"{label} und Wache muessen uebereinstimmen.")
+
+
 class Defect(models.Model):
     class Priority(models.TextChoices):
         NORMAL = "normal", "Normal"
@@ -94,6 +99,7 @@ class DefectEvent(models.Model):
     def save(self, *args, **kwargs):
         if self.pk:
             raise ValidationError("Mangel-Ereignisse duerfen nicht veraendert werden.")
+        _require_same_station(self.defect if self.defect_id else None, self.station_id, "Mangel-Ereignis")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -154,6 +160,7 @@ class AssetEvent(models.Model):
     def save(self, *args, **kwargs):
         if self.pk:
             raise ValidationError("Asset-Ereignisse duerfen nicht veraendert werden.")
+        _require_same_station(self.asset if self.asset_id else None, self.station_id, "Asset-Ereignis")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -176,6 +183,7 @@ class HandoverAck(models.Model):
     def save(self, *args, **kwargs):
         if self.pk:
             raise ValidationError("Quittierungen duerfen nicht veraendert werden.")
+        _require_same_station(self.handover if self.handover_id else None, self.station_id, "Quittierung")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -253,6 +261,7 @@ class InventoryEvent(models.Model):
     def save(self, *args, **kwargs):
         if self.pk:
             raise ValidationError("Inventar-Ereignisse duerfen nicht veraendert werden.")
+        _require_same_station(self.item if self.item_id else None, self.station_id, "Inventar-Ereignis")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -276,8 +285,11 @@ class ChecklistSchedule(models.Model):
 
     def clean(self):
         super().clean()
-        if self.checklist_id and self.station_id and self.checklist.station_id != self.station_id:
-            raise ValidationError("Checklistenplan gehoert nicht zu dieser Wache.")
+        _require_same_station(self.checklist if self.checklist_id else None, self.station_id, "Checklistenplan")
+
+    def save(self, *args, **kwargs):
+        _require_same_station(self.checklist if self.checklist_id else None, self.station_id, "Checklistenplan")
+        super().save(*args, **kwargs)
 
 
 class DefectAttachment(models.Model):
@@ -299,8 +311,7 @@ class DefectAttachment(models.Model):
     def save(self, *args, **kwargs):
         if self.pk:
             raise ValidationError("Mangel-Anhaenge duerfen nicht veraendert werden.")
-        if self.defect_id and self.station_id and self.defect.station_id != self.station_id:
-            raise ValidationError("Anhang und Mangel muessen zur gleichen Wache gehoeren.")
+        _require_same_station(self.defect if self.defect_id else None, self.station_id, "Anhang")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
