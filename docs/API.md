@@ -95,13 +95,14 @@ Mängel besitzen Titel, Beschreibung, Bezug zu Fahrzeug/Gerät, Priorität, Kate
 
 ### Fotos
 
-Mängelfotos sind authentifiziert und stationsisoliert. Erlaubt sind JPEG, PNG und WebP mit Magic-Byte-Prüfung. Grenzen:
+Mängelfotos sind authentifiziert und stationsisoliert. Erlaubt sind JPEG, PNG und WebP. Der Server prüft MIME/Format, Signatur und die tatsächliche Decodierbarkeit mit Pillow, bevor Daten persistiert werden. Grenzen:
 
 - maximal **2 MiB je Datei**
+- maximal **25 Megapixel je Bild**
 - maximal **8 Fotos je Mangel**
 - maximal **12 MiB Gesamtgröße je Mangel**
 
-Die Limits schützen insbesondere vor ungebremstem Datenbankwachstum. Fotos dürfen keine Patienten-/Einsatzdaten enthalten.
+Die Limits schützen vor manipulierten/defekten Dateien, Dekompressionsrisiken und ungebremstem Datenbankwachstum. Fotos dürfen keine Patienten-/Einsatzdaten enthalten.
 
 ### Assets und Inventar
 
@@ -109,7 +110,7 @@ Fahrzeuge/Geräte besitzen einen operationalen Status (`ready`, `limited`, `work
 
 ### Quittierungen und Checklisten
 
-Eine Übergabe kann pro Benutzer einmal quittiert werden. Wiederkehrende Checklisten unterstützen täglich, wöchentlich und monatlich und setzen nach erfolgreichem Abschluss die nächste Fälligkeit fort.
+Eine Übergabe kann pro Benutzer einmal quittiert werden. Wiederkehrende Checklisten unterstützen täglich, wöchentlich und monatlich. Nach Abschluss wird die konfigurierte Kadenz bis zur ersten Fälligkeit in der Zukunft fortgeschrieben; lange Rückstände bleiben dadurch nicht künstlich weiter überfällig.
 
 ### Reports
 
