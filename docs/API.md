@@ -1,17 +1,18 @@
 # API für Mobile- und Drittclients
 
-Stand: 2. August 2026 (Server ≥ **0.14.1**). Versionierte REST-API unter `/api/v1/` für den
-AGPL-Client ([Wachbuch-Client](https://github.com/darkspike1988/Wachbuch-Client)),
-angelehnt an Paperless-ngx und Nextcloud.
+Stand: 10. August 2026 · Server **0.16.x** · OpenAPI **1.2.1**.
 
-## Ziele
+Versionierte JSON-API unter `/api/v1/` für den AGPL-Client [Wachbuch-Client](https://github.com/darkspike1988/Wachbuch-Client) und kontrollierte Drittclients.
+
+## Grundsätze
 
 - selbst gehostete Clients ohne Browser-Session
 - stabile Verträge unter `/api/v1/`
-- **widerrufbare** App-Tokens (`wb_…`, Klartext nur einmal)
+- widerrufbare App-Tokens (`wb_…`, Klartext nur einmal)
 - stationsbezogene Rechte über die bestehende Mitgliedschaft
-- deutsche Alias-Pfade neben englischen Ressourcen
-- kein CSRF für Token-Auth (`Authorization`-Header)
+- Rollen- und Modulregeln werden serverseitig erzwungen
+- kanonische strukturierte JSON-Fehler mit Korrelations-ID
+- keine Patienten-, Einsatz-, Alarmierungs-, ePCR- oder Personalaktendaten
 
 ## Authentifizierung
 
@@ -19,84 +20,124 @@ angelehnt an Paperless-ngx und Nextcloud.
 Authorization: Token <geheim>
 ```
 
-oder:
-
-```http
-Authorization: Bearer <geheim>
-```
+`Bearer <geheim>` wird ebenfalls akzeptiert.
 
 ### Token erzeugen
 
-1. Im Web unter **Mein Konto → App-Tokens** (`/konto/api/`) erzeugen und kopieren
-2. Oder (ohne MFA am Konto) `POST /api/v1/token/` bzw. Alias `POST /api/v1/anmeldung/`:
+Bevorzugt wird ein App-Token unter **Mein Konto → App-Tokens** (`/konto/api/`). Alternativ steht `POST /api/v1/token/` beziehungsweise `/api/v1/anmeldung/` zur Verfügung.
 
 ```json
 { "username": "user@example.org", "password": "…", "label": "Android App" }
 ```
 
-Antwort enthält `token` **einmal** sowie `expires_at` / `expires_in` (Standard: **90 Tage**).
-Bei aktivem MFA muss der Weg über `/konto/api/` genutzt werden. Standard-Scopes
-umfassen Lesen und Schreiben der Mobile-Ressourcen (Rollenregeln bleiben zusätzlich
-serverseitig erzwungen). `/me/` und `/uebersicht/` brauchen `read:me`.
+Die Antwort enthält das Token einmalig. Bei Konten mit verpflichtender MFA erzwingt der Server die MFA-Regeln auch am Token-Endpunkt. Relevante Fehlercodes sind `mfa_required` und `mfa_setup_required`; der Client darf diese nicht als generischen Serverfehler behandeln.
 
-### Widerruf
+Passwortwechsel oder expliziter Widerruf deaktivieren aktive App-Tokens entsprechend den Serverregeln.
 
-Unter `/konto/api/` oder durch Deaktivieren des Tokens. **Passwortwechsel widerruft
-alle aktiven App-Tokens** des Kontos automatisch.
+## Kanonischer Fehlervertrag
 
-## Endpunkte (v1)
+Fehlerantworten verwenden:
 
-| Methode | Pfad | Auth | Beschreibung |
-| --- | --- | --- | --- |
-| GET | `/api/v1/` | nein | Discovery |
-| GET | `/api/v1/openapi.yaml` | nein | OpenAPI 3 Schema |
-| POST | `/api/v1/token/` | nein | Token gegen Benutzer/Passwort |
-| POST | `/api/v1/anmeldung/` | nein | Alias von `token/` |
-| GET | `/api/v1/status/` | optional | Auth-/Mitgliedschaftsstatus |
-| GET | `/api/v1/me/` | Token | Nutzer, Rolle, Station, Module |
-| GET | `/api/v1/uebersicht/` | Token | Dashboard-Kurzfassung |
-| GET/POST | `/api/v1/handovers/` | Token + Scope | Liste / Übergabe anlegen |
-| GET | `/api/v1/handovers/<id>/` | Token + Scope | Detail |
-| POST | `/api/v1/handovers/<id>/status/` | Token + Scope | Status (Schichtleitung/Admin) |
-| GET/POST | `/api/v1/uebergaben/` … | Token + Scope | Deutsche Aliase zu `handovers/` |
-| GET/POST | `/api/v1/kalender/` | Token + Scope | Termine (Modul) |
-| GET/POST | `/api/v1/kaffeekasse/` | Token + Scope | Kasse lesen / buchen (Modul) |
-| GET | `/api/v1/checklisten/` | Token + Scope | Checklisten (Modul) |
-| POST | `/api/v1/checklisten/<id>/erledigt/` | Token + Scope | Abschluss (append-only) |
-| POST | `/api/v1/checklisten/<id>/abschluss/` | Token + Scope | Alias von `/erledigt/` (Wachbuch-Client) |
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "validation_error",
+    "message": "…",
+    "correlation_id": "…"
+  }
+}
+```
 
-### Scopes
+Kanonische Codes: `validation_error`, `auth_required`, `forbidden`, `mfa_required`, `mfa_setup_required`, `not_found`, `rate_limit`, `server_error`.
 
-Standard-Tokens (Passwort-Austausch und `/konto/api/`):
+## Endpunkte v1
 
-`read:me`, `read:handovers`, `write:handovers`, `read:calendar`, `write:calendar`,
-`read:coffee`, `write:coffee`, `read:checklists`, `write:checklists`
+| Methode | Pfad | Zweck |
+| --- | --- | --- |
+| GET | `/api/v1/` | Discovery + Capabilities |
+| GET | `/api/v1/openapi.yaml` | OpenAPI-Schema |
+| POST | `/api/v1/token/`, `/anmeldung/` | App-Token gegen Login, MFA-Regeln gelten |
+| GET | `/api/v1/status/` | Auth-/Mitgliedschaftsstatus |
+| GET | `/api/v1/me/` | Nutzer, Rolle, Station, Module |
+| GET | `/api/v1/uebersicht/` | Dashboard + Wachalltag-Zähler |
+| GET/POST | `/api/v1/handovers/` | Übergaben lesen/anlegen |
+| GET | `/api/v1/handovers/<id>/` | Übergabe-Detail |
+| POST | `/api/v1/handovers/<id>/status/` | Übergabestatus |
+| GET/POST | `/api/v1/uebergaben/` … | Deutsche Handovers-Aliase |
+| GET | `/api/v1/handovers/<id>/acks/` | Quittierungen lesen |
+| POST | `/api/v1/handovers/<id>/ack/` | Pro Benutzer idempotent quittieren |
+| GET/POST | `/api/v1/defects/` | Mängel lesen/anlegen |
+| GET/PATCH | `/api/v1/defects/<id>/` | Mangel + Verlauf/Fotos lesen bzw. Metadaten ändern |
+| POST | `/api/v1/defects/<id>/status/` | Mangelstatus ändern |
+| GET/POST | `/api/v1/defects/<id>/attachments/` | Mängelfotos lesen/hochladen |
+| GET | `/api/v1/attachments/<id>/` | Authentifiziertes Foto herunterladen |
+| GET/POST | `/api/v1/assets/` | Fahrzeug-/Gerätestatus und Stammdaten |
+| POST | `/api/v1/assets/<asset_id>/status/` | Status/Notiz ändern |
+| GET/POST | `/api/v1/inventory/` | Schlüssel-/Poolgeräte |
+| POST | `/api/v1/inventory/<item_id>/checkout/` | Ausgeben |
+| POST | `/api/v1/inventory/<item_id>/checkin/` | Zurückgeben |
+| GET/POST | `/api/v1/kalender/` | Termine |
+| GET/POST | `/api/v1/kaffeekasse/` | Kasse |
+| GET | `/api/v1/checklisten/` | Checklisten + Fälligkeit |
+| POST | `/api/v1/checklisten/<id>/erledigt/` | Abschluss |
+| POST | `/api/v1/checklisten/<id>/abschluss/` | Client-Alias des Abschlusses |
+| GET/PUT/DELETE | `/api/v1/checklisten/<id>/schedule/` | tägliche/wöchentliche/monatliche Wiederholung |
+| GET | `/api/v1/reports/` | leichte Stationsauswertung |
 
-Zusätzlich gelten dieselben Rollen- und Modulschalter wie in der Web-UI
-(z. B. Kasse nur Kassierer/Admin; deaktiviertes Modul → `404`).
+Die vollständige, maschinenlesbare Beschreibung ist `core/api/openapi_v1.yaml` und wird unter `/api/v1/openapi.yaml` ausgeliefert.
 
-## Mobile-Client
+## Wachalltag-Datenmodell
 
-1. Discovery `GET /api/v1/`
-2. Login `POST /api/v1/token/` oder vorgefertigtes App-Token
-3. Profil `GET /api/v1/me/` bzw. Übersicht `GET /api/v1/uebersicht/`
-4. Fachdaten über englische oder deutsche Pfade
+### Mängel
 
-Offizielle App: https://github.com/darkspike1988/Wachbuch-Client  
-Spiegel: `clients/wachbuch-mobile/` – siehe [`CLIENT.md`](CLIENT.md)
+Mängel besitzen Titel, Beschreibung, Bezug zu Fahrzeug/Gerät, Priorität, Kategorie, Zuständigkeit, Frist und Status. Änderungen erzeugen stationsbezogene Ereignisse/Audit-Einträge. Ein identischer Statuswechsel erzeugt keinen zweiten Status-Event.
 
-## Nicht im API-Scope
+### Fotos
 
-- Patienten-/Einsatz-/Alarmdaten
-- Klartext von E2EE-Chats oder Post
-- Django-Admin oder Master-Admin-Sonderrechte über die API umgehen
+Mängelfotos sind authentifiziert und stationsisoliert. Erlaubt sind JPEG, PNG und WebP mit Magic-Byte-Prüfung. Grenzen:
+
+- maximal **2 MiB je Datei**
+- maximal **8 Fotos je Mangel**
+- maximal **12 MiB Gesamtgröße je Mangel**
+
+Die Limits schützen insbesondere vor ungebremstem Datenbankwachstum. Fotos dürfen keine Patienten-/Einsatzdaten enthalten.
+
+### Assets und Inventar
+
+Fahrzeuge/Geräte besitzen einen operationalen Status (`ready`, `limited`, `workshop`, `oob`) mit Ereignisverlauf. Schlüssel und Poolgeräte werden transaktional ausgegeben/zurückgenommen; eine bestehende Ausgabe wird nicht still überschrieben.
+
+### Quittierungen und Checklisten
+
+Eine Übergabe kann pro Benutzer einmal quittiert werden. Wiederkehrende Checklisten unterstützen täglich, wöchentlich und monatlich und setzen nach erfolgreichem Abschluss die nächste Fälligkeit fort.
+
+### Reports
+
+`/reports/` liefert nur leichte Stationsorganisation: offene/überfällige Mängel, überfällige Checks, Asset-Einsatzklarquote, ausgegebene Pools und unquittierte aktive Übergaben. Die Auswertung ist nicht für individuelle Leistungsbewertung vorgesehen.
+
+## Scopes
+
+Bestehende Scopes bleiben bewusst kompatibel:
+
+`read:me`, `read:handovers`, `write:handovers`, `read:calendar`, `write:calendar`, `read:coffee`, `write:coffee`, `read:checklists`, `write:checklists`.
+
+Wachalltag-Ressourcen nutzen aktuell die passenden Handovers-/Checklists-Scopes plus Rollen- und Stationsprüfung. Ein Scope ersetzt niemals die fachliche Rollenprüfung.
+
+## Retry-Regeln für Clients
+
+Clients dürfen GETs sowie nachweislich idempotente Operationen erneut senden. Nicht-idempotente Mutationen wie Token-Erzeugung, Mangelanlage, Foto-Upload, Asset-/Inventar-Stammdaten oder Checklistenabschluss dürfen bei verlorener Antwort **nicht automatisch wiederholt** werden. Checkout/Checkin, identische Statussetzung und Quittierung besitzen serverseitige Idempotenz-/Zustandsregeln.
+
+## Offline-Lesen
+
+Der offizielle Client darf erfolgreiche GET-Antworten verschlüsselt und an Server+Token gebunden zwischenspeichern. Cache-Fallback ist nur bei echten Netzwerkfehlern zulässig. `401`/`403` dürfen niemals durch alte Offline-Daten verdeckt werden.
 
 ## Betrieb
 
-- TLS vor dem Loopback-Port (wie Web)
+- TLS vor dem App-Port
 - Authorization-Header nicht loggen
-- Rate-Limits für `/api/v1/token/` folgen dem Login-Schutz (Axes)
-- `/healthz/` bleibt ausserhalb der Produkt-API
+- Korrelations-ID für Support/Fehleranalyse verwenden
+- Push-Endpunkte folgen der serverseitigen HTTPS-/Port-/Host-Allowlist
+- `/healthz/` bleibt außerhalb der Produkt-API
+- Backup/Restore vor Pilot-/Produktivbetrieb testen
 
-Siehe auch [`ARCHITECTURE.md`](ARCHITECTURE.md), [`ROADMAP.md`](ROADMAP.md),
-[`ASVS-L2.md`](ASVS-L2.md).
+Siehe auch [`CLIENT.md`](CLIENT.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`ASVS-L2.md`](ASVS-L2.md) und `core/api/openapi_v1.yaml`.
