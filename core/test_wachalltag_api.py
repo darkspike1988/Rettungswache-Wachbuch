@@ -62,6 +62,7 @@ class WachalltagApiTests(TestCase):
         self.assertEqual(payload["error"]["code"], "auth_required")
         self.assertTrue(payload["error"]["correlation_id"])
         self.assertEqual(build_error_payload("mfa_required")["error"]["code"], "mfa_required")
+        self.assertEqual(build_error_payload("mfa_setup_required")["error"]["code"], "mfa_setup_required")
 
     def test_discovery_and_me_advertise_real_capabilities(self):
         discovery = self.client.get("/api/v1/").json()
@@ -155,12 +156,12 @@ class WachalltagApiTests(TestCase):
     def test_recurring_checklist_is_returned_and_advanced(self):
         checklist = Checklist.objects.create(station=self.station, title="Fahrzeugcheck")
         due = timezone.now() - timedelta(hours=1)
-        schedule = self._json(
+        schedule_response = self._json(
             "put",
             f"/api/v1/checklisten/{checklist.pk}/schedule/",
             {"interval": "daily", "due_next": due.isoformat()},
         )
-        self.assertEqual(schedule.status_code, 200)
+        self.assertEqual(schedule_response.status_code, 200)
         listed = self.client.get("/api/v1/checklisten/", **self.auth).json()["results"]
         row = next(item for item in listed if item["id"] == checklist.pk)
         self.assertEqual(row["interval"], "daily")
@@ -168,7 +169,7 @@ class WachalltagApiTests(TestCase):
 
         complete = self._json("post", f"/api/v1/checklisten/{checklist.pk}/abschluss/")
         self.assertEqual(complete.status_code, 201)
-        schedule.refresh_from_db()
+        schedule = ChecklistSchedule.objects.get(checklist=checklist)
         self.assertGreater(schedule.due_next, due)
         self.assertEqual(complete.json()["interval"], "daily")
 
