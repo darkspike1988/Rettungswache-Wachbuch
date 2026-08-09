@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Auswertung | {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-heading">
+  <p class="context-line">Wachalltag</p><h1>Auswertung</h1>
+  <p class="lead">Leichte Betriebsübersicht ohne Leistungsbewertung einzelner Beschäftigter.</p>
+</header>
+<section class="dashboard-grid">
+  <article class="metric-card"><span>Offene Mängel</span><strong>{{ open_defects }}</strong><small>{{ overdue_defects }} überfällig</small></article>
+  <article class="metric-card"><span>Überfällige Checks</span><strong>{{ overdue_checks }}</strong><small>Wiederkehrende Checklisten</small></article>
+  <article class="metric-card"><span>Assets einsatzklar</span><strong>{{ asset_ready_percent }}%</strong><small>{{ assets_ready }} von {{ assets_total }}</small></article>
+  <article class="metric-card"><span>Poolgeräte ausgegeben</span><strong>{{ inventory_out }}</strong><small>Schlüssel / Geräte</small></article>
+  <article class="metric-card"><span>Meine Quittierungen</span><strong>{{ acks_by_me }}</strong><small>Übergaben bestätigt</small></article>
+</section>
+<section class="section-block">
+  <h2>Datenschutzgrenze</h2>
+  <p>Die Auswertung zeigt Stationszustände und offene Arbeit. Sie ist nicht für individuelle Leistungsprofile, Patienten- oder Einsatzstatistik vorgesehen.</p>
+</section>
+{% endblock %}
