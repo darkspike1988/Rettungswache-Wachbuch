@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.core.exceptions import ValidationError
+from django.forms.models import BaseInlineFormSet
 
 from .models import (
     AuditEvent,
@@ -35,8 +37,28 @@ class ReadOnlyAdmin(admin.ModelAdmin):
         return False
 
 
+class DataProtectionOfficerInlineFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+        active_primary = 0
+        for form in self.forms:
+            if not hasattr(form, "cleaned_data") or not form.cleaned_data:
+                continue
+            if form.cleaned_data.get("DELETE"):
+                continue
+            if form.cleaned_data.get("is_active") and form.cleaned_data.get("is_primary"):
+                active_primary += 1
+        if active_primary > 1:
+            raise ValidationError(
+                "Pro Wache darf nur ein aktiver Datenschutz-Hauptkontakt hinterlegt sein."
+            )
+
+
 class DataProtectionOfficerInline(admin.StackedInline):
     model = DataProtectionOfficer
+    formset = DataProtectionOfficerInlineFormSet
     extra = 0
     fields = (
         "display_name",
