@@ -210,10 +210,20 @@ class WachalltagApiTests(TestCase):
             },
         )
         self.assertEqual(upload.status_code, 201)
-        attachment_id = upload.json()["id"]
+        payload = upload.json()
+        self.assertEqual(payload["content_type"], "image/jpeg")
+        self.assertTrue(payload["filename"].endswith(".jpg"))
+        self.assertLessEqual(payload["size"], 2 * 1024 * 1024)
+        attachment_id = payload["id"]
         download = self.client.get(f"/api/v1/attachments/{attachment_id}/", **self.auth)
         self.assertEqual(download.status_code, 200)
-        self.assertEqual(download.content, jpeg)
+        self.assertEqual(download["Content-Type"], "image/jpeg")
+        self.assertNotEqual(download.content, jpeg)
+        with Image.open(BytesIO(download.content)) as sanitized:
+            sanitized.load()
+            self.assertEqual(sanitized.format, "JPEG")
+            self.assertEqual(sanitized.size, (4, 4))
+            self.assertEqual(len(sanitized.getexif()), 0)
 
         bad = self._json(
             "post",
