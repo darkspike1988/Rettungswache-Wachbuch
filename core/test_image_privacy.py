@@ -2,9 +2,11 @@ from io import BytesIO
 
 from PIL import Image
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
-from .models import Station
+from .image_privacy import sanitize_defect_image
+from .models import Membership, Station
 from .wachalltag_models import Defect, DefectAttachment
 
 
@@ -77,3 +79,66 @@ class DefectImagePrivacyTests(TestCase):
         with Image.open(BytesIO(bytes(item.data))) as image:
             self.assertEqual(image.mode, "RGB")
             self.assertEqual(len(image.getexif()), 0)
+
+
+class SanitizeDecompressionBombTests(TestCase):
+    def test_bomb_is_mapped_to_value_error(self):
+        source = Image.new("RGB", (48, 32), "red")
+        output = BytesIO()
+        source.save(output, format="JPEG", quality=92)
+        raw = output.getvalue()
+
+        original_limit = Image.MAX_IMAGE_PIXELS
+        Image.MAX_IMAGE_PIXELS = 500
+        self.addCleanup(lambda: setattr(Image, "MAX_IMAGE_PIXELS", original_limit))
+
+        with self.assertRaises(ValueError):
+            sanitize_defect_image(raw)
+
+
+class DefectWebUploadPrivacyTests(TestCase):
+    def setUp(self):
+        self.station = Station.objects.create(name="Wache Web", slug="wache-web")
+        self.user = User.objects.create_user(username="webupload", password="web-password")
+        Membership.objects.create(
+            user=self.user,
+            station=self.station,
+            role=Membership.Role.MEMBER,
+        )
+        self.defect = Defect.objects.create(
+            station=self.station,
+            title="Webmangel",
+            created_by=self.user,
+        )
+        self.client.force_login(self.user)
+        self.url = f"/maengel/{self.defect.pk}/"
+
+    def test_corrupt_image_is_rejected_with_friendly_error(self):
+        corrupt = b"\xff\xd8\xff" + b"not-a-real-jpeg" * 32
+        upload = SimpleUploadedFile("kaputt.jpg", corrupt, content_type="image/jpeg")
+
+        response = self.client.post(self.url, {"action": "upload", "attachment": upload})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Datei ist kein gültiges oder unterstütztes Bild.")
+        self.assertEqual(DefectAttachment.objects.count(), 0)
+
+    def test_web_upload_strips_exif_like_api(self):
+        source = Image.new("RGB", (48, 32), "blue")
+        exif = Image.Exif()
+        exif[0x010E] = "SECRET-WEB-DESCRIPTION"
+        output = BytesIO()
+        source.save(output, format="JPEG", quality=92, exif=exif)
+        raw = output.getvalue()
+        upload = SimpleUploadedFile("webfoto.jpg", raw, content_type="image/jpeg")
+
+        response = self.client.post(self.url, {"action": "upload", "attachment": upload})
+
+        self.assertEqual(response.status_code, 302)
+        item = DefectAttachment.objects.get()
+        self.assertEqual(item.content_type, "image/jpeg")
+        self.assertEqual(item.filename, "webfoto.jpg")
+        with Image.open(BytesIO(bytes(item.data))) as image:
+            self.assertEqual(image.format, "JPEG")
+            self.assertEqual(len(image.getexif()), 0)
+            self.assertNotIn("SECRET-WEB-DESCRIPTION", repr(image.info))

@@ -32,7 +32,7 @@ def sanitize_defect_image(raw: bytes) -> bytes:
                 rgb.paste(rgba, mask=rgba.getchannel("A"))
             else:
                 rgb = oriented.convert("RGB")
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as exc:
         raise ValueError("Bild konnte für den Datenschutz nicht neu codiert werden.") from exc
 
     # Fresh pixel-only image: no EXIF/GPS/XMP/text/ICC objects are copied.
