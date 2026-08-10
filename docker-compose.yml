@@ -38,6 +38,23 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  redis:
+    image: redis:7.4-alpine@sha256:5c4b3516a8208638958324421154989b1972655200033f5386783a71701877
+    restart: unless-stopped
+    logging: *default-logging
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-db
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
   migrate:
     build: .
     image: rettungswache-wachbuch:local
@@ -63,8 +80,11 @@ services:
       DEMO_PASSWORD: ${DEMO_PASSWORD:-Demo-Passwort-12345}
       MFA_ENABLED: ${MFA_ENABLED:-true}
       MFA_REQUIRED: ${MFA_REQUIRED:-false}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - app-db
@@ -111,6 +131,7 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_ADMIN_EMAIL: ${VAPID_ADMIN_EMAIL:-ops@localhost}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -147,6 +168,7 @@ services:
       DB_PASSWORD: ${FEED_DB_PASSWORD}
       ALLOWED_HOSTS: localhost
       FEED_ALLOWED_HOSTS: ${FEED_ALLOWED_HOSTS:-}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       web:
         condition: service_healthy
@@ -178,6 +200,7 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_ADMIN_EMAIL: ${VAPID_ADMIN_EMAIL:-ops@localhost}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       web:
         condition: service_healthy
@@ -245,3 +268,4 @@ networks:
 
 volumes:
   postgres-data:
+  redis-data:
