@@ -18,6 +18,7 @@ from .models import (
     StationTaskCompletion,
     WasteCollection,
 )
+from .privacy_models import DataProtectionOfficer
 
 
 class ReadOnlyAdmin(admin.ModelAdmin):
@@ -32,6 +33,25 @@ class ReadOnlyAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class DataProtectionOfficerInline(admin.StackedInline):
+    model = DataProtectionOfficer
+    extra = 0
+    fields = (
+        "display_name",
+        "organization",
+        "email",
+        "phone",
+        "postal_address",
+        "is_external",
+        "is_primary",
+        "is_active",
+        "publish_in_privacy_notice",
+        "internal_notes",
+    )
+    verbose_name = "Datenschutzbeauftragte/r"
+    verbose_name_plural = "Datenschutzbeauftragte / Datenschutzkontakte"
 
 
 @admin.register(Station)
@@ -49,9 +69,62 @@ class StationAdmin(admin.ModelAdmin):
         "waste_calendar_enabled",
     )
     list_filter = ("is_active",)
+    inlines = [DataProtectionOfficerInline]
 
     def get_readonly_fields(self, request, obj=None):
         return ("slug",) if obj else ()
+
+
+@admin.register(DataProtectionOfficer)
+class DataProtectionOfficerAdmin(admin.ModelAdmin):
+    list_display = (
+        "display_name",
+        "station",
+        "organization",
+        "email",
+        "is_external",
+        "is_primary",
+        "is_active",
+        "publish_in_privacy_notice",
+        "updated_at",
+    )
+    list_filter = (
+        "station",
+        "is_external",
+        "is_primary",
+        "is_active",
+        "publish_in_privacy_notice",
+    )
+    search_fields = ("display_name", "organization", "email", "phone")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            "Zuordnung",
+            {"fields": ("station", "display_name", "organization", "is_external")},
+        ),
+        (
+            "Kontakt",
+            {"fields": ("email", "phone", "postal_address")},
+        ),
+        (
+            "Veröffentlichung",
+            {
+                "fields": (
+                    "is_primary",
+                    "is_active",
+                    "publish_in_privacy_notice",
+                ),
+                "description": (
+                    "Nur als veröffentlichbar markierte aktive Datensätze erscheinen auf "
+                    "der öffentlichen Datenschutzseite. Interne Notizen werden nie ausgegeben."
+                ),
+            },
+        ),
+        (
+            "Intern",
+            {"fields": ("internal_notes", "created_at", "updated_at")},
+        ),
+    )
 
 
 @admin.register(Membership)
