@@ -52,6 +52,51 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",
 ]
 
+# ============================================================================
+# REDIS CACHING CONFIGURATION
+# ============================================================================
+# Enable Redis caching by setting REDIS_URL in your environment
+# Example: REDIS_URL=redis://redis:6379/0
+# ============================================================================
+REDIS_URL = os.getenv("REDIS_URL", "")
+
+if REDIS_URL:
+    # Redis cache backend configuration
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "CONNECTION_POOL_KWARGS": {
+                    "max_connections": 100,
+                    "retry_on_timeout": True,
+                },
+                "HEALTH_CHECK_INTERVAL": 30,  # Check connection every 30s
+            },
+            "KEY_PREFIX": "wachbuch",
+            "TIMEOUT": 300,  # Default cache timeout: 5 minutes
+        }
+    }
+    
+    # Use cached_db for sessions (writes go to DB, reads come from cache)
+    SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+    SESSION_CACHE_ALIAS = "default"
+    
+    # Cache timeouts for specific views (in seconds)
+    # These can be used with @cache_page decorator
+    CACHE_TIMEOUTS = {
+        "handovers_list": 60,      # 1 minute for handover lists
+        "calendar_events": 120,    # 2 minutes for calendar
+        "station_tasks": 300,      # 5 minutes for tasks
+        "dashboard": 30,           # 30 seconds for dashboard
+    }
+else:
+    # Fallback to database-backed sessions when Redis is not available
+    SESSION_ENGINE = "django.contrib.sessions.backends.db"
+
+# ============================================================================
+
 # Strukturierte Logs: Korrelations-ID ohne personenbezogene Nutzdaten.
 LOGGING = {
     "version": 1,

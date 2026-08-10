@@ -1,14 +1,38 @@
 version: 2
 updates:
-  - package-ecosystem: pip
-    directory: /
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
     schedule:
-      interval: weekly
-  - package-ecosystem: github-actions
-    directory: /
+      interval: "daily"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "security"
+    reviewers:
+      - "darkspike1988"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      django:
+        patterns:
+          - "Django"
+          - "django-*"
+        update-types: ["minor", "patch"]
+      security:
+        patterns:
+          - "*"
+        update-types: ["security"]
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/"
     schedule:
-      interval: weekly
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: weekly
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
