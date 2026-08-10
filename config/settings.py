@@ -171,6 +171,13 @@ STORAGES = {
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Defect photos are transported as base64 inside JSON. A 2 MiB binary image
+# expands to roughly 2.67 MiB before the small JSON envelope is added, so the
+# request-body ceiling must sit above the binary domain limit.
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.getenv("DATA_UPLOAD_MAX_MEMORY_SIZE", str(3 * 1024 * 1024))
+)
+
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "landing"
 LOGOUT_REDIRECT_URL = "landing"

@@ -5,6 +5,9 @@ from core.api.wachalltag import MAX_ATTACHMENT_BYTES
 
 
 class WachalltagUploadLimitTests(SimpleTestCase):
+    def test_photo_binary_limit_remains_two_mib(self):
+        self.assertEqual(MAX_ATTACHMENT_BYTES, 2 * 1024 * 1024)
+
     def test_django_request_limit_can_carry_maximum_base64_photo(self):
         # Base64 expands binary data to 4/3 plus JSON field/header overhead.
         encoded = 4 * ((MAX_ATTACHMENT_BYTES + 2) // 3)
@@ -15,5 +18,5 @@ class WachalltagUploadLimitTests(SimpleTestCase):
             configured,
             required,
             'DATA_UPLOAD_MAX_MEMORY_SIZE is smaller than the documented '
-            '2 MiB base64 photo request.',
+            '2 MiB defect-photo request including base64/JSON overhead.',
         )
