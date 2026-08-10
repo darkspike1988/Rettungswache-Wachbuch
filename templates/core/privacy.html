@@ -3,32 +3,64 @@
 {% block content %}
 <header class="page-heading narrow">
   <p class="context-line">Rechtliche Hinweise</p>
-  <h1>Datenschutz, Cookies und KI</h1>
-  <p class="lead">Technische Produktinformation für Betreiber und Nutzer. Keine Rechtsberatung und kein Ersatz für die Betroffeneninformation der verantwortlichen Stelle.</p>
+  <h1>Datenschutz, Cookies und Informationssicherheit</h1>
+  <p class="lead">Technische Produktinformation für Betreiber und Nutzer. Der konkrete Betreiber muss diese Angaben um seine vollständige Betroffeneninformation nach Art. 13/14 DSGVO ergänzen.</p>
 </header>
 
 <section class="content-flow narrow prose">
-  <h2>Zweck der Anwendung</h2>
-  <p>Das Wachbuch unterstützt die interne Organisation einer Rettungswache (Übergaben, Termine, optionale Tagesaufgaben, Kaffeekasse, Teamrollen, Audit). Patienten-, Einsatz- und Alarmierungsdaten gehören nicht hinein.</p>
+  <h2>Verantwortung und Zweck der Anwendung</h2>
+  <p>Wachbuch ist eine selbst gehostete Organisationsanwendung. Verantwortlicher im Sinne der DSGVO ist grundsätzlich die Stelle, die den jeweiligen Wachbuch-Server für ihre Organisation betreibt und über Zwecke und Mittel der Verarbeitung entscheidet. Der Betreiber muss insbesondere seine Identität, Kontaktdaten, Rechtsgrundlagen, Empfänger, Aufbewahrungsfristen und Betroffenenrechte in einer eigenen Betroffeneninformation festlegen.</p>
+  <p>Das Wachbuch unterstützt die interne Organisation einer Wache, insbesondere Übergaben, Termine, Aufgaben, Checklisten, Mängel, Geräte-/Fahrzeugstatus, Inventar, Teamrollen und Audit. Patienten-, Einsatz-, Alarmierungs-, ePCR- und vergleichbare medizinische Fachdaten gehören ausdrücklich nicht in diese Anwendung.</p>
+
+  <h2>Datenschutzbeauftragte / Datenschutzkontakte</h2>
+  {% if public_data_protection_officers %}
+    <p>Folgende Kontakte wurden durch die jeweiligen Betreiber im Administrationsbereich zur Veröffentlichung hinterlegt:</p>
+    <div class="content-flow">
+      {% for contact in public_data_protection_officers %}
+        <article class="card">
+          <h3>{{ contact.display_name }}</h3>
+          <p><strong>{{ contact.station.name }}</strong>{% if contact.organization %}<br>{{ contact.organization }}{% endif %}</p>
+          <p><a href="mailto:{{ contact.email }}">{{ contact.email }}</a>{% if contact.phone %}<br><a href="tel:{{ contact.phone }}">{{ contact.phone }}</a>{% endif %}</p>
+          {% if contact.postal_address %}<p>{{ contact.postal_address|linebreaksbr }}</p>{% endif %}
+          {% if contact.is_external %}<p><small>Externer Datenschutzkontakt</small></p>{% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p><strong>Noch kein veröffentlichter Datenschutzkontakt hinterlegt.</strong> Der Betreiber muss die gegebenenfalls erforderlichen Kontaktdaten des Datenschutzbeauftragten im Administrationsbereich pflegen und seine vollständige Betroffeneninformation bereitstellen.</p>
+  {% endif %}
+  <p>Interne Notizen aus der Verwaltung werden auf dieser Seite technisch nicht ausgegeben.</p>
 
   <h2>Cookies und lokale Speicherung (TDDDG / DSGVO)</h2>
-  <p>Die Anwendung verwendet keine Analyse-, Marketing-, Tracking- oder Drittanbieter-Cookies. Ein Opt-in-Banner ist nicht erforderlich, weil ausschließlich technisch notwendige Cookies gemäß <a href="https://www.gesetze-im-internet.de/ttdsg/__25.html" rel="noopener noreferrer">§ 25 Abs. 2 Nr. 2 TDDDG</a> eingesetzt werden. Diese Cookies ermöglichen Anmeldung und Formularschutz; sie werden ausschließlich über HTTPS übertragen.</p>
+  <p>Die Anwendung setzt nach aktuellem Produktstand keine Analyse-, Marketing-, Tracking- oder Drittanbieter-Cookies. Die hier beschriebenen Speicherungen dienen ausschließlich Anmeldung, Formularschutz und ausdrücklich angeforderten App-/Offline-Funktionen. Für unbedingt erforderliche Speicherungen sieht <a href="https://www.gesetze-im-internet.de/ttdsg/__25.html" rel="noopener noreferrer">§ 25 Abs. 2 Nr. 2 TDDDG</a> eine Ausnahme vom Einwilligungserfordernis vor. Der Betreiber muss dies erneut bewerten, sobald weitere Dienste, SDKs oder Cookies ergänzt werden.</p>
   <dl class="summary-list">
-    <div><dt>{{ session_cookie }}</dt><dd>Sitzungs-Cookie für Anmeldung und angemeldete Nutzung. Secure, HttpOnly, SameSite=Lax{% if session_age_hours %}; maximale Speicherdauer {{ session_age_hours }} Stunden{% endif %}.</dd></div>
-    <div><dt>{{ csrf_cookie }}</dt><dd>Sicherheits-Cookie zum Schutz von Formularen vor websiteübergreifenden Anfragen (CSRF). Secure, HttpOnly, SameSite=Lax{% if csrf_age_days %}; maximale Speicherdauer {{ csrf_age_days }} Tage{% endif %}.</dd></div>
+    <div><dt>{{ session_cookie }}</dt><dd>Sitzungs-Cookie für Anmeldung und angemeldete Nutzung. Secure, HttpOnly, SameSite=Lax{% if session_age_hours %}; maximale technische Speicherdauer {{ session_age_hours }} Stunden{% endif %}.</dd></div>
+    <div><dt>{{ csrf_cookie }}</dt><dd>Sicherheits-Cookie zum Schutz von Formularen vor websiteübergreifenden Anfragen (CSRF). Secure, HttpOnly, SameSite=Lax{% if csrf_age_days %}; maximale technische Speicherdauer {{ csrf_age_days }} Tage{% endif %}.</dd></div>
   </dl>
-  <p>Die notwendigen Cookies können nicht einzeln abgewählt werden, solange Anmeldung und geschützte Formulare genutzt werden. Es gibt keine freiwilligen Cookies und daher keine Auswahl- oder Einwilligungsoberfläche.</p>
-  <p>Zusätzlich kann der Browser den Installationshinweis der PWA und einen Lese-Cache des Service Workers lokal auf dem Endgerät speichern. Das dient der Offline-Anzeige bereits geladener Seiten und enthält keine Werbe-ID.</p>
+  <p>Zusätzlich kann der Browser technisch erforderliche PWA-Daten und einen Lese-Cache des Service Workers lokal speichern. Diese Funktionen enthalten keine Werbe-ID und dürfen nicht für Tracking zweckentfremdet werden.</p>
 
-  <h2>Beschäftigtendaten und öffentlicher Dienst NRW</h2>
-  <p>Login, Rollen, Audit-Ereignisse und optionale Module verarbeiten Beschäftigtendaten. Für Stellen des öffentlichen Dienstes in NRW sind typischerweise DSG NRW, LPVG NRW und die Beteiligung der Personalvertretung zu prüfen. Auswertungen zur Leistungs- oder Verhaltenskontrolle sind produktseitig nicht vorgesehen und organisatorisch zu untersagen.</p>
-  <p>Für die optionale Kaffeekasse können Zahlungsweg-Hinweise (PayPal.me-, Wero-Link, IBAN/BIC, Hinweistext) in den Stationseinstellungen gepflegt werden. Diese Daten sind Team-intern auf der Kassenseite sichtbar (Zweck: freiwillige Gemeinschaftskasse); es werden keine Transaktionsdaten Dritter gespeichert.</p>
+  <h2>Kategorien personenbezogener Daten</h2>
+  <p>Je nach aktivierten Modulen können insbesondere Benutzerkonto, Rollen-/Wachenzuordnung, organisatorische Übergaben und Aufgaben, Quittierungen, Audit-Ereignisse, freiwillig sichtbare Geburtstagsangaben sowie Inventar-/Gerätebewegungen verarbeitet werden. Inhalte sind auf das für den Wachbetrieb erforderliche Maß zu begrenzen.</p>
+  <p>Mängelfotos dürfen keine Patienten-, Einsatz- oder sonstigen sachfremden sensiblen Inhalte zeigen. Betreiber müssen hierzu organisatorische Vorgaben und Löschfristen festlegen.</p>
+
+  <h2>Beschäftigtendaten und öffentlicher Dienst</h2>
+  <p>Login, Rollen, Audit-Ereignisse und optionale Organisationsmodule können Beschäftigtendaten darstellen. Rechtsgrundlage und Beteiligungsrechte hängen vom konkreten Betreiber ab. Für öffentliche Stellen sind insbesondere die jeweils anwendbaren Datenschutz-, Personalvertretungs- und Dienstvereinbarungsregelungen zu prüfen. Auswertungen zur individuellen Leistungs- oder Verhaltenskontrolle sind produktseitig nicht vorgesehen und organisatorisch zu untersagen.</p>
+
+  <h2>Sicherheit der Verarbeitung</h2>
+  <p>Produktive Verbindungen sind über TLS abzusichern. Wachbuch unterstützt MFA/WebAuthn, rollen- und stationsbezogene Zugriffe, Secure-/HttpOnly-Cookies, Auditierung sowie verschlüsselte Speicherung ausgewählter Geheimnisse. Der Betreiber ist zusätzlich für Reverse Proxy/TLS-Konfiguration, Schlüsselverwaltung, verschlüsselte Datenträger und Backups, Patchmanagement, Wiederherstellungstests, MDM/Endgeräteschutz und Incident Response verantwortlich.</p>
+  <p>Die technische Sicherheitsdokumentation orientiert sich an den jeweils referenzierten BSI-Empfehlungen; daraus folgt keine BSI-Zertifizierung des Produkts.</p>
+
+  <h2>Speicherdauer und Löschung</h2>
+  <p>Wachbuch stellt technische Aufbewahrungs- und Bereinigungsmechanismen bereit, bestimmt aber nicht pauschal die rechtlich zulässigen Fristen. Der Betreiber muss vor Produktivbetrieb ein freigegebenes Lösch- und Aufbewahrungskonzept je Datenklasse festlegen, dokumentieren und regelmäßig überprüfen.</p>
+
+  <h2>Betroffenenrechte</h2>
+  <p>Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch und weitere Betroffenenrechte sind gegenüber der verantwortlichen Betreiberstelle geltend zu machen. Die konkrete Art.-13-/Art.-14-Information des Betreibers muss Kontaktweg, Rechtsgrundlagen, Empfänger, Fristen und die zuständige Aufsichtsbehörde benennen.</p>
 
   <h2>EU-KI-Verordnung (AI Act)</h2>
-  <p>Dieses Wachbuch ist klassische Anwendungssoftware ohne eingebettetes KI-System zur Inferenz über Personen. Es trifft keine automatisierten Entscheidungen über Beschäftigte. Werden externe KI-Werkzeuge nur in der Softwareentwicklung genutzt, fallen sie nicht in den Produktumfang; der Betreiber bleibt für eigene KI-Einsätze selbst verantwortlich.</p>
+  <p>Dieses Wachbuch enthält im Produktumfang kein KI-System zur Inferenz oder automatisierten Entscheidung über Beschäftigte. Werden zukünftig KI-Funktionen integriert, sind Datenschutz-, Informationssicherheits- und AI-Act-Bewertung vor Aktivierung neu durchzuführen.</p>
 
   <h2>Version {{ app_version }}</h2>
-  <p>Die laufende Produktversion erscheint im Fußbereich und unter <code>/healthz/</code>. Änderungsprotokoll und Updateablauf stehen in der Betriebsdokumentation.</p>
+  <p>Die laufende Produktversion erscheint im Fußbereich und unter <code>/healthz/</code>. Änderungsprotokoll, Sicherheits- und Betriebsdokumentation sind Bestandteil der administrativen Freigabe.</p>
 
   <p><a class="button secondary" href="{% url 'landing' %}">Zur Startseite</a> <a class="button primary" href="{% url 'login' %}">Anmelden</a></p>
 </section>
