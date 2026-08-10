@@ -39,12 +39,12 @@ services:
       - no-new-privileges:true
 
   redis:
-    image: redis:7.4-alpine@sha256:5c4b3516a8208638958324421154989b1972655200033f5386783a71701877
+    image: redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     restart: unless-stopped
     logging: *default-logging
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
-    volumes:
-      - redis-data:/data
+    # Redis is an expendable cache only. Sessions remain durable in PostgreSQL
+    # via Django cached_db; do not persist a second copy of cache/session data.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     networks:
       - app-db
     healthcheck:
@@ -268,4 +268,3 @@ networks:
 
 volumes:
   postgres-data:
-  redis-data:
