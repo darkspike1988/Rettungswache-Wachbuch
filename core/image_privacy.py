@@ -74,5 +74,3 @@ def sanitize_defect_attachment(sender, instance: DefectAttachment, **kwargs):
     instance.data = sanitized
     instance.size = len(sanitized)
     instance.content_type = "image/jpeg"
-    stem = (instance.filename or "foto").rsplit(".", 1)[0].strip(" .") or "foto"
-    instance.filename = f"{stem[:175]}.jpg"
