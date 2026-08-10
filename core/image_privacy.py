@@ -36,8 +36,9 @@ def sanitize_defect_image(raw: bytes) -> bytes:
         raise ValueError("Bild konnte für den Datenschutz nicht neu codiert werden.") from exc
 
     # Fresh pixel-only image: no EXIF/GPS/XMP/text/ICC objects are copied.
+    # paste() avoids materialising a second Python list for every source pixel.
     clean = Image.new("RGB", rgb.size)
-    clean.putdata(list(rgb.getdata()))
+    clean.paste(rgb)
 
     quality_steps = (88, 82, 76, 70, 64, 58, 52)
     current = clean
