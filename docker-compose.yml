@@ -62,6 +62,8 @@ services:
     restart: "no"
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      CRYPTO_MASTER_KEY: ${CRYPTO_MASTER_KEY:-}
+      CRYPTO_PREVIOUS_MASTER_KEY: ${CRYPTO_PREVIOUS_MASTER_KEY:-}
       DJANGO_DEBUG: "false"
       DB_HOST: db
       DB_NAME: ${POSTGRES_DB}
@@ -103,6 +105,8 @@ services:
     logging: *default-logging
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      CRYPTO_MASTER_KEY: ${CRYPTO_MASTER_KEY:-}
+      CRYPTO_PREVIOUS_MASTER_KEY: ${CRYPTO_PREVIOUS_MASTER_KEY:-}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
       SECURE_COOKIES: ${SECURE_COOKIES:-true}
       DB_HOST: db
