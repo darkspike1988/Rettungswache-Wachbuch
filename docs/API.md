@@ -102,6 +102,8 @@ Mängelfotos sind authentifiziert und stationsisoliert. Erlaubt sind JPEG, PNG u
 - maximal **8 Fotos je Mangel**
 - maximal **12 MiB Gesamtgröße je Mangel**
 
+Die 2 MiB Binärdaten werden aktuell als Base64 in JSON transportiert. Dadurch ist der HTTP-Request größer als die Bilddatei selbst. Wachbuch setzt deshalb standardmäßig `DATA_UPLOAD_MAX_MEMORY_SIZE` auf **3 MiB**; ein vorgeschalteter Reverse Proxy muss für diese API-Route ebenfalls mindestens 3 MiB Request-Body zulassen. Das 2-MiB-Limit bleibt die fachliche Grenze für die tatsächlich gespeicherte Bilddatei.
+
 Die Limits schützen vor manipulierten/defekten Dateien, Dekompressionsrisiken und ungebremstem Datenbankwachstum. Fotos dürfen keine Patienten-/Einsatzdaten enthalten.
 
 ### Assets und Inventar
@@ -137,6 +139,7 @@ Der offizielle Client darf erfolgreiche GET-Antworten verschlüsselt und an Serv
 - TLS vor dem App-Port
 - Authorization-Header nicht loggen
 - Korrelations-ID für Support/Fehleranalyse verwenden
+- Reverse Proxy für Mängelfoto-Uploads auf mindestens 3 MiB Request-Body konfigurieren
 - Push-Endpunkte folgen der serverseitigen HTTPS-/Port-/Host-Allowlist
 - `/healthz/` bleibt außerhalb der Produkt-API
 - Backup/Restore vor Pilot-/Produktivbetrieb testen
