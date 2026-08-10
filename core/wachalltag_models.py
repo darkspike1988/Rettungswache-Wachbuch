@@ -312,6 +312,8 @@ class DefectAttachment(models.Model):
         if self.pk:
             raise ValidationError("Mangel-Anhaenge duerfen nicht veraendert werden.")
         _require_same_station(self.defect if self.defect_id else None, self.station_id, "Anhang")
+        stem = (self.filename or "foto").rsplit(".", 1)[0].strip(" .") or "foto"
+        self.filename = f"{stem[:175]}.jpg"
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
