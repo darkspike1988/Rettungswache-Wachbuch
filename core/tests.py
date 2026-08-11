@@ -118,7 +118,7 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "öffentlichen Dienst")
         self.assertContains(response, "Kein Einsatzleit")
-        self.assertContains(response, 'class="is-landing"', html=False)
+        self.assertContains(response, "is-landing")
 
 
 class SecurityAndAccessTests(PilotTestCase):

@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="{% static 'core/accessibility.css' %}">
   <link rel="stylesheet" href="{% static 'core/crypto_unlock.css' %}">
 </head>
-<body class="{% if current_membership %}has-app-nav{% endif %} {% block body_class %}{% endblock %}">
+<body class="{% if current_membership %}has-app-nav {% endif %}{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#inhalt">Zum Inhalt</a>
   {% if demo_mode %}
   <div class="demo-banner" role="status">
