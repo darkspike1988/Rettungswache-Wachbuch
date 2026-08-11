@@ -3,6 +3,9 @@
 # terminieren (der Dev-Server laeuft im "web"-Terminal, nicht hier).
 set -euo pipefail
 
+# In den Repo-Root wechseln (Workspace kann mehrere Repos enthalten).
+cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+
 set -a
 # shellcheck disable=SC1091
 source .cursor/dev.env

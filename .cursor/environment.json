@@ -1,11 +1,11 @@
 {
   "name": "Rettungswache-Wachbuch",
-  "install": "bash .cursor/install.sh",
-  "start": "bash .cursor/start.sh",
+  "install": "bash -c 'd=.; [ -f .cursor/install.sh ] || d=Rettungswache-Wachbuch; bash \"$d/.cursor/install.sh\"'",
+  "start": "bash -c 'd=.; [ -f .cursor/start.sh ] || d=Rettungswache-Wachbuch; bash \"$d/.cursor/start.sh\"'",
   "terminals": [
     {
       "name": "web",
-      "command": "bash -lc 'set -a; source .cursor/dev.env; set +a; source .venv/bin/activate; exec python manage.py runserver 0.0.0.0:8090'"
+      "command": "bash -lc 'd=.; [ -f .cursor/dev.env ] || d=Rettungswache-Wachbuch; cd \"$d\"; set -a; source .cursor/dev.env; set +a; source .venv/bin/activate; exec python manage.py runserver 0.0.0.0:8090'"
     }
   ],
   "ports": [8090]
