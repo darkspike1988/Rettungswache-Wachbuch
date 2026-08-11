@@ -15,6 +15,7 @@
   {% if current_membership.station.coffee_enabled %}<a href="{% url 'coffee' %}"><strong>Kaffeekasse</strong><span>Saldo und Buchungen</span></a>{% endif %}
   {% if current_membership.station.feeds_enabled %}<a href="{% url 'feeds' %}"><strong>Meldungen &amp; Verkehr</strong><span>Konfigurierte offizielle Quellen</span></a>{% endif %}
   {% if current_membership.station.checklists_enabled %}<a href="{% url 'checklists' %}"><strong>Checklisten</strong><span>Wiederkehrende Prüfungen</span></a><a href="{% url 'checklist_schedules_web' %}"><strong>Prüfintervalle</strong><span>Fälligkeiten täglich, wöchentlich oder monatlich</span></a>{% endif %}
+  {% if current_membership.station.pinboard_enabled %}<a href="{% url 'pinboard' %}"><strong>Pinnwand</strong><span>Kurze Aushänge und Hinweise für die Wache</span></a>{% endif %}
   {% if current_membership.station.chat_enabled %}<a href="{% url 'chat' %}"><strong>Wachenchat</strong><span>Wache · Privat · Post (E2EE)</span></a><a href="{% url 'crypto_setup' %}"><strong>Chat-Schlüssel</strong><span>Ende-zu-Ende-Verschlüsselung</span></a>{% endif %}
   <a href="{% url 'account_home' %}"><strong>Mein Konto</strong><span>Profilbild, Passwort und Zwei-Faktor</span></a>
   <a href="{% url 'api_tokens_manage' %}"><strong>App-Tokens / API</strong><span>Anbindung Open-Source-Apps (iOS/Android)</span></a>
