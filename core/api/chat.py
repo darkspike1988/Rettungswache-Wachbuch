@@ -26,7 +26,11 @@ from ..messaging import (
     validate_encrypted_payload,
 )
 from ..models import (
+    ChatGroup,
+    ChatGroupMember,
     ChatMessage,
+    GroupMessage,
+    Membership,
     PrivateConversation,
     PrivateMessage,
     SecureMail,
@@ -468,3 +472,206 @@ def mail_detail(request, pk):
         for recipient in mail.recipients.select_related("user")
     ]
     return JsonResponse({"ok": True, "envelope": envelope, "recipients": recipients})
+
+
+# --- Group chat -------------------------------------------------------------
+
+def _is_group_member(user, group):
+    return ChatGroupMember.objects.filter(group=group, user=user).exists()
+
+
+def _group_member_users(group):
+    return list(
+        station_content_users(group.station).filter(chat_group_memberships__group=group)
+    )
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+@api_token_required
+def groups(request):
+    station = request.membership.station
+    module_error = _require_chat_module(request)
+    if module_error:
+        return module_error
+    if request.method == "POST":
+        if not _scope_allowed(request.api_token, "write:chat"):
+            return _json_error(request, "Scope write:chat fehlt.", status=403)
+        role_error = _require_content_role(request)
+        if role_error:
+            return role_error
+        body = _parse_json(request) or {}
+        name = str(body.get("name") or "").strip()
+        if not (1 <= len(name) <= 120):
+            return _json_error(request, "Bitte einen Gruppennamen angeben.", status=422)
+        raw_ids = body.get("member_ids") or []
+        if not isinstance(raw_ids, list):
+            return _json_error(request, "Mitglieder ungültig.", status=422)
+        try:
+            member_ids = {int(item) for item in raw_ids}
+        except (TypeError, ValueError):
+            return _json_error(request, "Mitglieder ungültig.", status=422)
+        member_ids.add(request.user.id)
+        allowed = set(
+            station_content_users(station).filter(pk__in=member_ids).values_list("id", flat=True)
+        )
+        if member_ids != allowed:
+            return _json_error(request, "Mitglieder gehören nicht zur Wache.", status=422)
+        with transaction.atomic():
+            group = ChatGroup.objects.create(
+                station=station, name=name, created_by=request.user
+            )
+            ChatGroupMember.objects.bulk_create([
+                ChatGroupMember(group=group, user_id=uid) for uid in sorted(member_ids)
+            ])
+            audit(request.user, station, "chat_group.created", group, {
+                "fields": ["name"],
+                "member_count": len(member_ids),
+            })
+        return JsonResponse({"ok": True, "id": group.pk}, status=201)
+
+    if not _scope_allowed(request.api_token, "read:chat"):
+        return _json_error(request, "Scope read:chat fehlt.", status=403)
+    role_error = _require_content_role(request)
+    if role_error:
+        return role_error
+    rows = (
+        ChatGroup.objects.filter(station=station, members__user=request.user)
+        .distinct()
+        .order_by("-updated_at")[:50]
+    )
+    results = [
+        {
+            "id": group.pk,
+            "name": group.name,
+            "member_count": group.members.count(),
+            "updated_at": group.updated_at.isoformat(),
+        }
+        for group in rows
+    ]
+    return JsonResponse({"ok": True, "results": results})
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+@api_token_required
+def group_detail(request, pk):
+    station = request.membership.station
+    module_error = _require_chat_module(request)
+    if module_error:
+        return module_error
+    group = ChatGroup.objects.filter(pk=pk, station=station).first()
+    if group is None or not _is_group_member(request.user, group):
+        return _json_error(request, "Nicht gefunden.", status=404)
+    if request.method == "POST":
+        if not _scope_allowed(request.api_token, "write:chat"):
+            return _json_error(request, "Scope write:chat fehlt.", status=403)
+        role_error = _require_content_role(request)
+        if role_error:
+            return role_error
+        body = _parse_json(request)
+        if body is None:
+            return _json_error(request, "JSON-Körper erwartet.")
+        member_users = _group_member_users(group)
+        keyed_ids = set(
+            UserCryptoIdentity.objects.filter(user__in=member_users).values_list("user_id", flat=True)
+        )
+        if request.user.id not in keyed_ids:
+            return _json_error(request, "Eigene Schlüssel fehlen. Bitte zuerst Schlüssel einrichten.", status=409)
+        required = set(keyed_ids) | {request.user.id}
+        try:
+            payload = validate_encrypted_payload(body, required_recipient_ids=required)
+        except DjangoValidationError as exc:
+            return _json_error(request, " ".join(exc.messages), status=422)
+        message = GroupMessage.objects.create(
+            group=group,
+            author=request.user,
+            ciphertext=payload["ciphertext"],
+            nonce=payload["nonce"],
+            key_wraps=payload["key_wraps"],
+            algo=payload["algo"],
+        )
+        group.updated_at = timezone.now()
+        group.save(update_fields=["updated_at"])
+        audit(request.user, station, "chat_group.message_created", message, {
+            "fields": ["ciphertext"],
+        })
+        return JsonResponse({"ok": True, "id": message.pk}, status=201)
+
+    if not _scope_allowed(request.api_token, "read:chat"):
+        return _json_error(request, "Scope read:chat fehlt.", status=403)
+    role_error = _require_content_role(request)
+    if role_error:
+        return role_error
+    rows = list(
+        GroupMessage.objects.filter(group=group, is_hidden=False)
+        .select_related("author")
+        .order_by("-created_at")[:80]
+    )
+    rows.reverse()
+    return JsonResponse({
+        "ok": True,
+        "id": group.pk,
+        "name": group.name,
+        "is_manager": group.created_by_id == request.user.id
+        or request.membership.role == Membership.Role.ADMIN,
+        "members": public_keys_for_users(_group_member_users(group)),
+        "results": [_feed_item(item, request.user) for item in rows],
+    })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@api_token_required
+def group_members(request, pk):
+    station = request.membership.station
+    module_error = _require_chat_module(request)
+    if module_error:
+        return module_error
+    if not _scope_allowed(request.api_token, "write:chat"):
+        return _json_error(request, "Scope write:chat fehlt.", status=403)
+    group = ChatGroup.objects.filter(pk=pk, station=station).first()
+    if group is None or not _is_group_member(request.user, group):
+        return _json_error(request, "Nicht gefunden.", status=404)
+    is_manager = (
+        group.created_by_id == request.user.id
+        or request.membership.role == Membership.Role.ADMIN
+    )
+    if not is_manager:
+        return _json_error(request, "Nur Ersteller oder Admin dürfen Mitglieder verwalten.", status=403)
+    body = _parse_json(request) or {}
+
+    def _ids(key):
+        try:
+            return {int(item) for item in (body.get(key) or [])}
+        except (TypeError, ValueError):
+            return None
+
+    add_ids = _ids("add")
+    remove_ids = _ids("remove")
+    if add_ids is None or remove_ids is None:
+        return _json_error(request, "Mitglieder ungültig.", status=422)
+    if add_ids:
+        allowed = set(
+            station_content_users(station).filter(pk__in=add_ids).values_list("id", flat=True)
+        )
+        if add_ids != allowed:
+            return _json_error(request, "Mitglieder gehören nicht zur Wache.", status=422)
+    with transaction.atomic():
+        for uid in sorted(add_ids):
+            ChatGroupMember.objects.get_or_create(group=group, user_id=uid)
+        if remove_ids:
+            # Keep at least the creator in the group.
+            remove_ids.discard(group.created_by_id)
+            ChatGroupMember.objects.filter(group=group, user_id__in=remove_ids).delete()
+        group.updated_at = timezone.now()
+        group.save(update_fields=["updated_at"])
+        audit(request.user, station, "chat_group.members_changed", group, {
+            "fields": ["members"],
+            "added": len(add_ids),
+            "removed": len(remove_ids),
+        })
+    return JsonResponse({
+        "ok": True,
+        "members": public_keys_for_users(_group_member_users(group)),
+    })

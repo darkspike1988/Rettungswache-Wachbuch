@@ -45,4 +45,7 @@ urlpatterns = [
     path("chat/private/<int:pk>/", chat.private_thread, name="api_v1_chat_private_thread"),
     path("post/", chat.mail_inbox, name="api_v1_post"),
     path("post/<int:pk>/", chat.mail_detail, name="api_v1_post_detail"),
+    path("chat/groups/", chat.groups, name="api_v1_chat_groups"),
+    path("chat/groups/<int:pk>/", chat.group_detail, name="api_v1_chat_group_detail"),
+    path("chat/groups/<int:pk>/members/", chat.group_members, name="api_v1_chat_group_members"),
 ]
