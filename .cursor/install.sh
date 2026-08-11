@@ -9,10 +9,12 @@ set -euo pipefail
 # Wachbuch und Wachbuch-Client), sodass Kommandos aus dem Workspace-Root laufen.
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 
-# python3-venv ist im Standard-Basisimage nicht enthalten, wird aber fuer das
-# virtuelle Environment benoetigt. Alle Python-Pakete werden als vorkompilierte
-# Wheels installiert, daher ist keine Compiler-Toolchain erforderlich.
-if ! python3 -m venv --help >/dev/null 2>&1; then
+# python3-venv (inkl. ensurepip) ist im Standard-Basisimage nicht enthalten,
+# wird aber fuer das virtuelle Environment benoetigt. Der Check prueft ensurepip
+# direkt, weil "python3 -m venv --help" auch ohne das Paket erfolgreich ist.
+# Alle Python-Pakete werden als vorkompilierte Wheels installiert, daher ist
+# keine Compiler-Toolchain erforderlich.
+if ! python3 -c "import ensurepip" >/dev/null 2>&1; then
   sudo apt-get update -qq
   sudo apt-get install -y --no-install-recommends python3-venv
 fi
