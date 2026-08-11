@@ -1,12 +1,16 @@
 {
-  "name": "Rettungswache-Wachbuch",
+  "name": "Wachbuch (Server + Client)",
   "install": "bash .cursor/install.sh",
   "start": "bash .cursor/start.sh",
   "terminals": [
     {
-      "name": "web",
+      "name": "server-web",
       "command": "bash -lc 'set -a; source .cursor/dev.env; set +a; source .venv/bin/activate; exec python manage.py runserver 0.0.0.0:8090'"
+    },
+    {
+      "name": "client-web",
+      "command": "bash -lc 'cd ../Wachbuch-Client/landing; exec python3 -m http.server 4173'"
     }
   ],
-  "ports": [8090]
+  "ports": [8090, 4173]
 }
