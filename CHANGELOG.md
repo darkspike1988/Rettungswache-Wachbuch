@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **R-022 Web-Design-Parität Client/BOS** – Web-PWA übernimmt die kanonischen
+  Client-Tokens (Primary `#0D47A1`, Prioritätsfarben, 48px Touch-Ziele, ruhige
+  Flächen mit Rand); lokale Source Sans 3 (OFL); Landing und Manifest auf
+  öffentlicher-Dienst-Ästhetik; Doku in `docs/DESIGN-SYSTEM.md`
 - **Sicherheitshaertung R-021** – `obtain_token` verweigert API-Tokens, wenn
   `MFA_REQUIRED=true` gilt und das Konto keine bestaetigte MFA hat
   (Fehlercode `mfa_setup_required`); Push-Subscription-Endpoints werden vor dem

@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#17343d">
+  <meta name="theme-color" content="#0d47a1">
   <meta name="application-name" content="{{ app_name }}">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="{% static 'core/accessibility.css' %}">
   <link rel="stylesheet" href="{% static 'core/crypto_unlock.css' %}">
 </head>
-<body class="{% if current_membership %}has-app-nav{% endif %} {% block body_class %}{% endblock %}">
+<body class="{% if current_membership %}has-app-nav {% endif %}{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#inhalt">Zum Inhalt</a>
   {% if demo_mode %}
   <div class="demo-banner" role="status">
@@ -32,7 +32,7 @@
   <header class="app-header">
     <div class="header-inner">
       <a class="brand" href="{% if current_membership %}{% if current_membership.role == 'auditor' %}{% url 'audit_log' %}{% else %}{% url 'dashboard' %}{% endif %}{% else %}{% url 'landing' %}{% endif %}">
-        <span class="brand-mark" aria-hidden="true">W</span>
+        <span class="brand-mark" aria-hidden="true">WB</span>
         <span>
           <strong>{{ app_name }}</strong>
           {% if current_membership %}<small>{{ current_membership.station.name }}</small>{% endif %}

@@ -1,9 +1,11 @@
 from datetime import timedelta
 from decimal import Decimal
 from io import StringIO
+from pathlib import Path
 from unittest.mock import patch
 import json
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
@@ -91,6 +93,32 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertContains(response, 'name="apple-mobile-web-app-capable"')
         self.assertContains(response, "nav-badge")
         self.assertContains(response, "1")
+
+    def test_shell_and_manifest_use_bos_theme_tokens(self):
+        response = self.client.get(reverse("dashboard"))
+        self.assertContains(response, 'name="theme-color" content="#0d47a1"')
+        self.assertContains(response, 'class="brand-mark"', html=False)
+        css = (Path(settings.BASE_DIR) / "core" / "static" / "core" / "app.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("--brand: #0d47a1", css)
+        self.assertIn("--priority-urgent: #dc2626", css)
+        self.assertIn("--touch: 3rem", css)
+        self.assertIn('font-family: "Source Sans 3"', css)
+        font = Path(settings.BASE_DIR) / "core" / "static" / "core" / "fonts" / "SourceSans3-Regular.woff2"
+        self.assertTrue(font.is_file())
+        manifest = self.client.get(reverse("web_manifest")).json()
+        self.assertEqual(manifest["theme_color"], "#0d47a1")
+        self.assertEqual(manifest["background_color"], "#f7f9fc")
+        self.assertNotIn("medical", manifest.get("categories", []))
+
+    def test_landing_uses_public_service_copy(self):
+        self.client.logout()
+        response = self.client.get(reverse("landing"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "öffentlichen Dienst")
+        self.assertContains(response, "Kein Einsatzleit")
+        self.assertContains(response, "is-landing")
 
 
 class SecurityAndAccessTests(PilotTestCase):

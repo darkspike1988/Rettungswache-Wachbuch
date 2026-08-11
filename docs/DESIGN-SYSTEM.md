@@ -1,6 +1,6 @@
 # Wachbuch Klar - Designregeln
 
-Stand: 28. Juli 2026
+Stand: 11. August 2026
 
 ## Entscheidung
 
@@ -9,8 +9,15 @@ Dashboard-Vorlagen bringen fuer diesen Anwendungsfall zu viele Karten,
 Kennzahlen, Icons und Bootstrap-Abhaengigkeiten mit. Pico CSS ist leicht, bildet
 aber komplexere Rollen-, Fehler- und Pruefprozesse nicht ausreichend ab.
 
-`Wachbuch Klar` ist deshalb eine kleine projektspezifische Oberflaeche. Sie uebernimmt
-erprobte, nicht markengebundene Muster aus offenen Designsystemen:
+`Wachbuch Klar` ist deshalb eine kleine projektspezifische Oberflaeche. Die
+Web-PWA teilt die kanonischen Design-Tokens mit dem Flutter-Client
+(`clients/wachbuch-mobile`, siehe dort `docs/DESIGN-SYSTEM.md` und
+`lib/theme/`). Visuelle Richtung: **oeffentlicher Dienst / BOS**
+(Rettungsdienst, Feuerwehr, Polizei) – feldlesbar, hoher Kontrast, ruhiges Blau,
+keine Marketing-Ästhetik.
+
+Uebernommen werden erprobte, nicht markengebundene Muster aus offenen
+Designsystemen:
 
 | Quelle | Lizenz | Uebernommenes Muster |
 |---|---|---|
@@ -19,12 +26,31 @@ erprobte, nicht markengebundene Muster aus offenen Designsystemen:
 | [USWDS](https://github.com/uswds/uswds) | Public Domain/CC0 mit dokumentierten Dritt-Lizenzen | Responsive, semantische Tabellen |
 | [Tabler](https://github.com/tabler/tabler) | MIT | Nur Referenz fuer App-Shells; bewusst nicht eingebunden |
 | [Pico CSS](https://github.com/picocss/pico) | MIT | Semantisches HTML als Referenz; bewusst nicht eingebunden |
+| [Source Sans 3](https://github.com/adobe-fonts/source-sans) | SIL OFL 1.1 | Lokale Webfonts (`core/static/core/fonts/`), offline-faehig |
 
-Es wurden keine Logos, Markenfarben, proprietaeren Schriften oder kopierten
-Komponentenpakete eingebunden. Die eigene CSS-Schicht bleibt klein, lokal und
-offline-faehig. Minimales JavaScript dient ausschliesslich der installierbaren
-PWA (Service-Worker, Installationshinweis, Online-Status) und ist keine
+Es wurden keine Logos, Markenfarben oder kopierten Komponentenpakete
+eingebunden. Die eigene CSS-Schicht bleibt klein, lokal und offline-faehig.
+Minimales JavaScript dient ausschliesslich der installierbaren PWA
+(Service-Worker, Installationshinweis, Online-Status) und ist keine
 Voraussetzung fuer die Kernablaeufe.
+
+## Kanonische Tokens (Web = Client)
+
+| Rolle | Hex | Verwendung |
+|---|---|---|
+| `brand` / Primary | `#0D47A1` | Header, Primaeraktion, aktive Navigation |
+| `brandDeep` | `#082E63` | Hover/Pressed, dunkle Flaechen |
+| `brandInk` | `#17343D` | Ueberschriften |
+| `accent` | `#2563EB` | Links, Info, Prioritaet normal |
+| `bg` | `#F7F9FC` | Seitenhintergrund |
+| `surface` | `#FFFFFF` | Flaechen mit Rand `#DCE4EF` |
+| `urgent` | `#DC2626` | Dringend / Fehler (nur semantisch) |
+| `important` | `#F59E0B` | Wichtig / Warnung |
+| `done` / success | `#16A34A` | Erledigt / Erfolg |
+| `focus` | `#F0B429` | Tastaturfokus und Service-Akzentstreifen |
+
+Flaechen nutzen Rand statt schwerer Schatten. Touch-Ziele: mindestens **48 x 48
+CSS-Pixel** (Client und WCAG 2.5.5).
 
 ## Zehn verbindliche Regeln
 
@@ -35,7 +61,7 @@ Voraussetzung fuer die Kernablaeufe.
 4. Kritische Informationen stehen offen sichtbar, nie in einem geschlossenen
    Accordion oder nur hinter Farbe.
 5. Status und Prioritaet werden immer ausgeschrieben. Farbe ist nur zusaetzlich.
-6. Jedes interaktive Ziel ist mindestens 44 x 44 CSS-Pixel gross.
+6. Jedes interaktive Ziel ist mindestens 48 x 48 CSS-Pixel gross.
 7. Mobile beginnt einspaltig; weitere Spalten entstehen erst ab ausreichendem
    Inhaltsplatz, nicht anhand bestimmter Geraetemodelle.
 8. Fliesstext bleibt auf ungefaehr 65 bis 70 Zeichen pro Zeile begrenzt.
@@ -69,6 +95,7 @@ oder Wachenterminal installiert werden:
 - Offline-Hinweisseite; keine Offline-Schreibwarteschlange
 - Safe-Area- und Standalone-Anpassungen fuer Notch und Home-Indicator
 - ICS-Export einzelner Wachentermine fuer den Geraetekalender
+- `theme_color` `#0D47A1`, `background_color` `#F7F9FC`
 
 ## Responsive Verhalten
 
@@ -83,10 +110,11 @@ oder Wachenterminal installiert werden:
 
 ## Barrierefreiheit
 
-Ziel ist WCAG 2.2 AA mit einer strengeren internen Touchziel-Vorgabe von 44
-CSS-Pixeln. Verbindlich sind sichtbarer Tastaturfokus, semantische Tabellen,
-permanente Feldlabels, Erhalt fehlerhafter Eingaben, Text plus Farbe fuer Status
-und `prefers-reduced-motion`-freundliche Darstellung ohne notwendige Animation.
+Ziel ist WCAG 2.2 AA mit interner Touchziel-Vorgabe von 48 CSS-Pixeln
+(Angleichung an den Client). Verbindlich sind sichtbarer Tastaturfokus,
+semantische Tabellen, permanente Feldlabels, Erhalt fehlerhafter Eingaben, Text
+plus Farbe fuer Status und `prefers-reduced-motion`-freundliche Darstellung ohne
+notwendige Animation.
 
 Referenzen:
 
