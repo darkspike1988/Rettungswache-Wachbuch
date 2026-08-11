@@ -40,7 +40,11 @@ Cloud-Agent-Umgebung fuer Server + Client (venv/Django + Flutter-SDK,
 `install`/`start`, Terminals fuer beide Dev-Server). Belegt durch gruenen
 Environment-Build + Fresh-Agent-Verifikation.
 
-### Phase 1 – Digitale Pinnwand (Aushaenge/Notizen) `[ ]`
+### Phase 1 – Digitale Pinnwand (Aushaenge/Notizen) `[~]`
+
+Umgesetzt in Server-PR #66 und Client-PR (Wachbuch-Client) #44; Abnahme durch
+Tests (Server 226, Client 221) und Browser-Demo. Offen: Merge.
+
 
 Stationsinterne Pinnwand fuer kurze Aushaenge/Hinweise, getrennt von den
 strukturierten Uebergaben.
@@ -52,7 +56,14 @@ strukturierten Uebergaben.
 - Client: `WachbuchApi`-Methoden + Modell + Screen + l10n + Demo-Parity + Tests.
 - Abnahme: Server-Tests + `flutter test` + Browser-Demo.
 
-### Phase 2 – Chat im Client (oeffentlich/privat/Secure Mail) `[ ]`
+### Phase 2 – Chat im Client (oeffentlich/privat/Secure Mail) `[~]`
+
+Server-API in PR #67 (Wachenchat/privat/Secure Mail + Krypto-Identitaet ueber
+`/api/v1/`), Client-E2EE + Wachenchat in Wachbuch-Client-PR #45. Die Dart-E2EE
+ist byte-kompatibel und bidirektional gegen die Referenz des Web-/Server-Schemas
+getestet. Offen: private/Secure-Mail-Screens im Client (API bereits vorhanden),
+Merge.
+
 
 Vorhandenen Server-Chat mobil verfuegbar machen.
 
@@ -62,7 +73,12 @@ Vorhandenen Server-Chat mobil verfuegbar machen.
   Entsperrung mit Passphrase im Secure Storage, Chat-/Mail-Screens.
 - Abnahme: Vertrags-Tests API, Krypto-Roundtrip-Tests im Client.
 
-### Phase 3 – Chatgruppen `[ ]`
+### Phase 3 – Chatgruppen `[~]`
+
+Server (Modelle + `/api/v1/chat/groups/`) in PR #68, Client (Gruppenliste +
+Gruppen-Thread, Wiederverwendung der E2EE) in Wachbuch-Client-PR #46. Offen:
+optionaler Web-Client fuer Gruppen, Merge.
+
 
 Mehrpersonen-Gruppenraeume zusaetzlich zu 1:1 und Wachenchat.
 
