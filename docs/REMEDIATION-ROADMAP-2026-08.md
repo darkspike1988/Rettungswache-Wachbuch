@@ -85,6 +85,14 @@ Umgesetzt:
 
 Kanonischer Vertrag ist in `docs/API.md` und `core/api/openapi_v1.yaml` dokumentiert.
 
+### [~] R-022 Web-Design-Parität mit Client (BOS/öffentlicher Dienst)
+
+Web-PWA übernimmt die kanonischen Client-Design-Tokens (Blau-Identität,
+Prioritäts-/Statusfarben, 48px Touch-Ziele, ruhige Flächen mit Rand statt
+schwerer Schatten). Orientierung: Rettungsdienst / Feuerwehr / Polizei /
+öffentlicher Dienst – feldlesbar, nicht marketinglastig. Manuelle
+Browser-/Kontrastabnahme bleibt Teil R-018.
+
 ## Wave 2 – Betrieb und Lieferkette
 
 ### [~] R-010 Least-Privilege-Backuprolle

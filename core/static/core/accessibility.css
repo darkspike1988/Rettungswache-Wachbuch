@@ -9,7 +9,7 @@
 
 .chat-tabs a,
 .recipient-picks label {
-  min-height: 44px;
+  min-height: var(--touch, 3rem);
   display: inline-flex;
   align-items: center;
 }

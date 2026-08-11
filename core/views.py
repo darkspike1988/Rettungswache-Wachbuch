@@ -219,11 +219,11 @@ def web_manifest(request):
         "scope": "/",
         "display": "standalone",
         "orientation": "any",
-        "background_color": "#0f242b",
-        "theme_color": "#17343d",
+        "background_color": "#f7f9fc",
+        "theme_color": "#0d47a1",
         "icons": icons,
         "shortcuts": shortcuts,
-        "categories": ["medical", "productivity"],
+        "categories": ["productivity", "utilities"],
     }
     return JsonResponse(payload)
 
@@ -233,7 +233,11 @@ def web_manifest(request):
 def service_worker(request):
     shell_assets = [
         _static_url("core/app.css"),
+        _static_url("core/accessibility.css"),
         _static_url("core/app.js"),
+        _static_url("core/fonts/SourceSans3-Regular.woff2"),
+        _static_url("core/fonts/SourceSans3-Semibold.woff2"),
+        _static_url("core/fonts/SourceSans3-Bold.woff2"),
         _static_url("core/icons/icon-192.png"),
         _static_url("core/icons/icon-512.png"),
     ]
