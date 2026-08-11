@@ -61,6 +61,8 @@ DEFAULT_MOBILE_SCOPES = [
     "write:coffee",
     "read:checklists",
     "write:checklists",
+    "read:chat",
+    "write:chat",
 ]
 
 
@@ -195,6 +197,9 @@ def api_root(request):
             "kalender": "/api/v1/kalender/",
             "kaffeekasse": "/api/v1/kaffeekasse/",
             "checklisten": "/api/v1/checklisten/",
+            "chat": "/api/v1/chat/",
+            "chat_identity": "/api/v1/chat/identity/",
+            "post": "/api/v1/post/",
             "openapi": "/api/v1/openapi.yaml",
         },
         "mobile_clients": {
