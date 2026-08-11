@@ -2328,6 +2328,23 @@ class DemoModeTests(TestCase):
                 f"Backup-Rolle darf kein {forbidden} bekommen: {executed}",
             )
 
+    def test_push_role_receives_only_worker_runtime_privileges(self):
+        executed = self._run_grant({"PUSH_DB_USER": "rwsth_push"}, [])
+        expected = {
+            "GRANT CONNECT ON DATABASE rwsth TO rwsth_app, rwsth_feed, rwsth_backup, rwsth_push",
+            "GRANT USAGE ON SCHEMA public TO rwsth_app, rwsth_feed, rwsth_backup, rwsth_push",
+            "GRANT SELECT, UPDATE ON core_pushoutbox TO rwsth_push",
+            "GRANT SELECT, DELETE ON core_pushsubscription TO rwsth_push",
+            "GRANT SELECT ON core_station TO rwsth_push",
+            "GRANT INSERT ON core_auditevent TO rwsth_push",
+            "GRANT USAGE, SELECT ON SEQUENCE core_auditevent_id_seq TO rwsth_push",
+        }
+        self.assertTrue(expected.issubset(set(executed)), executed)
+        self.assertFalse(
+            any("ALL TABLES IN SCHEMA public TO rwsth_push" in statement for statement in executed),
+            executed,
+        )
+
     def test_app_role_retains_readwrite_except_append_only_tables(self):
         executed = self._run_grant({}, [])
         self.assertTrue(
@@ -2358,9 +2375,14 @@ class DemoModeTests(TestCase):
                 "Live-Privileg-Pruefung nur gegen PostgreSQL aussagekraeftig; "
                 f"vendor={vendor}."
             )
+        database_name = str(connection.settings_dict.get("NAME") or "")
+        if database_name.startswith("test_"):
+            self.skipTest(
+                "Produktionsrollen-Grants sind in der isolierten Django-Testdatenbank nicht gesetzt."
+            )
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT 1 FROM information_schema.roles WHERE role_name = 'rwsth_backup'"
+                "SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'rwsth_backup'"
             )
             row = cursor.fetchone()
         if not row:
@@ -2517,6 +2539,26 @@ class PushOutboxWorkerTests(_PushOutboxBase):
         self.assertEqual(outbox.status, PushOutbox.Status.SENT)
         self.assertIsNotNone(outbox.sent_at)
         self.assertEqual(outbox.attempts, 0)
+
+    @override_settings(**WEB_PUSH_SETTINGS)
+    def test_worker_keeps_claim_transaction_open_during_delivery(self):
+        from django.db import connection
+
+        from .management.commands.push_worker import process_once
+        from .push import notify_urgent_handover
+
+        handover = self.make_handover()
+        notify_urgent_handover(handover, self.author)
+
+        def assert_transaction(**_kwargs):
+            self.assertTrue(connection.in_atomic_block)
+
+        with patch(
+            "core.management.commands.push_worker.webpush",
+            side_effect=assert_transaction,
+        ) as webpush_mock:
+            self.assertEqual(process_once(), 1)
+        webpush_mock.assert_called_once()
 
     @override_settings(**WEB_PUSH_SETTINGS)
     def test_worker_retries_with_backoff_on_transient_error(self):

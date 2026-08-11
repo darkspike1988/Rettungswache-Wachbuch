@@ -1,0 +1,6 @@
+FROM postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+
+RUN apk add --no-cache gnupg
+
+COPY --chmod=0755 scripts/backup-loop.sh /usr/local/bin/rwsth-backup-loop
+COPY --chmod=0755 scripts/restore-test.sh /usr/local/bin/rwsth-restore-test

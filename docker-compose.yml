@@ -163,6 +163,10 @@ services:
     restart: unless-stopped
     logging: *default-logging
     command: ["/app/scripts/start-worker.sh"]
+    # The shared image probes Gunicorn on port 8000. This worker has no HTTP
+    # listener, so inheriting that healthcheck creates a false unhealthy.
+    healthcheck:
+      disable: true
     environment:
       DJANGO_SECRET_KEY: ${FEED_WORKER_SECRET_KEY}
       DJANGO_DEBUG: "false"
@@ -225,12 +229,33 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  backup-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    image: rettungswache-wachbuch-backup:local
+    restart: "no"
+    user: "0:0"
+    command: ["/bin/sh", "-ec", "chown ${BACKUP_UID:-70}:${BACKUP_GID:-70} /backups && chmod 0700 /backups"]
+    volumes:
+      - backups-data:/backups
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+
   backup:
-    image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    image: rettungswache-wachbuch-backup:local
     restart: unless-stopped
     logging: *default-logging
     user: "${BACKUP_UID:-70}:${BACKUP_GID:-70}"
-    entrypoint: ["/bin/sh", "/backup/backup-loop.sh"]
+    entrypoint: ["/bin/sh", "/usr/local/bin/rwsth-backup-loop"]
     environment:
       PGHOST: db
       PGDATABASE: ${POSTGRES_DB}
@@ -241,14 +266,41 @@ services:
       BACKUP_OFF_TARGET: ${BACKUP_OFF_TARGET:-}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
     depends_on:
+      backup-init:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     networks:
       - backup-db
     volumes:
-      - ./backups:/backups
-      - ./scripts/backup-loop.sh:/backup/backup-loop.sh:ro
-      - ./scripts/restore-test.sh:/backup/restore-test.sh:ro
+      - backups-data:/backups
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  restore-test:
+    profiles: ["ops"]
+    image: rettungswache-wachbuch-backup:local
+    restart: "no"
+    user: "${BACKUP_UID:-70}:${BACKUP_GID:-70}"
+    entrypoint: ["/bin/sh", "/usr/local/bin/rwsth-restore-test"]
+    environment:
+      RESTORE_OWNER: "1"
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backup-db
+    volumes:
+      - backups-data:/backups:ro
     read_only: true
     tmpfs:
       - /tmp
@@ -272,3 +324,4 @@ networks:
 
 volumes:
   postgres-data:
+  backups-data:
