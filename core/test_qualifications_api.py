@@ -84,6 +84,8 @@ class QualificationApiTests(TestCase):
         listed = self.client.get("/api/v1/qualifikationen/", **self.admin["auth"]).json()
         self.assertTrue(listed["is_manager"])
         self.assertEqual(listed["results"][0]["member"]["id"], self.member["user"].id)
+        member_ids = {m["id"] for m in listed["members"]}
+        self.assertEqual(member_ids, {self.admin["user"].id, self.member["user"].id})
 
     # --- state --------------------------------------------------------------
 

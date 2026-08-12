@@ -125,10 +125,16 @@ def qualifications(request):
             except (TypeError, ValueError):
                 return _json_error(request, "Filter ungültig.", status=422)
         results = [_qual_json(item, today, include_member=True) for item in qs[:500]]
-    else:
-        qs = MemberQualification.objects.filter(station=station, user=request.user)
-        results = [_qual_json(item, today) for item in qs[:200]]
-    return JsonResponse({"ok": True, "is_manager": is_manager, "results": results})
+        members = [_person(user) for user in station_content_users(station)]
+        return JsonResponse({
+            "ok": True,
+            "is_manager": True,
+            "results": results,
+            "members": members,
+        })
+    qs = MemberQualification.objects.filter(station=station, user=request.user)
+    results = [_qual_json(item, today) for item in qs[:200]]
+    return JsonResponse({"ok": True, "is_manager": False, "results": results})
 
 
 @csrf_exempt
