@@ -847,6 +847,58 @@ class RateLimit(models.Model):
         return f"{self.bucket}:{self.key_hash}:{self.window_start.isoformat()}"
 
 
+class ChatGroup(models.Model):
+    """Station-scoped group chat room. Messages are E2EE ciphertext, wrapped for
+    every current member who has keys (plus the author)."""
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="chat_groups")
+    name = models.CharField(max_length=120)
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_chat_groups"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return self.name
+
+
+class ChatGroupMember(models.Model):
+    group = models.ForeignKey(ChatGroup, on_delete=models.CASCADE, related_name="members")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chat_group_memberships")
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["group", "user"], name="unique_chat_group_member"),
+        ]
+        ordering = ["id"]
+
+
+class GroupMessage(models.Model):
+    group = models.ForeignKey(ChatGroup, on_delete=models.CASCADE, related_name="messages")
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name="group_messages")
+    ciphertext = models.TextField()
+    nonce = models.CharField(max_length=64)
+    key_wraps = models.JSONField(default=dict)
+    algo = models.CharField(max_length=40, default="A256GCM+ECDH-ES")
+    is_hidden = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    @property
+    def is_encrypted(self):
+        return True
+
+    def __str__(self):
+        return f"GroupMessage({self.group_id})"
+
+
 class PinboardNote(models.Model):
     """Stationsinterne Pinnwand fuer kurze Aushaenge/Hinweise.
 
