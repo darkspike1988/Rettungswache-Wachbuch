@@ -124,6 +124,9 @@ class StationAsset(models.Model):
     kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.DEVICE)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.READY)
     note = models.CharField(max_length=300, blank=True, default="")
+    # Optionale Pruef-/Wartungsfrist (DGUV o. ae.). Ohne Intervall keine Frist.
+    inspection_interval_days = models.PositiveIntegerField(null=True, blank=True)
+    last_inspected_at = models.DateField(null=True, blank=True)
     updated_by = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
@@ -143,6 +146,57 @@ class StationAsset(models.Model):
 
     def __str__(self):
         return self.label
+
+    @property
+    def next_inspection_date(self):
+        from datetime import timedelta
+
+        if not self.inspection_interval_days or self.last_inspected_at is None:
+            return None
+        return self.last_inspected_at + timedelta(days=self.inspection_interval_days)
+
+    def inspection_state(self, today, due_soon_days=14):
+        """Return 'none' | 'unknown' | 'ok' | 'due_soon' | 'overdue'."""
+        from datetime import timedelta
+
+        if not self.inspection_interval_days:
+            return "none"
+        due = self.next_inspection_date
+        if due is None:
+            return "unknown"  # interval set but never inspected
+        if due < today:
+            return "overdue"
+        if due <= today + timedelta(days=due_soon_days):
+            return "due_soon"
+        return "ok"
+
+
+class AssetInspection(models.Model):
+    """Append-only Pruef-/Wartungsnachweis fuer ein Asset (Haftung/DGUV)."""
+
+    class Result(models.TextChoices):
+        OK = "ok", "In Ordnung"
+        DEFECT = "defect", "Mangel festgestellt"
+
+    asset = models.ForeignKey(StationAsset, on_delete=models.PROTECT, related_name="inspections")
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="asset_inspections")
+    result = models.CharField(max_length=20, choices=Result.choices, default=Result.OK)
+    note = models.CharField(max_length=300, blank=True, default="")
+    performed_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="asset_inspections")
+    performed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-performed_at"]
+        indexes = [models.Index(fields=["station", "asset", "-performed_at"], name="inspection_station_idx")]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Pruefnachweise duerfen nicht veraendert werden.")
+        _require_same_station(self.asset if self.asset_id else None, self.station_id, "Pruefnachweis")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Pruefnachweise duerfen nicht geloescht werden.")
 
 
 class AssetEvent(models.Model):

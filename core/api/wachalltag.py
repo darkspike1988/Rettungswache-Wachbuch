@@ -31,6 +31,7 @@ from core.models import Checklist, HandoverEntry, Membership
 from core.services import audit
 from core.wachalltag_models import (
     AssetEvent,
+    AssetInspection,
     ChecklistSchedule,
     Defect,
     DefectAttachment,
@@ -148,7 +149,9 @@ def _defect_json(item):
     }
 
 
-def _asset_json(item):
+def _asset_json(item, today=None):
+    today = today or timezone.localdate()
+    next_due = item.next_inspection_date
     return {
         "id": item.asset_id,
         "label": item.label,
@@ -156,6 +159,10 @@ def _asset_json(item):
         "status": item.status,
         "note": item.note,
         "updated_at": item.updated_at.isoformat(),
+        "inspection_interval_days": item.inspection_interval_days,
+        "last_inspected_at": item.last_inspected_at.isoformat() if item.last_inspected_at else None,
+        "next_inspection_date": next_due.isoformat() if next_due else None,
+        "inspection_state": item.inspection_state(today),
     }
 
 
@@ -617,6 +624,112 @@ def asset_status(request, asset_id):
             AssetEvent.objects.create(asset=item, station=station, from_status=previous, to_status=status, note=note, actor=request.user)
             audit(request.user, station, "asset.status_changed", item, {"from": previous, "to": status, "note": bool(note)})
     return JsonResponse({"ok": True, **_asset_json(item)})
+
+
+@csrf_exempt
+@require_GET
+@base.api_token_required
+def asset_detail(request, asset_id):
+    """Geraetekarte (QR-Ziel): Asset + Pruefhistorie + offene Maengel."""
+    station = request.membership.station
+    if (error := _scope(request, "read:handovers")) or (error := _content_role(request)):
+        return error
+    item = StationAsset.objects.filter(station=station, asset_id=asset_id).first()
+    if item is None:
+        return base._json_error(request, "Asset nicht gefunden.", status=404)
+    inspections = [
+        {
+            "result": ins.result,
+            "note": ins.note,
+            "by": ins.performed_by.username,
+            "at": ins.performed_at.isoformat(),
+        }
+        for ins in item.inspections.select_related("performed_by")[:50]
+    ]
+    open_defects = [
+        {"id": d.pk, "title": d.title, "status": d.status, "priority": d.priority}
+        for d in Defect.objects.filter(station=station, asset_ref=item.asset_id)
+        .exclude(status=Defect.Status.DONE)[:50]
+    ]
+    data = _asset_json(item)
+    data["inspections"] = inspections
+    data["open_defects"] = open_defects
+    return JsonResponse({"ok": True, **data})
+
+
+@csrf_exempt
+@require_POST
+@base.api_token_required
+def asset_inspection(request, asset_id):
+    """Pruefung erfassen (append-only) und last_inspected_at fortschreiben."""
+    station = request.membership.station
+    if (error := _scope(request, "write:handovers")) or (error := _content_role(request)):
+        return error
+    body = _body(request) or {}
+    result = str(body.get("result") or AssetInspection.Result.OK)
+    if result not in AssetInspection.Result.values:
+        return base._json_error(request, "Pruefergebnis ist ungueltig.", status=422)
+    note = str(body.get("note") or "")[:300]
+    with transaction.atomic():
+        item = StationAsset.objects.select_for_update().filter(station=station, asset_id=asset_id).first()
+        if item is None:
+            return base._json_error(request, "Asset nicht gefunden.", status=404)
+        inspection = AssetInspection.objects.create(
+            asset=item, station=station, result=result, note=note, performed_by=request.user,
+        )
+        item.last_inspected_at = timezone.localdate(inspection.performed_at)
+        item.updated_by = request.user
+        item.save(update_fields=["last_inspected_at", "updated_by", "updated_at"])
+        audit(request.user, station, "asset.inspected", item, {"result": result})
+    return JsonResponse({"ok": True, **_asset_json(item)}, status=201)
+
+
+@csrf_exempt
+@require_http_methods(["PUT", "POST"])
+@base.api_token_required
+def asset_inspection_schedule(request, asset_id):
+    """Pruefintervall in Tagen setzen oder entfernen (Schichtleitung/Admin)."""
+    station = request.membership.station
+    if (error := _scope(request, "write:handovers")) or (error := _write_role(request)):
+        return error
+    body = _body(request) or {}
+    raw = body.get("interval_days")
+    interval = None
+    if raw not in (None, "", 0, "0"):
+        try:
+            interval = int(raw)
+        except (TypeError, ValueError):
+            return base._json_error(request, "Intervall ist ungueltig.", status=422)
+        if not (1 <= interval <= 3650):
+            return base._json_error(request, "Intervall muss zwischen 1 und 3650 Tagen liegen.", status=422)
+    with transaction.atomic():
+        item = StationAsset.objects.select_for_update().filter(station=station, asset_id=asset_id).first()
+        if item is None:
+            return base._json_error(request, "Asset nicht gefunden.", status=404)
+        item.inspection_interval_days = interval
+        item.updated_by = request.user
+        item.save(update_fields=["inspection_interval_days", "updated_by", "updated_at"])
+        audit(request.user, station, "asset.inspection_schedule", item, {"interval_days": interval})
+    return JsonResponse({"ok": True, **_asset_json(item)})
+
+
+@csrf_exempt
+@require_GET
+@base.api_token_required
+def inspections_due(request):
+    """Faellige/ueberfaellige Pruefungen als Erinnerungs-Datengrundlage."""
+    station = request.membership.station
+    if (error := _scope(request, "read:handovers")) or (error := _content_role(request)):
+        return error
+    today = timezone.localdate()
+    items = StationAsset.objects.filter(station=station, inspection_interval_days__isnull=False)
+    due = []
+    for item in items:
+        if item.inspection_state(today) in {"overdue", "due_soon", "unknown"}:
+            due.append(_asset_json(item, today))
+    order = {"overdue": 0, "unknown": 1, "due_soon": 2}
+    due.sort(key=lambda e: (order.get(e["inspection_state"], 3), e["next_inspection_date"] or "9999"))
+    return JsonResponse({"ok": True, "count": len(due), "results": due})
 
 
 # ---- Inventory -------------------------------------------------------------
