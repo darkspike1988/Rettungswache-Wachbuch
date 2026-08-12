@@ -166,6 +166,7 @@ def _deliver(outbox: PushOutbox) -> None:
             vapid_private_key=settings.VAPID_PRIVATE_KEY,
             vapid_claims=vapid_claims,
             headers=headers,
+            timeout=10,
         )
     except WebPushException as exc:
         status_code = getattr(getattr(exc, "response", None), "status_code", None)
@@ -187,8 +188,9 @@ def _deliver(outbox: PushOutbox) -> None:
     _mark_sent(outbox)
 
 
+@transaction.atomic
 def process_once(batch_size: int = 25) -> int:
-    """Process at most ``batch_size`` outbox rows. Returns the number processed."""
+    """Claim and process one batch while keeping row locks until delivery."""
     now = timezone.now()
     claimed = _claim_batch(now, batch_size)
     if not claimed:

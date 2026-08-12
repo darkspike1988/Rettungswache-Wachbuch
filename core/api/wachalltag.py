@@ -533,7 +533,12 @@ def defect_status(request, pk):
     if status == Defect.Status.DONE and request.membership.role not in base.WRITE_ROLES:
         return base._json_error(request, "Nur Schichtleitung oder Admin darf Maengel abschliessen.", status=403)
     with transaction.atomic():
-        item = Defect.objects.select_for_update().filter(pk=pk, station=station).select_related("owner").first()
+        item = (
+            Defect.objects.select_for_update(of=("self",))
+            .filter(pk=pk, station=station)
+            .select_related("owner")
+            .first()
+        )
         if item is None:
             return base._json_error(request, "Mangel nicht gefunden.", status=404)
         previous = item.status
@@ -663,7 +668,12 @@ def inventory_checkout(request, item_id):
     if (error := _scope(request, "write:handovers")) or (error := _content_role(request)):
         return error
     with transaction.atomic():
-        item = InventoryItem.objects.select_for_update().filter(station=station, item_id=item_id).select_related("holder").first()
+        item = (
+            InventoryItem.objects.select_for_update(of=("self",))
+            .filter(station=station, item_id=item_id)
+            .select_related("holder")
+            .first()
+        )
         if item is None:
             return base._json_error(request, "Inventar nicht gefunden.", status=404)
         if item.holder_id and item.holder_id != request.user.id:
@@ -686,7 +696,12 @@ def inventory_checkin(request, item_id):
     if (error := _scope(request, "write:handovers")) or (error := _content_role(request)):
         return error
     with transaction.atomic():
-        item = InventoryItem.objects.select_for_update().filter(station=station, item_id=item_id).select_related("holder").first()
+        item = (
+            InventoryItem.objects.select_for_update(of=("self",))
+            .filter(station=station, item_id=item_id)
+            .select_related("holder")
+            .first()
+        )
         if item is None:
             return base._json_error(request, "Inventar nicht gefunden.", status=404)
         previous_holder = item.holder
