@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0023_merge_0022_branches'),
+        ('core', '0024_station_pinboard_enabled_pinboardnote'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

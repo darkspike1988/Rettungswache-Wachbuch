@@ -128,7 +128,7 @@ bestehende Retention-Cron-Pfad die Outbox mitraeumt.
 
 ### Rollenmodell (R-010, Least-Privilege)
 
-Die Datenbank unterscheidet vier Rollen mit klar getrennten Aufgaben:
+Die Datenbank unterscheidet fünf Rollen mit klar getrennten Aufgaben:
 
 - `rwsth_owner` (entspricht `POSTGRES_USER`): ausschliesslich fuer Init,
   Migration, manuelle Restore-Skripte und die Passwortrotation. Wird im
@@ -139,6 +139,10 @@ Die Datenbank unterscheidet vier Rollen mit klar getrennten Aufgaben:
   `core_handoverrevision` und `core_checklistcompletion`.
 - `rwsth_feed` (entspricht `FEED_DB_USER`): ausschliesslich `FeedSource`-
   Status- und `FeedItem`-CRUD.
+- `rwsth_push` (entspricht `PUSH_DB_USER`): `SELECT`/`UPDATE` auf der
+  Push-Outbox, `SELECT`/`DELETE` auf Push-Subscriptions sowie ausschließlich
+  `INSERT` in das append-only Audit-Log. Der Worker erhält keine allgemeinen
+  Schema- oder Fachdatentabellenrechte.
 - `rwsth_backup` (entspricht `BACKUP_DB_USER`): ausschliesslich `SELECT` plus
   `pg_read_all_data`. Wird vom dauerhaften `backup`-Container fuer
   `pg_dump` benutzt. Kann weder `INSERT`, `UPDATE` noch `DELETE` auf
@@ -147,16 +151,14 @@ Die Datenbank unterscheidet vier Rollen mit klar getrennten Aufgaben:
 ### Tagesbackup
 
 Der `backup`-Container laeuft standardmaessig als PostgreSQL-UID/GID 70 und
-nutzt die `rwsth_backup`-Rolle. Vor dem Start muss `./backups` fuer dieses
-Konto schreibbar sein. Abweichende Images koennen `BACKUP_UID` und
-`BACKUP_GID` in `.env` anpassen.
-
-```bash
-sudo chown 70:70 backups
-```
+nutzt die `rwsth_backup`-Rolle. Die Dumps liegen im persistenten Named Volume
+`backups-data`. Der kurzlebige `backup-init`-Container setzt vor dem Start
+mit ausschließlich `CAP_CHOWN` und `CAP_FOWNER` die Volume-Rechte auf `0700`;
+der dauerhafte Backup-Prozess bleibt non-root und hat keine Capabilities.
+Abweichende Images koennen `BACKUP_UID` und `BACKUP_GID` in `.env` anpassen.
 
 `pg_dump` laeuft mit `--no-owner --no-acl --format custom`. Der lokale
-Ring bleibt im Verzeichnis `backups/` und wird pro Durchlauf um Dumps
+Ring bleibt im Volume `backups-data` und wird pro Durchlauf um Dumps
 aelter als `BACKUP_RETENTION_DAYS` ausgeduennt.
 
 ### Aufbewahrung alter Dumps
@@ -194,21 +196,17 @@ BACKUP_OFF_TARGET=file:///srv/wachbuch-offsite
 ### Restore-Test
 
 Der Restore-Test benoetigt Owner-Rechte (`createdb`/`dropdb`) und wird daher
-explizit mit `RESTORE_OWNER=1` und den Owner-Credentials gestartet. Der
-dauerhafte `backup`-Container fuehrt ihn **nicht** automatisch aus.
+ueber den nur manuell gestarteten `restore-test`-Service ausgefuehrt. Die
+Owner-Credentials werden nur diesem Einmal-Container uebergeben; der dauerhafte
+`backup`-Container behaelt ausschließlich die Read-only-Backup-Rolle.
 
 ```bash
-sudo chown 70:70 backups
-docker compose exec -T -e RESTORE_OWNER=1 \
-    -e PGUSER=rwsth_owner -e PGPASSWORD="$POSTGRES_PASSWORD" \
-    backup /bin/sh /backup/restore-test.sh
+docker compose run --rm restore-test
 ```
 
 Der Restore-Test erstellt kurzzeitig `rwsth_restore_test`, spielt den
 neuesten Dump ein, prueft Schluesseltabellen und entfernt die Testdatenbank
-wieder. Mit der Backup-Rolle laesst sich stattdessen nur die Dump-Struktur
-verifizieren (`pg_restore --list`) und ein Read-only-SELECT auf
-`django_migrations`/`core_station` ausfuehren.
+wieder.
 
 ## Aufbewahrung (Retention)
 

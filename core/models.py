@@ -20,6 +20,7 @@ class Station(models.Model):
     feeds_enabled = models.BooleanField(default=False, verbose_name="Externe Meldungen aktiviert")
     tasks_enabled = models.BooleanField(default=True, verbose_name="Tagesaufgaben aktiviert")
     chat_enabled = models.BooleanField(default=True, verbose_name="Wachenchat aktiviert")
+    pinboard_enabled = models.BooleanField(default=True, verbose_name="Pinnwand aktiviert")
     holidays_enabled = models.BooleanField(default=True, verbose_name="Feiertage (NRW) im Kalender")
     checklists_enabled = models.BooleanField(default=False, verbose_name="Checklisten aktiviert")
     waste_calendar_enabled = models.BooleanField(default=False, verbose_name="Muellkalender aktiviert")
@@ -896,3 +897,38 @@ class GroupMessage(models.Model):
 
     def __str__(self):
         return f"GroupMessage({self.group_id})"
+
+
+class PinboardNote(models.Model):
+    """Stationsinterne Pinnwand fuer kurze Aushaenge/Hinweise.
+
+    Bewusst getrennt von den strukturierten Uebergaben und ausserhalb der
+    Einsatz-/Patienten-Domaene (nur Wachalltag-Organisation). Aenderungen werden
+    ueber ``services`` auditiert.
+    """
+
+    class Category(models.TextChoices):
+        INFO = "info", "Info"
+        IMPORTANT = "important", "Wichtig"
+        EVENT = "event", "Termin/Hinweis"
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="pinboard_notes")
+    author = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="pinboard_notes"
+    )
+    title = models.CharField(max_length=140)
+    body = models.TextField(max_length=2000)
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.INFO)
+    is_pinned = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-is_pinned", "-updated_at"]
+        indexes = [
+            models.Index(fields=["station", "is_archived", "-is_pinned", "-updated_at"]),
+        ]
+
+    def __str__(self):
+        return self.title
