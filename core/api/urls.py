@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, wachalltag
+from . import chat, views, wachalltag
 
 urlpatterns = [
     path("", wachalltag.api_root, name="api_v1_root"),
@@ -37,5 +37,13 @@ urlpatterns = [
     path("checklisten/<int:pk>/erledigt/", wachalltag.checklist_complete_api, name="api_v1_checkliste_erledigt"),
     path("checklisten/<int:pk>/abschluss/", wachalltag.checklist_complete_api, name="api_v1_checkliste_abschluss"),
     path("checklisten/<int:pk>/schedule/", wachalltag.checklist_schedule, name="api_v1_checkliste_schedule"),
+    # E2EE messaging (ciphertext envelopes only; server never decrypts)
+    path("chat/identity/", chat.identity, name="api_v1_chat_identity"),
+    path("chat/keys/", chat.member_keys, name="api_v1_chat_keys"),
+    path("chat/", chat.station_chat, name="api_v1_chat"),
+    path("chat/private/", chat.private_home, name="api_v1_chat_private"),
+    path("chat/private/<int:pk>/", chat.private_thread, name="api_v1_chat_private_thread"),
+    path("post/", chat.mail_inbox, name="api_v1_post"),
+    path("post/<int:pk>/", chat.mail_detail, name="api_v1_post_detail"),
     path("pinnwand/", views.pinboard_api, name="api_v1_pinnwand"),
 ]
