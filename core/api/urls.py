@@ -45,4 +45,5 @@ urlpatterns = [
     path("chat/private/<int:pk>/", chat.private_thread, name="api_v1_chat_private_thread"),
     path("post/", chat.mail_inbox, name="api_v1_post"),
     path("post/<int:pk>/", chat.mail_detail, name="api_v1_post_detail"),
+    path("pinnwand/", views.pinboard_api, name="api_v1_pinnwand"),
 ]

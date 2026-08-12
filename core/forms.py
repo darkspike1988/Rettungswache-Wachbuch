@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import BirthdayPreference, CalendarEvent, HandoverEntry, Membership, Station, StationTask
+from .models import BirthdayPreference, CalendarEvent, HandoverEntry, Membership, PinboardNote, Station, StationTask
 
 
 class DateTimeLocalInput(forms.DateTimeInput):
@@ -200,6 +200,7 @@ class StationSettingsForm(forms.ModelForm):
             "feeds_enabled",
             "tasks_enabled",
             "chat_enabled",
+            "pinboard_enabled",
             "holidays_enabled",
             "checklists_enabled",
             "waste_calendar_enabled",
@@ -359,6 +360,24 @@ class ChatMessageForm(forms.Form):
             "placeholder": "Kurze Nachricht an die Kollegen …",
         }),
     )
+
+
+class PinboardNoteForm(forms.ModelForm):
+    class Meta:
+        model = PinboardNote
+        fields = ["title", "body", "category"]
+        labels = {
+            "title": "Titel",
+            "body": "Text",
+            "category": "Art",
+        }
+        widgets = {
+            "body": forms.Textarea(attrs={
+                "rows": 5,
+                "maxlength": 2000,
+                "placeholder": "Kurzer Aushang fuer die Wache …",
+            }),
+        }
 
 
 class StationTaskForm(forms.ModelForm):

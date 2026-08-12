@@ -4,7 +4,15 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .models import ApiToken, AuditEvent, BirthdayPreference, FeedItem, HandoverEntry, HandoverRevision
+from .models import (
+    ApiToken,
+    AuditEvent,
+    BirthdayPreference,
+    FeedItem,
+    HandoverEntry,
+    HandoverRevision,
+    PinboardNote,
+)
 from .push import notify_urgent_handover
 
 
@@ -214,3 +222,60 @@ def apply_pushoutbox_retention(now=None, days=None):
         created_at__lt=cutoff,
     ).delete()
     return deleted
+
+
+# --- Pinnwand (digitale Aushaenge) -----------------------------------------
+
+@transaction.atomic
+def create_pinboard_note(*, station, author, title, body, category):
+    note = PinboardNote.objects.create(
+        station=station,
+        author=author,
+        title=title,
+        body=body,
+        category=category,
+    )
+    audit(author, station, "pinboard.note_created", note, {
+        "fields": ["title", "category"],
+    })
+    return note
+
+
+@transaction.atomic
+def update_pinboard_note(note, *, actor, title, body, category):
+    locked = PinboardNote.objects.select_for_update().get(pk=note.pk)
+    locked.title = title
+    locked.body = body
+    locked.category = category
+    locked.save(update_fields=["title", "body", "category", "updated_at"])
+    audit(actor, locked.station, "pinboard.note_updated", locked, {
+        "fields": ["title", "category"],
+    })
+    return locked
+
+
+@transaction.atomic
+def set_pinboard_pin(note, *, actor, pinned):
+    locked = PinboardNote.objects.select_for_update().get(pk=note.pk)
+    if locked.is_pinned == pinned:
+        return locked
+    locked.is_pinned = pinned
+    locked.save(update_fields=["is_pinned", "updated_at"])
+    audit(actor, locked.station, "pinboard.note_pinned", locked, {
+        "fields": ["is_pinned"],
+        "is_pinned": pinned,
+    })
+    return locked
+
+
+@transaction.atomic
+def archive_pinboard_note(note, *, actor):
+    locked = PinboardNote.objects.select_for_update().get(pk=note.pk)
+    if locked.is_archived:
+        return locked
+    locked.is_archived = True
+    locked.save(update_fields=["is_archived", "updated_at"])
+    audit(actor, locked.station, "pinboard.note_archived", locked, {
+        "fields": ["is_archived"],
+    })
+    return locked
