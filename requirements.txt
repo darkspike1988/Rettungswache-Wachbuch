@@ -8,7 +8,7 @@ feedparser==6.0.14
 gunicorn==26.0.0
 psycopg[binary]==3.3.4
 pyotp==2.10.0
-pywebpush==2.0.1
+pywebpush==2.4.0
 urllib3==2.7.0
 webauthn==3.0.0
 whitenoise==6.12.0
