@@ -166,6 +166,7 @@ def _deliver(outbox: PushOutbox) -> None:
             vapid_private_key=settings.VAPID_PRIVATE_KEY,
             vapid_claims=vapid_claims,
             headers=headers,
+            timeout=10,
         )
     except WebPushException as exc:
         status_code = getattr(getattr(exc, "response", None), "status_code", None)

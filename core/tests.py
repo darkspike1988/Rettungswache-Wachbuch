@@ -2263,6 +2263,7 @@ class DemoModeTests(TestCase):
         self.assertTrue(User.objects.filter(username="demo-admin").exists())
 
 
+class DatabaseRoleLeastPrivilegeTests(TestCase):
     """Stellt sicher, dass die Backup-Rolle nur Leserechte bekommt (R-010)."""
 
     def _run_grant(self, env, executed):
