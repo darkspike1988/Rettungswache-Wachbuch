@@ -61,6 +61,8 @@ DEFAULT_MOBILE_SCOPES = [
     "write:coffee",
     "read:checklists",
     "write:checklists",
+    "read:qualifications",
+    "write:qualifications",
 ]
 
 
@@ -313,6 +315,7 @@ def me(request):
                     "birthdays": station.birthdays_enabled,
                     "holidays": station.holidays_enabled,
                     "checklists": station.checklists_enabled,
+                    "qualifications": station.qualifications_enabled,
                 },
             },
         },
@@ -449,6 +452,7 @@ def overview(request):
             "birthdays": station.birthdays_enabled,
             "holidays": station.holidays_enabled,
             "checklists": station.checklists_enabled,
+            "qualifications": station.qualifications_enabled,
         },
         "handovers": handovers,
     })

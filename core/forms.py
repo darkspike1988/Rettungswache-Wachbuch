@@ -200,6 +200,7 @@ class StationSettingsForm(forms.ModelForm):
             "feeds_enabled",
             "tasks_enabled",
             "chat_enabled",
+            "qualifications_enabled",
             "holidays_enabled",
             "checklists_enabled",
             "waste_calendar_enabled",

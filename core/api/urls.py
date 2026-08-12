@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, wachalltag
+from . import qualifications, views, wachalltag
 
 urlpatterns = [
     path("", wachalltag.api_root, name="api_v1_root"),
@@ -37,4 +37,7 @@ urlpatterns = [
     path("checklisten/<int:pk>/erledigt/", wachalltag.checklist_complete_api, name="api_v1_checkliste_erledigt"),
     path("checklisten/<int:pk>/abschluss/", wachalltag.checklist_complete_api, name="api_v1_checkliste_abschluss"),
     path("checklisten/<int:pk>/schedule/", wachalltag.checklist_schedule, name="api_v1_checkliste_schedule"),
+    path("qualifikationen/", qualifications.qualifications, name="api_v1_qualifications"),
+    path("qualifikationen/faellig/", qualifications.qualifications_due, name="api_v1_qualifications_due"),
+    path("qualifikationen/<int:pk>/", qualifications.qualification_detail, name="api_v1_qualification_detail"),
 ]

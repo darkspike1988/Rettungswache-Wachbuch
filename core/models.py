@@ -20,6 +20,7 @@ class Station(models.Model):
     feeds_enabled = models.BooleanField(default=False, verbose_name="Externe Meldungen aktiviert")
     tasks_enabled = models.BooleanField(default=True, verbose_name="Tagesaufgaben aktiviert")
     chat_enabled = models.BooleanField(default=True, verbose_name="Wachenchat aktiviert")
+    qualifications_enabled = models.BooleanField(default=False, verbose_name="Qualifikationen aktiviert")
     holidays_enabled = models.BooleanField(default=True, verbose_name="Feiertage (NRW) im Kalender")
     checklists_enabled = models.BooleanField(default=False, verbose_name="Checklisten aktiviert")
     waste_calendar_enabled = models.BooleanField(default=False, verbose_name="Muellkalender aktiviert")
@@ -844,3 +845,43 @@ class RateLimit(models.Model):
 
     def __str__(self):
         return f"{self.bucket}:{self.key_hash}:{self.window_start.isoformat()}"
+
+
+class MemberQualification(models.Model):
+    """Qualifikations-/Tauglichkeitsnachweis mit optionaler Ablauffrist.
+
+    Bewusst nur Titel + Ablaufdatum (+ kurze Notiz) fuer die Dienstplanung; keine
+    Diagnosen, Gruende oder Gesundheitsdetails (siehe AGENTS.md-Produktgrenze).
+    """
+
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name="qualifications")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="qualifications")
+    title = models.CharField(max_length=160)
+    expires_at = models.DateField(null=True, blank=True)
+    note = models.CharField(max_length=300, blank=True, default="")
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_qualifications"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["expires_at", "title"]
+        indexes = [
+            models.Index(fields=["station", "user", "expires_at"], name="qual_station_user_idx"),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    def state(self, today, expiring_days=30):
+        """Return 'none' | 'expired' | 'expiring_soon' | 'valid'."""
+        from datetime import timedelta
+
+        if self.expires_at is None:
+            return "none"
+        if self.expires_at < today:
+            return "expired"
+        if self.expires_at <= today + timedelta(days=expiring_days):
+            return "expiring_soon"
+        return "valid"
