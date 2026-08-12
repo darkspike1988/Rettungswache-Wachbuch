@@ -33,7 +33,7 @@ from ..errors import (
     ERROR_CODE_VALIDATION,
     json_error,
 )
-from ..forms import CalendarEventForm, CoffeeEntryForm, HandoverForm, HandoverStatusForm
+from ..forms import CalendarEventForm, CoffeeEntryForm, HandoverForm, HandoverStatusForm, PinboardNoteForm
 from ..models import (
     ApiToken,
     CalendarEvent,
@@ -42,8 +42,9 @@ from ..models import (
     CoffeeEntry,
     HandoverEntry,
     Membership,
+    PinboardNote,
 )
-from ..services import audit, change_handover_status, create_handover
+from ..services import audit, change_handover_status, create_handover, create_pinboard_note
 from ..version import APP_VERSION
 
 API_VERSION = "v1"
@@ -61,6 +62,8 @@ DEFAULT_MOBILE_SCOPES = [
     "write:coffee",
     "read:checklists",
     "write:checklists",
+    "read:pinboard",
+    "write:pinboard",
 ]
 
 
@@ -195,6 +198,7 @@ def api_root(request):
             "kalender": "/api/v1/kalender/",
             "kaffeekasse": "/api/v1/kaffeekasse/",
             "checklisten": "/api/v1/checklisten/",
+            "pinnwand": "/api/v1/pinnwand/",
             "openapi": "/api/v1/openapi.yaml",
         },
         "mobile_clients": {
@@ -313,6 +317,7 @@ def me(request):
                     "birthdays": station.birthdays_enabled,
                     "holidays": station.holidays_enabled,
                     "checklists": station.checklists_enabled,
+                    "pinboard": station.pinboard_enabled,
                 },
             },
         },
@@ -449,6 +454,7 @@ def overview(request):
             "birthdays": station.birthdays_enabled,
             "holidays": station.holidays_enabled,
             "checklists": station.checklists_enabled,
+            "pinboard": station.pinboard_enabled,
         },
         "handovers": handovers,
     })
@@ -712,3 +718,61 @@ def checklist_complete_api(request, pk):
         "completed_by": _person(request.user),
         "created_at": completion.created_at.isoformat(),
     }, status=201)
+
+
+def _pinboard_json(note):
+    return {
+        "id": note.pk,
+        "title": note.title,
+        "body": note.body,
+        "category": note.category,
+        "is_pinned": note.is_pinned,
+        "author": _person(note.author) if note.author_id else None,
+        "created_at": note.created_at.isoformat(),
+        "updated_at": note.updated_at.isoformat(),
+    }
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+@api_token_required
+def pinboard_api(request):
+    station = request.membership.station
+    if not station.pinboard_enabled:
+        return _json_error(request, "Modul ist nicht aktiviert.", status=404)
+    if request.method == "POST":
+        if not _scope_allowed(request.api_token, "write:pinboard"):
+            return _json_error(request, "Scope write:pinboard fehlt.", status=403)
+        if request.membership.role not in CONTENT_ROLES:
+            return _json_error(request, "Rolle darf keine Aushänge anlegen.", status=403)
+        body = _parse_json(request)
+        if body is None:
+            return _json_error(request, "JSON-Körper erwartet.")
+        form = PinboardNoteForm(body)
+        if not form.is_valid():
+            return _json_error(request, "Aushang ist ungültig.", status=422, fields=form.errors)
+        note = create_pinboard_note(
+            station=station,
+            author=request.user,
+            title=form.cleaned_data["title"],
+            body=form.cleaned_data["body"],
+            category=form.cleaned_data["category"],
+        )
+        return JsonResponse({"ok": True, **_pinboard_json(note)}, status=201)
+
+    if not _scope_allowed(request.api_token, "read:pinboard"):
+        return _json_error(request, "Scope read:pinboard fehlt.", status=403)
+    if request.membership.role not in CONTENT_ROLES:
+        return _json_error(request, "Rolle hat keinen Zugriff auf die Pinnwand.", status=403)
+    qs = (
+        PinboardNote.objects.filter(station=station, is_archived=False)
+        .select_related("author")
+        .order_by("-is_pinned", "-updated_at")[:100]
+    )
+    results = [_pinboard_json(note) for note in qs]
+    return JsonResponse({
+        "ok": True,
+        "api_version": API_VERSION,
+        "count": len(results),
+        "results": results,
+    })

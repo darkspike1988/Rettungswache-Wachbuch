@@ -37,4 +37,5 @@ urlpatterns = [
     path("checklisten/<int:pk>/erledigt/", wachalltag.checklist_complete_api, name="api_v1_checkliste_erledigt"),
     path("checklisten/<int:pk>/abschluss/", wachalltag.checklist_complete_api, name="api_v1_checkliste_abschluss"),
     path("checklisten/<int:pk>/schedule/", wachalltag.checklist_schedule, name="api_v1_checkliste_schedule"),
+    path("pinnwand/", views.pinboard_api, name="api_v1_pinnwand"),
 ]

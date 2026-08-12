@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.staticfiles.storage import staticfiles_storage
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Case, IntegerField, Sum, Value, When
@@ -44,6 +45,7 @@ from .forms import (
     MembershipAssignmentForm,
     MembershipEditForm,
     MasterAdminCreateUserForm,
+    PinboardNoteForm,
     StationSettingsForm,
     StationTaskForm,
     TotpConfirmForm,
@@ -59,6 +61,7 @@ from .models import (
     FeedSource,
     HandoverEntry,
     Membership,
+    PinboardNote,
     StationTask,
     TotpDevice,
     WebAuthnCredential,
@@ -74,12 +77,16 @@ from .mfa import (
     verify_totp,
 )
 from .services import (
+    archive_pinboard_note,
     audit,
     change_handover_status,
     clear_birthday_on_exit,
     create_handover,
+    create_pinboard_note,
+    set_pinboard_pin,
     structure_changes,
     update_handover_content,
+    update_pinboard_note,
 )
 from .task_board import (
     day_board,
@@ -1145,3 +1152,90 @@ def mfa_disable(request):
     disable_all_mfa(request.user)
     messages.success(request, "Zwei-Faktor-Authentifizierung wurde deaktiviert.")
     return redirect("more")
+
+
+# --- Pinnwand (digitale Aushaenge) -----------------------------------------
+
+PINBOARD_MANAGE_ROLES = {Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN}
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("pinboard_enabled")
+def pinboard(request):
+    station = request.membership.station
+    notes = (
+        PinboardNote.objects.filter(station=station, is_archived=False)
+        .select_related("author")
+        .order_by("-is_pinned", "-updated_at")
+    )
+    can_manage = request.membership.role in PINBOARD_MANAGE_ROLES
+    return render(request, "core/pinboard.html", {
+        "page_obj": page_for(request, notes),
+        "can_manage": can_manage,
+    })
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("pinboard_enabled")
+@require_http_methods(["GET", "POST"])
+def pinboard_create(request):
+    form = PinboardNoteForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        create_pinboard_note(
+            station=request.membership.station,
+            author=request.user,
+            title=form.cleaned_data["title"],
+            body=form.cleaned_data["body"],
+            category=form.cleaned_data["category"],
+        )
+        messages.success(request, "Aushang wurde angelegt.")
+        return redirect("pinboard")
+    return render(request, "core/pinboard_form.html", {
+        "form": form,
+        "page_title": "Aushang anlegen",
+    })
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("pinboard_enabled")
+@require_http_methods(["GET", "POST"])
+def pinboard_edit(request, pk):
+    note = get_object_or_404(PinboardNote, pk=pk, station=request.membership.station, is_archived=False)
+    if not (request.membership.role in PINBOARD_MANAGE_ROLES or note.author_id == request.user.id):
+        raise PermissionDenied
+    form = PinboardNoteForm(request.POST or None, instance=note)
+    if request.method == "POST" and form.is_valid():
+        update_pinboard_note(
+            note,
+            actor=request.user,
+            title=form.cleaned_data["title"],
+            body=form.cleaned_data["body"],
+            category=form.cleaned_data["category"],
+        )
+        messages.success(request, "Aushang wurde aktualisiert.")
+        return redirect("pinboard")
+    return render(request, "core/pinboard_form.html", {
+        "form": form,
+        "page_title": "Aushang bearbeiten",
+    })
+
+
+@membership_required(PINBOARD_MANAGE_ROLES)
+@station_module_required("pinboard_enabled")
+@require_POST
+def pinboard_pin(request, pk):
+    note = get_object_or_404(PinboardNote, pk=pk, station=request.membership.station, is_archived=False)
+    set_pinboard_pin(note, actor=request.user, pinned=not note.is_pinned)
+    return redirect("pinboard")
+
+
+@membership_required(CONTENT_ROLES)
+@station_module_required("pinboard_enabled")
+@require_POST
+def pinboard_archive(request, pk):
+    note = get_object_or_404(PinboardNote, pk=pk, station=request.membership.station, is_archived=False)
+    if not (request.membership.role in PINBOARD_MANAGE_ROLES or note.author_id == request.user.id):
+        raise PermissionDenied
+    archive_pinboard_note(note, actor=request.user)
+    messages.success(request, "Aushang wurde archiviert.")
+    return redirect("pinboard")
