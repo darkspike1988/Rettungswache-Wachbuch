@@ -196,10 +196,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .identity span { color: rgba(255, 255, 255, .82); font-size: .8rem; }
 .header-login {
   color: white !important;
-  background: transparent;
-  border-color: rgba(255, 255, 255, .55);
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, .55) !important;
 }
-.header-login:hover { background: rgba(255, 255, 255, .12); }
+.header-login:hover { background: rgba(255, 255, 255, .12) !important; }
 .logout-form button {
   min-height: var(--touch);
   padding: 0 .9rem;
