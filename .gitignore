@@ -18,3 +18,8 @@ clients/**/build/
 clients/**/.flutter-plugins
 clients/**/.flutter-plugins-dependencies
 clients/**/.packages
+.admin_credentials
+server.log
+start.sh
+staticfiles/
+db.sqlite3
