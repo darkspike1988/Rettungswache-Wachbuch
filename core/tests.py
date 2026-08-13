@@ -55,17 +55,17 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["display"], "standalone")
-        self.assertEqual(payload["name"], "Wachbuch")
-        self.assertEqual(payload["short_name"], "Wachbuch")
+        self.assertEqual(payload["name"], "Wachwerk")
+        self.assertEqual(payload["short_name"], "Wachwerk")
         self.assertEqual(payload["start_url"], reverse("dashboard"))
         self.assertTrue(payload["icons"])
         self.assertTrue(any(item["name"] == "Tagesaufgaben" for item in payload["shortcuts"]))
 
     def test_shell_brand_uses_station_subtitle(self):
         response = self.client.get(reverse("dashboard"))
-        self.assertContains(response, "<strong>Wachbuch</strong>", html=False)
+        self.assertContains(response, "<strong>Wachwerk</strong>", html=False)
         self.assertContains(response, self.station.name)
-        self.assertContains(response, 'name="apple-mobile-web-app-title" content="Wachbuch"')
+        self.assertContains(response, 'name="apple-mobile-web-app-title" content="Wachwerk"')
         self.assertNotContains(response, "<small>Rettungswache</small>")
 
     def test_service_worker_and_offline_page_are_available(self):
@@ -129,6 +129,34 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertIn("border-color: rgba(255, 255, 255, .55) !important;", css)
         self.assertIn(".header-login:hover { background: rgba(255, 255, 255, .12) !important; }", css)
 
+    def test_landing_shows_name_once_with_hero_art_and_webapp_copy(self):
+        self.client.logout()
+        response = self.client.get(reverse("landing"))
+        self.assertContains(response, "<strong>Wachwerk</strong>", html=False, count=1)
+        self.assertNotContains(response, "brand-hero")
+        self.assertContains(response, "landing-hero-art")
+        self.assertContains(response, "Was die Web-App leistet")
+        self.assertContains(response, "native Apps als mobile Schnittstelle")
+        self.assertNotContains(response, "Zur Anmeldung")
+
+    def test_demo_one_click_login_requires_demo_mode(self):
+        self.client.logout()
+        response = self.client.post(reverse("demo_login"))
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(DEMO_MODE=True)
+    def test_demo_one_click_login_signs_in_demo_admin(self):
+        demo_admin = User.objects.create_user(username="demo-admin", password="unused-here")
+        Membership.objects.create(
+            user=demo_admin,
+            station=self.station,
+            role=Membership.Role.ADMIN,
+        )
+        self.client.logout()
+        response = self.client.post(reverse("demo_login"))
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertEqual(response.wsgi_request.user.username, "demo-admin")
+
 
 class SecurityAndAccessTests(PilotTestCase):
     def test_health_endpoint_and_security_headers(self):
@@ -170,7 +198,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.client.logout()
         response = self.client.get(reverse("landing"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Wachbuch")
+        self.assertContains(response, "Wachwerk")
         self.assertContains(response, reverse("login"))
         self.assertContains(response, "Zugang nach Login und Freigabe")
         self.assertContains(response, "Master-Admin")
@@ -2287,7 +2315,8 @@ class DemoModeTests(TestCase):
         landing = self.client.get(reverse("landing"))
         self.assertContains(landing, "Demo-Modus")
         self.assertContains(landing, "demo-admin")
-        self.assertContains(landing, "Demo-Passwort-12345")
+        self.assertContains(landing, "Demo starten")
+        self.assertContains(landing, reverse("demo_login"))
 
     def test_load_demo_data_requires_demo_mode_or_force(self):
         from django.core.management import call_command

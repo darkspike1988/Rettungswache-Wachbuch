@@ -278,6 +278,22 @@ def offline(request):
     return render(request, "core/offline.html")
 
 
+@require_POST
+def demo_login(request):
+    from .demo import demo_mode_enabled
+
+    if not demo_mode_enabled():
+        raise Http404
+    user = User.objects.filter(username="demo-admin", is_active=True).first()
+    if user is None:
+        raise Http404
+    from django.contrib.auth import login
+
+    user.backend = "django.contrib.auth.backends.ModelBackend"
+    login(request, user)
+    return redirect("dashboard")
+
+
 def _ics_escape(value):
     return (
         str(value)
