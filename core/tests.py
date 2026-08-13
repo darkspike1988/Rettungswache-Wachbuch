@@ -119,6 +119,15 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertContains(response, "öffentlichen Dienst")
         self.assertContains(response, "Kein Einsatzleit")
         self.assertContains(response, "is-landing")
+        self.assertNotContains(response, "Keine Patienten- oder Einsatzdaten.")
+
+    def test_header_login_button_stays_readable_on_brand_header(self):
+        css = (Path(settings.BASE_DIR) / "core" / "static" / "core" / "app.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("background: transparent !important;", css)
+        self.assertIn("border-color: rgba(255, 255, 255, .55) !important;", css)
+        self.assertIn(".header-login:hover { background: rgba(255, 255, 255, .12) !important; }", css)
 
 
 class SecurityAndAccessTests(PilotTestCase):
