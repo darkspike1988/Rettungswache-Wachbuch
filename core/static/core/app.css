@@ -239,13 +239,23 @@ button, a { -webkit-tap-highlight-color: transparent; }
   margin-left: auto;
   margin-right: auto;
 }
-.landing-hero-art {
+.landing-hero-figure {
   width: min(64rem, 100%);
-  margin-top: 2rem;
+  margin: 2rem auto 0;
+}
+.landing-hero-art {
+  width: 100%;
   border-radius: var(--radius);
   border: 2px solid rgba(255, 255, 255, .35);
   box-shadow: 0 12px 32px rgba(4, 24, 54, .45);
 }
+.landing-hero-credit {
+  margin-top: .4rem;
+  text-align: right;
+  font-size: .75rem;
+  color: rgba(255, 255, 255, .75);
+}
+.landing-hero-credit a { color: inherit; text-decoration: underline; }
 .brand-hero {
   margin: 0 0 .85rem;
   color: white;

@@ -135,6 +135,7 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertContains(response, "<strong>Wachwerk</strong>", html=False, count=1)
         self.assertNotContains(response, "brand-hero")
         self.assertContains(response, "landing-hero-art")
+        self.assertContains(response, "Pexels")
         self.assertContains(response, "Was die Web-App leistet")
         self.assertContains(response, "native Apps als mobile Schnittstelle")
         self.assertNotContains(response, "Zur Anmeldung")
