@@ -11,7 +11,10 @@
     {% if registration_enabled %}<a class="button secondary" href="{% url 'register' %}">Registrieren</a>{% endif %}
     <a class="button secondary" href="{% url 'privacy' %}">Datenschutz</a>
   </div>
-  <img class="landing-hero-art" src="{% static 'core/landing-hero.jpg' %}" alt="Illustration einer Rettungswache bei Nacht mit Rettungswagen" width="1600" height="900" loading="eager">
+  <figure class="landing-hero-figure">
+    <img class="landing-hero-art" src="{% static 'core/landing-hero.jpg' %}" alt="Rettungswagen-Flotte des Rettungsdienstes an einer Wache" width="1600" height="1066" loading="eager">
+    <figcaption class="landing-hero-credit">Foto: <a href="https://www.pexels.com/photo/ambulances-on-a-parking-lot-5364345/" rel="noopener noreferrer">Antonio Batinic / Pexels</a></figcaption>
+  </figure>
 </section>
 
 <section class="landing-scope" aria-labelledby="landing-scope">
