@@ -200,22 +200,11 @@ def web_manifest(request):
             "purpose": "maskable",
         },
     ]
+    shortcut_icon = [{"src": _static_url("core/icons/icon-192.png"), "sizes": "192x192"}]
     shortcuts = [
-        {
-            "name": "Übersicht",
-            "url": reverse("dashboard"),
-            "icons": [{"src": _static_url("core/icons/icon-192.png"), "sizes": "192x192"}],
-        },
-        {
-            "name": "Übergaben",
-            "url": reverse("handover_list"),
-            "icons": [{"src": _static_url("core/icons/icon-192.png"), "sizes": "192x192"}],
-        },
-        {
-            "name": "Tagesaufgaben",
-            "url": reverse("tasks_today"),
-            "icons": [{"src": _static_url("core/icons/icon-192.png"), "sizes": "192x192"}],
-        },
+        {"name": "Übersicht", "url": reverse("dashboard"), "icons": shortcut_icon},
+        {"name": "Übergaben", "url": reverse("handover_list"), "icons": shortcut_icon},
+        {"name": "Tagesaufgaben", "url": reverse("tasks_today"), "icons": shortcut_icon},
     ]
     payload = {
         "name": settings.APP_NAME,
