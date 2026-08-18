@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Geräte & Status | {{ app_name }}{% endblock %}
 {% block content %}
+<a class="back-link" href="{% url 'more' %}">Zurück zu Mehr</a>
 <header class="page-heading">
   <p class="context-line">Wachalltag</p><h1>Geräte & Status</h1>
   <p class="lead">Fahrzeug-/Gerätestatus sowie Schlüssel- und Poolausgabe auf einen Blick.</p>
@@ -25,12 +26,12 @@
     {% empty %}<p class="empty-state">Noch keine Fahrzeuge oder Geräte angelegt.</p>{% endfor %}
   </div>
   {% if can_manage %}
-  <details class="section-block"><summary>Fahrzeug/Gerät anlegen</summary>
-    <form method="post" class="inline-form">{% csrf_token %}<input type="hidden" name="action" value="asset-create">
-      <label>Bezeichnung <input name="label" maxlength="160" required></label>
-      <label>ID <input name="asset_id" maxlength="64" placeholder="z. B. rtw-1"></label>
-      <label>Typ <select name="kind">{% for value,label in asset_kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
-      <button class="button primary" type="submit">Anlegen</button>
+  <details class="details-block"><summary>Fahrzeug/Gerät anlegen</summary>
+    <form method="post" class="form-card">{% csrf_token %}<input type="hidden" name="action" value="asset-create">
+      <div class="field"><label for="asset-label">Bezeichnung</label><input id="asset-label" name="label" maxlength="160" required></div>
+      <div class="field"><label for="asset-id">ID</label><input id="asset-id" name="asset_id" maxlength="64" placeholder="z. B. rtw-1"></div>
+      <div class="field"><label for="asset-kind">Typ</label><select id="asset-kind" name="kind">{% for value,label in asset_kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+      <div class="form-actions"><button class="button primary" type="submit">Anlegen</button></div>
     </form>
   </details>{% endif %}
 </section>
@@ -46,12 +47,12 @@
     {% empty %}<p class="empty-state">Noch keine Schlüssel oder Poolgeräte angelegt.</p>{% endfor %}
   </div>
   {% if can_manage %}
-  <details class="section-block"><summary>Pool-/Schlüsselobjekt anlegen</summary>
-    <form method="post" class="inline-form">{% csrf_token %}<input type="hidden" name="action" value="inventory-create">
-      <label>Bezeichnung <input name="label" maxlength="160" required></label>
-      <label>ID <input name="item_id" maxlength="64" placeholder="z. B. funk-a"></label>
-      <label>Typ <select name="kind">{% for value,label in inventory_kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
-      <button class="button primary" type="submit">Anlegen</button>
+  <details class="details-block"><summary>Pool-/Schlüsselobjekt anlegen</summary>
+    <form method="post" class="form-card">{% csrf_token %}<input type="hidden" name="action" value="inventory-create">
+      <div class="field"><label for="inventory-label">Bezeichnung</label><input id="inventory-label" name="label" maxlength="160" required></div>
+      <div class="field"><label for="inventory-id">ID</label><input id="inventory-id" name="item_id" maxlength="64" placeholder="z. B. funk-a"></div>
+      <div class="field"><label for="inventory-kind">Typ</label><select id="inventory-kind" name="kind">{% for value,label in inventory_kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+      <div class="form-actions"><button class="button primary" type="submit">Anlegen</button></div>
     </form>
   </details>{% endif %}
 </section>

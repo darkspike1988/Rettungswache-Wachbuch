@@ -743,6 +743,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .summary-list dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; }
 .inline-form { display: flex; align-items: flex-end; gap: 1rem; }
 .inline-form .field { flex: 1; margin: 0; }
+.list-row > .inline-form { min-width: 0; }
+.list-row > .inline-form input,
+.list-row > .inline-form select { min-width: 0; max-width: 100%; }
 .details-block, .details-help {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1220,6 +1223,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .agenda-row { grid-template-columns: 4.2rem minmax(0, 1fr); padding-inline: .85rem; }
   .summary-list > div { grid-template-columns: 1fr; gap: .15rem; }
   .inline-form { align-items: stretch; flex-direction: column; }
+  .list-row > .inline-form { width: 100%; grid-column: 1 / -1; }
   .revision-list > div { grid-template-columns: 1fr; gap: .15rem; }
   .form-card { padding: 1rem; }
   .form-actions { flex-direction: column; }
