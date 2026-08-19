@@ -1,0 +1,2 @@
+# Reproducible dependency-audit tooling used by CI.
+pip-audit==2.10.1

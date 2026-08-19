@@ -43,16 +43,23 @@ pip install --require-hashes -r requirements.lock   # Installation mit Hash-Veri
 ```
 
 Fuer reproduzierbare CI-Qualitaetswerkzeuge gilt derselbe Fail-Closed-Grundsatz:
-`requirements-ci.in` beschreibt die direkten Werkzeuge, `requirements-ci.lock`
-enthaelt deren aufgeloeste Versionen und SHA256-Hashes. Der erste Ruff-Gate-
-Schritt prueft die fehlerkritischen Regeln E4/E7/E9; die vollstaendige
-Formatpruefung und eine breitere Regelmenge bleiben wegen des bestehenden
-Altbestands bewusst ein separater Folge-Schritt.
+`requirements-ci.in` beschreibt Ruff; `requirements-ci.lock` enthaelt die
+aufgeloeste Version und SHA256-Hashes. Der separate Audit-Scanner steht in
+`requirements-audit.in`/`requirements-audit.lock`, damit seine transitiven
+Werkzeuge die Produktions-/Lint-Umgebung nicht veraendern. Die CI verwendet
+Ruff fuer den E4/E7/E9-Baseline-Gate und `pip-audit` fuer den reproduzierbaren
+Dependency-Vulnerability-Scan. Die vollstaendige Formatpruefung und eine
+breitere Regelmenge bleiben wegen des bestehenden Altbestands bewusst separate
+Folge-Schritte.
 
 ```bash
 uv pip compile --generate-hashes --python-version 3.13 \
   requirements-ci.in --output-file requirements-ci.lock
+uv pip compile --generate-hashes --python-version 3.13 \
+  requirements-audit.in --output-file requirements-audit.lock
 pip install --require-hashes -r requirements.lock -r requirements-ci.lock
+pip install --require-hashes -r requirements-audit.lock  # in isolierter Audit-venv
+pip-audit --strict --requirement requirements.lock
 ruff check config core --select E4,E7,E9 --output-format=concise
 ```
 

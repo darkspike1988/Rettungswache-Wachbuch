@@ -114,7 +114,11 @@ Noch offen/zu vertiefen:
    installiert und erzwingt die fehlerkritische E4/E7/E9-Baseline. Eine vollständige
    Formatprüfung und breitere Regelmenge bleiben wegen des bestehenden Altbestands
    ein separater Folge-Schritt.
-2. vollständiger Dependency-/Container-Scan
+2. Ein reproduzierbarer Python-Dependency-Scan ist umgesetzt: `pip-audit` wird
+   als CI-Werkzeug ueber `requirements-audit.lock` mit SHA256-Hashes installiert und
+   mit `--strict` gegen die CI-Umgebung ausgefuehrt. Container-Scan sowie
+   CodeQL/SAST, Secret-Scanning und SBOM-/Provenance-Artefakte bleiben getrennte
+   Folge-Gates; dieser Schritt behauptet deren Abdeckung nicht.
 3. CodeQL/SAST und Secret Scan
 4. Server-SBOM + Build-Provenance
 5. Browser-Smoke-Test, CSP-Konsole und Axe-Core
