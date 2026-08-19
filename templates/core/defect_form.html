@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Mangel anlegen | {{ app_name }}{% endblock %}
 {% block content %}
-<header class="page-heading">
+<a class="back-link" href="{% url 'defects_web' %}">Zurück zu Mängeln</a>
+<header class="page-heading narrow">
   <p class="context-line">Wachalltag</p>
   <h1>Mangel anlegen</h1>
   <p class="lead">Nur Informationen zur Wachenorganisation, zu Material, Fahrzeugen oder Gebäuden.</p>
