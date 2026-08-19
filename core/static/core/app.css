@@ -1382,3 +1382,44 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .agenda-holiday h2, .agenda-holiday strong { color: var(--brand-deep); }
 .agenda-waste { background: #f8f4e8; }
 .agenda-waste h2, .agenda-waste strong { color: #6b5d2b; }
+
+/* Organisationsprofile: gleiche Informationsarchitektur, eigene visuelle Akzente. */
+.profile-rescue {
+  --brand: #0d47a1;
+  --brand-deep: #082e63;
+  --accent: #2563eb;
+  --accent-dark: #0d47a1;
+  --accent-soft: #dcebff;
+  --primary-container: #dcebff;
+  --bg-accent: #e8eef6;
+}
+.profile-fire {
+  --brand: #9f1d20;
+  --brand-deep: #641316;
+  --accent: #c2410c;
+  --accent-dark: #9f1d20;
+  --accent-soft: #ffeadf;
+  --primary-container: #ffeadf;
+  --bg-accent: #f8e6df;
+}
+.profile-police {
+  --brand: #173b63;
+  --brand-deep: #102944;
+  --accent: #087f8c;
+  --accent-dark: #17627a;
+  --accent-soft: #d9f1f2;
+  --primary-container: #d9f1f2;
+  --bg-accent: #e5eef4;
+}
+.profile-general {
+  --brand: #475569;
+  --brand-deep: #293548;
+  --accent: #526579;
+  --accent-dark: #475569;
+  --accent-soft: #e7edf2;
+  --primary-container: #e7edf2;
+  --bg-accent: #edf1f4;
+}
+.profile-fire .brand-mark { background: var(--brand); }
+.profile-police .brand-mark { background: var(--brand); }
+.profile-general .brand-mark { background: var(--brand); }

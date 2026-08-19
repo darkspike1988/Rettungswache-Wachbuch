@@ -62,10 +62,12 @@ from .models import (
     HandoverEntry,
     Membership,
     PinboardNote,
+    Station,
     StationTask,
     TotpDevice,
     WebAuthnCredential,
 )
+from .wachalltag_models import ChecklistSchedule, Defect, InventoryItem, StationAsset
 from .mfa import (
     confirm_device,
     create_pending_device,
@@ -363,6 +365,46 @@ def access(request):
     return render(request, "core/access.html")
 
 
+DASHBOARD_PROFILES = {
+    Station.Profile.RESCUE: {
+        "eyebrow": "Rettungsdienst",
+        "handover_title": "Für die nächste Schicht",
+        "handover_link": "Alle Übergaben",
+        "asset_label": "Fahrzeuge/Geräte",
+        "task_label": "Wachaufgaben",
+        "cards": ("defects", "assets", "loans", "checklists", "tasks"),
+    },
+    Station.Profile.FIRE: {
+        "eyebrow": "Feuerwehr",
+        "handover_title": "Für den nächsten Dienst",
+        "handover_link": "Alle Dienstübergaben",
+        "asset_label": "Einsatzmittel",
+        "task_label": "Wachdienst-Aufgaben",
+        "cards": ("defects", "assets", "checklists", "tasks"),
+    },
+    Station.Profile.POLICE: {
+        "eyebrow": "Polizei",
+        "handover_title": "Für die nächste Dienstübergabe",
+        "handover_link": "Alle Dienstübergaben",
+        "asset_label": "Fahrzeuge/Geräte",
+        "task_label": "Dienststellen-Aufgaben",
+        "cards": ("defects", "assets", "loans", "checklists", "tasks"),
+    },
+    Station.Profile.GENERAL: {
+        "eyebrow": "Organisationseinheit",
+        "handover_title": "Für die nächste Übergabe",
+        "handover_link": "Alle Übergaben",
+        "asset_label": "Geräte/Fahrzeuge",
+        "task_label": "Organisationsaufgaben",
+        "cards": ("defects", "assets", "loans", "checklists", "tasks"),
+    },
+}
+
+
+def dashboard_profile(station):
+    return DASHBOARD_PROFILES.get(station.organization_profile, DASHBOARD_PROFILES[Station.Profile.GENERAL])
+
+
 @membership_required(CONTENT_ROLES)
 def dashboard(request):
     station = request.membership.station
@@ -381,14 +423,52 @@ def dashboard(request):
     if station.tasks_enabled:
         ensure_default_station_tasks(station)
         task_progress = day_board(station, timezone.localdate())
+
+    # Ein kleiner, stationsisolierter Lageblock: vorhandene Wachalltag-Daten
+    # werden sichtbar gemacht, ohne neue Daten oder einen zweiten Workflow einzuführen.
+    active_defects = Defect.objects.filter(station=station).exclude(status=Defect.Status.DONE)
+    asset_attention = StationAsset.objects.filter(station=station).exclude(status=StationAsset.Status.READY)
+    inventory_loans = InventoryItem.objects.filter(station=station, holder__isnull=False)
+    due_checklists = ChecklistSchedule.objects.filter(
+        station=station,
+        checklist__is_active=True,
+        due_next__isnull=False,
+        due_next__lte=now,
+    ) if station.checklists_enabled else ChecklistSchedule.objects.none()
+    operations = {
+        "defects_count": active_defects.count(),
+        "urgent_defects_count": active_defects.filter(priority=Defect.Priority.URGENT).count(),
+        "asset_attention_count": asset_attention.count(),
+        "inventory_loans_count": inventory_loans.count(),
+        "due_checklists_count": due_checklists.count(),
+        "task_total": task_progress["total"] if task_progress else 0,
+        "task_done": task_progress["done_count"] if task_progress else 0,
+    }
+    profile = dashboard_profile(station)
+    card_definitions = {
+        "defects": ("defects_web", "Mängel", "offen", operations["defects_count"]),
+        "assets": ("assets_inventory_web", profile["asset_label"], "nicht bereit", operations["asset_attention_count"]),
+        "loans": ("assets_inventory_web", "Inventar", "ausgegeben", operations["inventory_loans_count"]),
+        "checklists": ("checklists", "Checklisten", "fällig oder überfällig", operations["due_checklists_count"]),
+        "tasks": ("tasks_today", profile["task_label"], "heute erledigt", f'{operations["task_done"]}/{operations["task_total"]}'),
+    }
+    dashboard_cards = [
+        {"url_name": card_definitions[key][0], "title": card_definitions[key][1], "subtitle": card_definitions[key][2], "value": card_definitions[key][3]}
+        for key in profile["cards"]
+        if (key not in {"checklists", "tasks"} or (key == "checklists" and station.checklists_enabled) or (key == "tasks" and station.tasks_enabled))
+    ]
     context = {
+        "dashboard_profile": profile,
+        "dashboard_cards": dashboard_cards,
         "open_handovers": active[:5],
         "open_count": active.count(),
         "urgent_count": active.filter(priority=HandoverEntry.Priority.URGENT).count(),
         "events": events,
         "calendar_enabled": station.calendar_enabled,
+        "checklists_enabled": station.checklists_enabled,
         "tasks_enabled": station.tasks_enabled,
         "task_progress": task_progress,
+        "operations": operations,
     }
     return render(request, "core/dashboard.html", context)
 
@@ -1043,7 +1123,12 @@ def membership_update(request, pk):
 @require_http_methods(["GET", "POST"])
 def station_settings(request):
     station = request.membership.station
-    form = StationSettingsForm(request.POST or None, instance=station)
+    if request.method == "POST":
+        post_data = request.POST.copy()
+        post_data.setdefault("organization_profile", station.organization_profile)
+    else:
+        post_data = None
+    form = StationSettingsForm(post_data, instance=station)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             changed_fields = [

@@ -11,8 +11,20 @@ from django.utils import timezone
 
 
 class Station(models.Model):
+    class Profile(models.TextChoices):
+        RESCUE = "rescue", "Rettungsdienst"
+        FIRE = "fire", "Feuerwehr"
+        POLICE = "police", "Polizei"
+        GENERAL = "general", "Allgemein"
+
     name = models.CharField(max_length=120)
     slug = models.SlugField(unique=True)
+    organization_profile = models.CharField(
+        max_length=20,
+        choices=Profile.choices,
+        default=Profile.RESCUE,
+        verbose_name="Organisationsprofil",
+    )
     is_active = models.BooleanField(default=True)
     calendar_enabled = models.BooleanField(default=True, verbose_name="Kalender aktiviert")
     birthdays_enabled = models.BooleanField(default=True, verbose_name="Geburtstage aktiviert")

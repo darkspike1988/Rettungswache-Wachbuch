@@ -3,7 +3,7 @@
 {% block content %}
 <header class="page-heading heading-with-action">
   <div>
-    <p class="context-line">{{ current_membership.station.name }} &middot; {% now "l, d. F" %}</p>
+    <p class="context-line">{{ current_membership.station.name }} · {{ dashboard_profile.eyebrow }} · {% now "l, d. F" %}</p>
     <h1>Übersicht</h1>
     <p class="status-summary">
       <a class="status-pill danger" href="{% url 'handover_list' %}?ansicht=dringend"><strong>{{ urgent_count }}</strong> dringend</a>
@@ -19,11 +19,21 @@
   {% if tasks_enabled and task_progress %}<a href="{% url 'tasks_today' %}"><strong>Tagesaufgaben</strong><span>{{ task_progress.done_count }}/{{ task_progress.total }} erledigt · Wandtafel</span></a>{% elif calendar_enabled %}<a href="{% url 'calendar' %}"><strong>Kalender</strong><span>Nächste Wachentermine</span></a>{% endif %}
 </nav>
 
+<section class="section-block operations-summary" aria-labelledby="operations-summary">
+  <div class="section-heading">
+    <h2 id="operations-summary">Wachalltag im Blick</h2>
+    <span class="context-line">Nur offene stationsbezogene Punkte</span>
+  </div>
+  <div class="quick-actions">
+    {% for card in dashboard_cards %}<a href="{% url card.url_name %}"><strong>{{ card.value }} {{ card.title }}</strong><span>{{ card.subtitle }}</span></a>{% endfor %}
+  </div>
+</section>
+
 <div class="overview-layout">
   <section class="section-block" aria-labelledby="active-handovers">
     <div class="section-heading">
-      <h2 id="active-handovers">Für die nächste Schicht</h2>
-      <a href="{% url 'handover_list' %}">Alle Übergaben</a>
+      <h2 id="active-handovers">{{ dashboard_profile.handover_title }}</h2>
+      <a href="{% url 'handover_list' %}">{{ dashboard_profile.handover_link }}</a>
     </div>
     <div class="item-list">
       {% for item in open_handovers %}

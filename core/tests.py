@@ -19,6 +19,7 @@ from .models import (
     BirthdayPreference,
     CalendarEvent,
     CalendarFeedToken,
+    Checklist,
     CoffeeEntry,
     FeedItem,
     FeedSource,
@@ -31,6 +32,7 @@ from .models import (
     StationTaskCompletion,
     TotpDevice,
 )
+from .wachalltag_models import ChecklistSchedule, Defect, InventoryItem, StationAsset
 
 
 class PilotTestCase(TestCase):
@@ -369,7 +371,60 @@ class MinimalInterfaceTests(PilotTestCase):
         self.assertNotContains(response, "Datenraum")
         self.assertNotContains(response, "Geburtstage")
 
-    def test_active_handovers_are_prioritized_and_archive_is_separate(self):
+    def test_dashboard_surfaces_existing_wachalltag_counts_and_is_station_scoped(self):
+        other = Station.objects.create(name="Andere", slug="andere")
+        self.station.checklists_enabled = True
+        self.station.save(update_fields=["checklists_enabled"])
+        Defect.objects.create(
+            station=self.station,
+            title="Türschloss",
+            description="Klemmt",
+            priority=Defect.Priority.URGENT,
+            created_by=self.user,
+        )
+        Defect.objects.create(
+            station=other,
+            title="Fremder Mangel",
+            description="Nicht anzeigen",
+            created_by=self.user,
+        )
+        StationAsset.objects.create(
+            station=self.station,
+            asset_id="rtw-1",
+            label="RTW 1",
+            status=StationAsset.Status.LIMITED,
+        )
+        InventoryItem.objects.create(
+            station=self.station,
+            item_id="funk-1",
+            label="Funkgerät",
+            holder=self.user,
+            checked_out_at=timezone.now(),
+        )
+        checklist = Checklist.objects.create(station=self.station, title="Tagescheck")
+        ChecklistSchedule.objects.create(
+            checklist=checklist,
+            station=self.station,
+            interval=ChecklistSchedule.Interval.DAILY,
+            due_next=timezone.now() - timedelta(minutes=5),
+        )
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["operations"], {
+            "defects_count": 1,
+            "urgent_defects_count": 1,
+            "asset_attention_count": 1,
+            "inventory_loans_count": 1,
+            "due_checklists_count": 1,
+            "task_total": 8,
+            "task_done": 0,
+        })
+        self.assertContains(response, "Wachalltag im Blick")
+        self.assertContains(response, "1 Mängel")
+        self.assertNotContains(response, "Fremder Mangel")
+
         normal = self.create_handover("Normal", HandoverEntry.Priority.NORMAL)
         urgent = self.create_handover("Dringend", HandoverEntry.Priority.URGENT)
         done = self.create_handover(

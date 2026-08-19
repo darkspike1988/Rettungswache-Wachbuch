@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="{% static 'core/accessibility.css' %}">
   <link rel="stylesheet" href="{% static 'core/crypto_unlock.css' %}">
 </head>
-<body class="{% if current_membership %}has-app-nav {% endif %}{% block body_class %}{% endblock %}">
+<body class="{% if current_membership %}has-app-nav profile-{{ current_membership.station.organization_profile|default:'general' }} {% endif %}{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#inhalt">Zum Inhalt</a>
   {% if demo_mode %}
   <div class="demo-banner" role="status">
@@ -35,7 +35,7 @@
         <span class="brand-mark" aria-hidden="true">WB</span>
         <span>
           <strong>{{ app_name }}</strong>
-          {% if current_membership %}<small>{{ current_membership.station.name }}</small>{% endif %}
+          {% if current_membership %}<small>{{ current_membership.station.name }} · {{ current_membership.station.get_organization_profile_display }}</small>{% endif %}
         </span>
       </a>
       {% if request.user.is_authenticated %}

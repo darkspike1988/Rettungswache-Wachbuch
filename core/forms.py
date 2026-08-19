@@ -194,6 +194,7 @@ class StationSettingsForm(forms.ModelForm):
         model = Station
         fields = [
             "name",
+            "organization_profile",
             "calendar_enabled",
             "birthdays_enabled",
             "coffee_enabled",
@@ -212,7 +213,8 @@ class StationSettingsForm(forms.ModelForm):
             "payment_note",
         ]
         labels = {
-            "name": "Name der Rettungswache",
+            "name": "Name der Organisationseinheit",
+            "organization_profile": "Profil dieser Einrichtung",
             "paypal_me_url": "PayPal.me-Link",
             "wero_link": "Wero-Link",
             "iban": "IBAN",
@@ -227,6 +229,14 @@ class StationSettingsForm(forms.ModelForm):
             "payment_note": "Freitext, z. B. Verwendungszweck oder Ansprechpartner.",
             "waste_calendar_url": "Vollstaendige https://…-URL zu einer ICS-Datei der Abfuhrtermine.",
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["organization_profile"].required = False
+        self.fields["organization_profile"].widget.attrs["required"] = "required"
+
+    def clean_organization_profile(self):
+        return self.cleaned_data.get("organization_profile") or self.instance.organization_profile
 
     def clean_waste_calendar_url(self):
         value = (self.cleaned_data.get("waste_calendar_url") or "").strip()

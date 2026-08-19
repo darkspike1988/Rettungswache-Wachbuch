@@ -49,6 +49,40 @@ Priorisierte Umsetzung der noch offenen Wuensche. Keine Kalenderzeit-Schaetzung;
 Reihenfolge nach Nutzen und Abhaengigkeiten. Sicherheits- und Betriebsblocker aus
 der Remediation-Roadmap haben Vorrang vor neuen Fachmodulen.
 
+### 0. Wachalltag-Kern aus dem RETTpro-Vergleich — teilweise umgesetzt
+
+**Lernpunkt:** Nicht eine komplette kommerzielle Suite nachbauen, sondern vorhandene
+Open-Source-Bausteine zu einem klaren stationsbezogenen Lagebild verbinden.
+
+**Sofort umgesetzt:** Das Dashboard zeigt jetzt neben Übergaben und Terminen auch
+offene Mängel, eingeschränkte/ausser Betrieb befindliche Assets und ausgeliehenes
+Inventar. Die Zählung nutzt die vorhandenen Modelle, bleibt stationsisoliert und
+legt keinen zweiten Erfassungsweg an.
+
+**Plausibler Code-Schnitt:**
+
+```python
+active_defects = Defect.objects.filter(station=station).exclude(status=Defect.Status.DONE)
+asset_attention = StationAsset.objects.filter(station=station).exclude(status=StationAsset.Status.READY)
+inventory_loans = InventoryItem.objects.filter(station=station, holder__isnull=False)
+```
+
+**Nächste kleine Schritte:**
+
+1. Dashboard-Karten um fällige Checklisten und Tagesaufgaben ergänzen; nur Links auf
+   bestehende Seiten, keine globale Navigation und keine neue Datenhaltung.
+2. Eine gemeinsame „Wachalltag im Blick“-Auswertung als read-only HTML/CSV-Export
+   mit Zeitstempel und Stationsfilter anbieten.
+3. Erst danach ein minimales Materialmodul prüfen: Artikel, Sollbestand,
+   Istbestand, Nachbestellmarke und append-only Korrekturen; keine Lieferanten- oder
+   Personenbewertung.
+4. CIRS und Fahrtenbuch nur als getrennte, datensparsame Module mit eigener
+   Aufbewahrung, Rollenprüfung, Audit und bewusstem Ausschluss von Patienten-,
+   Einsatz- und Personaldaten planen.
+
+**Bewertung:** Dashboard-Konsolidierung = hoher Nutzen / geringe Komplexität;
+Material = mittlerer Nutzen / mittlere Komplexität; CIRS/Fahrtenbuch = hoher
+fachlicher Nutzen, aber hohe Datenschutz- und Abnahme-Komplexität.
 ### 1. Kaffeekasse: Zahlungsweg-Hinweise (PayPal.me, Wero, IBAN) — umgesetzt
 
 **Ziel:** Beim Kassenstand klar zeigen, wohin freiwillig eingezahlt werden kann –
