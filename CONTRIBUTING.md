@@ -33,18 +33,19 @@ eine Begruendung und kompatible Lizenz (Server und Client: AGPL-kompatibel).
 
 ## Abhaengigkeiten und Hashes
 
-`requirements.txt` fuehrt die Produktionsabhaengigkeiten. Fuer
-Supply-Chain-Sicherheit existiert eine optionale Lock-Datei mit SHA256-Hashes:
+`requirements.txt` fuehrt die direkten Produktionsabhaengigkeiten.
+`requirements.lock` enthaelt die aufgeloesten direkten und transitiven
+Abhaengigkeiten mit SHA256-Hashes und ist der Installationsweg in CI:
 
 ```bash
 ./scripts/update-hashes.sh   # erzeugt requirements.lock via pip-compile --generate-hashes
 pip install --require-hashes -r requirements.lock   # Installation mit Hash-Verifikation
 ```
 
-Die CI prueft die Hashes automatisch, sobald `requirements.lock` Eintraege mit
-`--hash` enthaelt. Wird die Lock-Datei nicht gepflegt, entfaellt der Check
-stillschweigend. Bei jeder Aenderung an `requirements.txt` die Lock-Datei neu
-erzeugen und committen.
+Die CI verweigert die Installation, wenn ein Paket oder Hash in der Lock-Datei
+fehlt oder nicht zum heruntergeladenen Artefakt passt. Bei jeder Aenderung an
+`requirements.txt` die Lock-Datei neu erzeugen, die Hash-Verifikation lokal
+pruefen und beide Dateien committen.
 
 ## Datenschutz
 

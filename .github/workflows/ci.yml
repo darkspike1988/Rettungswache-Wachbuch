@@ -18,12 +18,8 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-      - run: pip install -r requirements.txt
-      - name: Verify dependency hashes (if lock file exists)
-        run: |
-          if grep -q '^--hash' requirements.lock 2>/dev/null; then
-            pip install --require-hashes -r requirements.lock
-          fi
+      - name: Install locked dependencies with hash verification
+        run: pip install --require-hashes -r requirements.lock
       - name: Compile Python sources
         run: python -m compileall -q config core
       - name: Check JavaScript syntax
