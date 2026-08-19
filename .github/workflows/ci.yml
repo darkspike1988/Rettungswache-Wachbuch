@@ -65,6 +65,13 @@ jobs:
         run: |
           test -z "$(docker run --rm --entrypoint sh rettungswache-wachbuch:test -c \
             'find /app -type f \( -name "*.dump" -o -name "*.sqlite3" -o -name "*.pyc" \) -print')"
+      - name: Scan container image for HIGH/CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: rettungswache-wachbuch:test
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
       - name: Start isolated PostgreSQL stack
         run: |
           sudo chown 70:70 backups
