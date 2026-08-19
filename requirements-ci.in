@@ -1,0 +1,2 @@
+# Reproducible tooling used by CI quality gates.
+ruff==0.16.3

@@ -19,9 +19,11 @@ jobs:
           python-version: "3.13"
           cache: pip
       - name: Install locked dependencies with hash verification
-        run: pip install --require-hashes -r requirements.lock
+        run: pip install --require-hashes -r requirements.lock -r requirements-ci.lock
       - name: Compile Python sources
         run: python -m compileall -q config core
+      - name: Run Ruff baseline lint
+        run: ruff check config core --select E4,E7,E9 --output-format=concise
       - name: Check JavaScript syntax
         run: |
           node --check core/static/core/app.js

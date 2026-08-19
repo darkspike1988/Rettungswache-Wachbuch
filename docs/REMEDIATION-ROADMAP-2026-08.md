@@ -109,7 +109,11 @@ Vorhanden sind u. a. Python-Compile, JavaScript-Syntax, Django-Migrationscheck, 
 
 Noch offen/zu vertiefen:
 
-1. Ruff Format/Lint mit dokumentierter Baseline
+1. Ruff Format/Lint mit dokumentierter Baseline. Der erste abgegrenzte Gate-Schritt
+   ist umgesetzt: Ruff `0.16.3` wird aus `requirements-ci.lock` mit SHA256-Hashes
+   installiert und erzwingt die fehlerkritische E4/E7/E9-Baseline. Eine vollständige
+   Formatprüfung und breitere Regelmenge bleiben wegen des bestehenden Altbestands
+   ein separater Folge-Schritt.
 2. vollständiger Dependency-/Container-Scan
 3. CodeQL/SAST und Secret Scan
 4. Server-SBOM + Build-Provenance
