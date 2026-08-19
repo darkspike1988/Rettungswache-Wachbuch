@@ -119,9 +119,13 @@ Noch offen/zu vertiefen:
    mit `--strict` gegen die CI-Umgebung ausgefuehrt. Container-Scan sowie
    CodeQL/SAST, Secret-Scanning und SBOM-/Provenance-Artefakte bleiben getrennte
    Folge-Gates; dieser Schritt behauptet deren Abdeckung nicht.
-3. CodeQL/SAST und Secret Scan
-4. Server-SBOM + Build-Provenance
-5. Browser-Smoke-Test, CSP-Konsole und Axe-Core
+3. Der CI-Docker-Job scannt das gebaute Server-Image nun mit einer auf Commit-SHA
+   fixierten Trivy-Action auf HIGH/CRITICAL-Schwachstellen. Ungefixte Findings
+   werden nicht als behoben behauptet, sondern bleiben wegen der begrenzten
+   Aussagekraft des Upstream-Fixes explizit ausgenommen.
+4. CodeQL/SAST und Secret Scan
+5. Server-SBOM + Build-Provenance
+6. Browser-Smoke-Test, CSP-Konsole und Axe-Core
 
 Actions und Images weiterhin auf unveränderliche SHAs/Digests pinnen.
 
