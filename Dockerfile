@@ -11,9 +11,9 @@ WORKDIR /app
 
 RUN python -m venv /opt/venv
 
-COPY requirements.txt .
+COPY requirements.lock .
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && pip install -r requirements.txt
+    pip install --require-hashes -r requirements.lock
 
 COPY manage.py .
 COPY config config

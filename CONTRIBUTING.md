@@ -35,11 +35,13 @@ eine Begruendung und kompatible Lizenz (Server und Client: AGPL-kompatibel).
 
 `requirements.txt` fuehrt die direkten Produktionsabhaengigkeiten.
 `requirements.lock` enthaelt die aufgeloesten direkten und transitiven
-Abhaengigkeiten mit SHA256-Hashes und ist der Installationsweg in CI:
+Abhaengigkeiten mit SHA256-Hashes und ist der Installationsweg in CI und im
+Docker-Builder:
 
 ```bash
 ./scripts/update-hashes.sh   # erzeugt requirements.lock via pip-compile --generate-hashes
 pip install --require-hashes -r requirements.lock   # Installation mit Hash-Verifikation
+docker build --tag rettungswache-wachbuch:test .  # Builder erzwingt denselben Lockfile-Pfad
 ```
 
 Fuer reproduzierbare CI-Qualitaetswerkzeuge gilt derselbe Fail-Closed-Grundsatz:
