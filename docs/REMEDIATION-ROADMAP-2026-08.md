@@ -105,7 +105,7 @@ DB-basiertes `RateLimit`-Model mit `select_for_update`, gehashte Schlüssel übe
 
 ### [~] R-012 CI-/Supply-Chain-Gates
 
-Vorhanden sind u. a. Python-Compile, JavaScript-Syntax, Django-Migrationscheck, `check --deploy`, Tests und isolierter PostgreSQL/Docker-Pfad. Clientseitig existieren Flutter-/Android-/iOS-/Dependency-Security-Gates und SBOM-Artefakte. Die Server-CI installiert nun ausschließlich `requirements.lock` mit verpflichtender SHA256-Hash-Verifikation; ein fehlender oder nicht passender Lock-Eintrag bricht den Job ab.
+Vorhanden sind u. a. Python-Compile, JavaScript-Syntax, Django-Migrationscheck, `check --deploy`, Tests und isolierter PostgreSQL/Docker-Pfad. Clientseitig existieren Flutter-/Android-/iOS-/Dependency-Security-Gates und SBOM-Artefakte. Die Server-CI installiert nun ausschließlich `requirements.lock` mit verpflichtender SHA256-Hash-Verifikation; ein fehlender oder nicht passender Lock-Eintrag bricht den Job ab. Der Docker-Builder nutzt denselben Lockfile-Pfad und verweigert Installationen ohne passende Hashes.
 
 Noch offen/zu vertiefen:
 
