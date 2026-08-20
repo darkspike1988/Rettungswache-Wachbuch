@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.16.0 - 2026-08-20
 
 - Öffentliche Vorführungsseite unter `/vorfuehrung/` in der Web-PWA (Folien,
   Original-Ambient nach Klick, CSP ohne Inline-Skript/-CSS). One-Click-Demo
