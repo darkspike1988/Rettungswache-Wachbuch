@@ -10,6 +10,8 @@ Dieses Dokument ist keine Rechtsberatung.
 - Geburtstage standardmaessig aus und jederzeit widerrufbar.
 - Kaffeekasse als nachvollziehbares Ledger statt stiller Aenderungen.
 - Audit speichert Feldnamen und Ereignisse, nicht die fachlichen Freitexte.
+  Zahlungsangaben (`iban`, `bic`, `payment_note`, Zahlungslinks) erscheinen im
+  Audit nur als `changed`, ohne Werte.
 - Keine Rankings, Lesestatistiken oder personenbezogene Leistungskennzahlen.
 - Nur technisch notwendige Cookies (`rwsth_session`, `rwsth_csrf`); Transparenz
   unter `/datenschutz/`.

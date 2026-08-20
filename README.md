@@ -115,7 +115,7 @@ dort bewusst nur lesbar, damit Versionierung und Audit nicht umgangen werden.
 ## Externe Quellen
 
 Zulaessige Quellhosts werden zuerst kommasepariert mit `FEED_ALLOWED_HOSTS` in
-`.env` freigegeben. Anschliessend koennen HTTPS-RSS-Quellen unter
+`.env` freigegeben (Feeds und optionaler Muellkalender). Anschliessend koennen HTTPS-RSS-Quellen unter
 `/django-admin/core/feedsource/` angelegt werden. Der CSV-Importer unterstuetzt
 das dokumentierte Bielefelder Verkehrsmeldungsformat. Private Zieladressen,
 Weiterleitungen, andere Ports und Antworten ueber 2 MB werden abgewiesen.

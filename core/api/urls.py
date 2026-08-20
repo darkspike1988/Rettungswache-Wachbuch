@@ -6,7 +6,7 @@ urlpatterns = [
     path("", wachalltag.api_root, name="api_v1_root"),
     path("openapi.yaml", views.openapi_spec, name="api_v1_openapi"),
     # English / Paperless-style
-    path("token/", views.obtain_token, name="api_v1_token"),
+    path("token/", views.token_endpoint, name="api_v1_token"),
     path("me/", wachalltag.me, name="api_v1_me"),
     path("handovers/", views.handovers_list, name="api_v1_handovers"),
     path("handovers/<int:pk>/", views.handover_detail, name="api_v1_handover_detail"),
@@ -25,7 +25,7 @@ urlpatterns = [
     path("inventory/<slug:item_id>/checkin/", wachalltag.inventory_checkin, name="api_v1_inventory_checkin"),
     path("reports/", wachalltag.reports, name="api_v1_reports"),
     # German aliases (unified with PR #12 / Wachbuch-Client)
-    path("anmeldung/", views.obtain_token, name="api_v1_anmeldung"),
+    path("anmeldung/", views.token_endpoint, name="api_v1_anmeldung"),
     path("status/", views.api_status, name="api_v1_status"),
     path("uebersicht/", wachalltag.overview, name="api_v1_overview"),
     path("uebergaben/", views.handovers_list, name="api_v1_uebergaben"),

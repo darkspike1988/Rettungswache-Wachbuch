@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **R-023 Review-Findings 2026-08-20** – Vibe-P0-P3-Commits von `main`
+  zurückgenommen (Alpine-Digest, unauthentisierte Metriken, django-ratelimit).
+  Registrierungen sind stationsgebunden; Audit speichert bei Zahlungsfeldern
+  nur `changed`, keine Werte; Müllkalender-Hosts brauchen
+  `FEED_ALLOWED_HOSTS`; `DELETE /api/v1/token/` widerruft das aktuelle
+  App-Token.
+
 - **R-022 Web-Design-Parität Client/BOS** – Web-PWA übernimmt die kanonischen
   Client-Tokens (Primary `#0D47A1`, Prioritätsfarben, 48px Touch-Ziele, ruhige
   Flächen mit Rand); lokale Source Sans 3 (OFL); Landing und Manifest auf

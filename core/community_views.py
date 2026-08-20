@@ -297,6 +297,7 @@ def registration_reject(request, pk):
         RegistrationRequest,
         pk=pk,
         status=RegistrationRequest.Status.PENDING,
+        preferred_station=request.membership.station,
     )
     item.status = RegistrationRequest.Status.REJECTED
     item.reviewed_at = timezone.now()

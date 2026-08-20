@@ -191,6 +191,7 @@ def api_root(request):
         "docs": "/api/v1/openapi.yaml",
         "endpoints": {
             "token": "/api/v1/token/",
+            "token_revoke": "/api/v1/token/",
             "anmeldung": "/api/v1/anmeldung/",
             "me": "/api/v1/me/",
             "status": "/api/v1/status/",
@@ -221,6 +222,15 @@ def openapi_spec(request):
 
     path = Path(__file__).resolve().parent / "openapi_v1.yaml"
     return HttpResponse(path.read_text(encoding="utf-8"), content_type="application/yaml; charset=utf-8")
+
+
+@csrf_exempt
+@require_http_methods(["POST", "DELETE"])
+def token_endpoint(request):
+    """POST mints a token; DELETE revokes the token presented in Authorization."""
+    if request.method == "DELETE":
+        return revoke_current_token(request)
+    return obtain_token(request)
 
 
 @csrf_exempt
@@ -287,6 +297,20 @@ def obtain_token(request):
         "station": membership.station.name,
         "role": membership.role,
     })
+
+
+@api_token_required
+def revoke_current_token(request):
+    """Deactivate only the presented app token. Logout remains possible offline."""
+    token = request.api_token
+    updated = ApiToken.objects.filter(pk=token.pk, is_active=True).update(is_active=False)
+    if updated:
+        audit(request.user, request.membership.station, "api.token_revoked", request.user, {
+            "fields": ["is_active"],
+            "via": "api.token",
+            "token_prefix": token.token_prefix,
+        })
+    return JsonResponse({"ok": True, "revoked": True})
 
 
 @csrf_exempt

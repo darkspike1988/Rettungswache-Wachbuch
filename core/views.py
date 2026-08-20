@@ -9,7 +9,7 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import IntegrityError, connection, transaction
-from django.db.models import Case, IntegerField, Sum, Value, When
+from django.db.models import Case, IntegerField, Q, Sum, Value, When
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -19,7 +19,7 @@ from django.utils.text import slugify
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .access import CONTENT_ROLES, get_membership, membership_required, station_module_required
+from .access import CONTENT_ROLES, get_membership, membership_required, pending_registrations_for_station, station_module_required, users_awaiting_station_access
 from .errors import (
     ERROR_CODE_FORBIDDEN,
     ERROR_CODE_NOT_FOUND,
@@ -955,15 +955,8 @@ def more(request):
 def team(request):
     station = request.membership.station
     members = Membership.objects.filter(station=station).select_related("user")
-    pending_count = User.objects.filter(is_active=True).exclude(
-        station_memberships__is_active=True
-    ).count()
-    from .models import RegistrationRequest
-
-    pending_registrations = RegistrationRequest.objects.filter(
-        status=RegistrationRequest.Status.PENDING,
-        user__is_active=True,
-    ).select_related("user", "preferred_station").order_by("created_at")
+    pending_registrations = pending_registrations_for_station(station)
+    pending_count = users_awaiting_station_access(station).count()
     return render(request, "core/team.html", {
         "page_obj": page_for(request, members, 25),
         "pending_count": pending_count,
@@ -1012,7 +1005,7 @@ def team_user_create(request):
 @membership_required({Membership.Role.ADMIN})
 @require_http_methods(["GET", "POST"])
 def team_create(request):
-    form = MembershipAssignmentForm(request.POST or None)
+    form = MembershipAssignmentForm(request.POST or None, station=request.membership.station)
     if request.method == "POST" and form.is_valid():
         station = request.membership.station
         user = form.cleaned_data["user"]
@@ -1050,6 +1043,8 @@ def team_create(request):
                     RegistrationRequest.objects.filter(
                         user=user,
                         status=RegistrationRequest.Status.PENDING,
+                    ).filter(
+                        Q(preferred_station=station) | Q(preferred_station__isnull=True)
                     ).update(
                         status=RegistrationRequest.Status.APPROVED,
                         reviewed_at=timezone.now(),

@@ -1,6 +1,6 @@
 # API für Mobile- und Drittclients
 
-Stand: 10. August 2026 · Server **0.16.x** · OpenAPI **1.2.1**.
+Stand: 20. August 2026 · Server **0.16.x** · OpenAPI **1.2.2**.
 
 Versionierte JSON-API unter `/api/v1/` für den AGPL-Client [Wachbuch-Client](https://github.com/darkspike1988/Wachbuch-Client) und kontrollierte Drittclients.
 
@@ -34,6 +34,10 @@ Die Antwort enthält das Token einmalig. Bei Konten mit verpflichtender MFA erzw
 
 Passwortwechsel oder expliziter Widerruf deaktivieren aktive App-Tokens entsprechend den Serverregeln.
 
+### Token widerrufen
+
+`DELETE /api/v1/token/` (Alias `DELETE /api/v1/anmeldung/`) deaktiviert **nur** das in `Authorization` vorgelegte Token. Der native Client ruft den Endpunkt beim Logout best-effort auf und räumt den lokalen Speicher danach in jedem Fall. Ohne Authorization antwortet der Server mit `401 auth_required`.
+
 ## Kanonischer Fehlervertrag
 
 Fehlerantworten verwenden:
@@ -58,6 +62,7 @@ Kanonische Codes: `validation_error`, `auth_required`, `forbidden`, `mfa_require
 | GET | `/api/v1/` | Discovery + Capabilities |
 | GET | `/api/v1/openapi.yaml` | OpenAPI-Schema |
 | POST | `/api/v1/token/`, `/anmeldung/` | App-Token gegen Login, MFA-Regeln gelten |
+| DELETE | `/api/v1/token/`, `/anmeldung/` | Vorliegendes App-Token widerrufen |
 | GET | `/api/v1/status/` | Auth-/Mitgliedschaftsstatus |
 | GET | `/api/v1/me/` | Nutzer, Rolle, Station, Module |
 | GET | `/api/v1/uebersicht/` | Dashboard + Wachalltag-Zähler |

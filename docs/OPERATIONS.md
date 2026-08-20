@@ -73,7 +73,8 @@ Der Worker aktualisiert aktivierte Quellen alle 15 Minuten. Ein manueller Lauf:
 docker compose exec -T feed-worker python manage.py sync_feeds
 ```
 
-Neue Hosts werden zuerst in `FEED_ALLOWED_HOSTS` freigegeben. Quellen koennen
+Neue Hosts werden zuerst in `FEED_ALLOWED_HOSTS` freigegeben. Das gilt fuer
+RSS-/CSV-Feeds und den optionalen Muellkalender-ICS-Fallback. Quellen koennen
 danach im Django-Admin erstellt, deaktiviert oder korrigiert werden. Fehler und
 der letzte erfolgreiche Abruf stehen direkt am `FeedSource`.
 
