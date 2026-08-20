@@ -114,7 +114,8 @@ Ziel ist WCAG 2.2 AA mit interner Touchziel-Vorgabe von 48 CSS-Pixeln
 (Angleichung an den Client). Verbindlich sind sichtbarer Tastaturfokus,
 semantische Tabellen, permanente Feldlabels, Erhalt fehlerhafter Eingaben, Text
 plus Farbe fuer Status und `prefers-reduced-motion`-freundliche Darstellung ohne
-notwendige Animation.
+notwendige Animation. `prefers-contrast: more` schaltet auf Schwarz/Weiss wie
+die Flutter-HighContrast-Themes.
 
 Referenzen:
 
