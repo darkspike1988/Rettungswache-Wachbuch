@@ -1381,6 +1381,19 @@ class PasskeyPushCalendarTests(PilotTestCase):
         self.assertEqual(internal.status_code, 400)
         self.assertFalse(PushSubscription.objects.filter(user=self.user).exists())
 
+    @override_settings(
+        WEB_PUSH_ENABLED=True,
+        VAPID_PUBLIC_KEY="</script><img src=x onerror=alert(1)>",
+        VAPID_PRIVATE_KEY="private",
+    )
+    def test_push_settings_embeds_config_via_json_script(self):
+        response = self.client.get(reverse("push_settings"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="push-config"')
+        self.assertNotContains(response, "</script><img")
+        self.assertContains(response, "\\u003C/script\\u003E")
+        self.assertContains(response, reverse("push_settings"))
+
     def test_urgent_push_noop_when_disabled(self):
         from .push import notify_urgent_handover
 
@@ -1468,6 +1481,44 @@ class RegistrationAccountChatTests(PilotTestCase):
         user_ids = set(form.fields["user"].queryset.values_list("pk", flat=True))
         self.assertIn(local_user.pk, user_ids)
         self.assertNotIn(foreign_user.pk, user_ids)
+
+    @override_settings(REGISTRATION_ENABLED=True)
+    def test_self_registration_requires_preferred_station(self):
+        from .models import RegistrationRequest
+
+        self.client.logout()
+        response = self.client.post(reverse("register"), {
+            "username": "ohne-wache@example.org",
+            "first_name": "Ohne",
+            "note": "Bitte irgendwo zuordnen",
+            "password1": "StrongPass-12345",
+            "password2": "StrongPass-12345",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bitte eine Wache auswählen.")
+        self.assertFalse(User.objects.filter(username="ohne-wache@example.org").exists())
+        self.assertFalse(RegistrationRequest.objects.filter(user__username="ohne-wache@example.org").exists())
+
+    def test_unspecified_pending_registration_is_not_visible_to_station_admin(self):
+        from .forms import MembershipAssignmentForm
+        from .models import RegistrationRequest
+
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        open_user = User.objects.create_user("offen@example.org", first_name="Offen")
+        RegistrationRequest.objects.create(
+            user=open_user,
+            preferred_station=None,
+            note="Interne Schicht ohne Wache",
+            status=RegistrationRequest.Status.PENDING,
+        )
+        page = self.client.get(reverse("team"))
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, "offen@example.org")
+        self.assertNotContains(page, "Interne Schicht ohne Wache")
+        form = MembershipAssignmentForm(station=self.station)
+        user_ids = set(form.fields["user"].queryset.values_list("pk", flat=True))
+        self.assertNotIn(open_user.pk, user_ids)
 
     def test_master_admin_creates_user_with_membership(self):
         self.membership.role = Membership.Role.ADMIN

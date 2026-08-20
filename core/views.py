@@ -9,7 +9,7 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import IntegrityError, connection, transaction
-from django.db.models import Case, IntegerField, Q, Sum, Value, When
+from django.db.models import Case, IntegerField, Sum, Value, When
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -1043,8 +1043,7 @@ def team_create(request):
                     RegistrationRequest.objects.filter(
                         user=user,
                         status=RegistrationRequest.Status.PENDING,
-                    ).filter(
-                        Q(preferred_station=station) | Q(preferred_station__isnull=True)
+                        preferred_station=station,
                     ).update(
                         status=RegistrationRequest.Status.APPROVED,
                         reviewed_at=timezone.now(),

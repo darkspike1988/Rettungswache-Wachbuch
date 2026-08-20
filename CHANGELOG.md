@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **R-024 CSP- und Registrierungs-Nachzügler** – Push-Konfiguration über
+  `json_script`; CSP `connect-src` nur `'self'` plus `PUSH_ALLOWED_ENDPOINT_HOSTS`;
+  Wunschwache bei der Selbstregistrierung Pflicht.
+
 - **R-023 Review-Findings 2026-08-20** – Vibe-P0-P3-Commits von `main`
   zurückgenommen (Alpine-Digest, unauthentisierte Metriken, django-ratelimit).
   Registrierungen sind stationsgebunden; Audit speichert bei Zahlungsfeldern

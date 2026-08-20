@@ -306,9 +306,10 @@ class RegistrationForm(forms.Form):
     first_name = forms.CharField(max_length=150, label="Vorname", required=False)
     preferred_station = forms.ModelChoiceField(
         queryset=Station.objects.none(),
-        required=False,
+        required=True,
         label="Gewünschte Wache",
-        empty_label="Noch offen / bitte zuordnen",
+        empty_label="Bitte Wache wählen",
+        error_messages={"required": "Bitte eine Wache auswählen."},
     )
     note = forms.CharField(
         max_length=300,

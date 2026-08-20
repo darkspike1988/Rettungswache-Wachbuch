@@ -73,10 +73,10 @@ def register(request):
             UserProfile.for_user(user)
             RegistrationRequest.objects.create(
                 user=user,
-                preferred_station=form.cleaned_data.get("preferred_station"),
+                preferred_station=form.cleaned_data["preferred_station"],
                 note=form.cleaned_data.get("note") or "",
             )
-            audit(user, form.cleaned_data.get("preferred_station"), "registration.submitted", user, {
+            audit(user, form.cleaned_data["preferred_station"], "registration.submitted", user, {
                 "fields": ["username", "preferred_station"],
             })
         messages.success(
