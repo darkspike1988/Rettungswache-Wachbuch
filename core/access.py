@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -42,15 +43,24 @@ def pending_registrations_for_station(station):
 
 
 def users_awaiting_station_access(station):
-    """Active users without membership who did not request a different station."""
-    foreign_pending_ids = RegistrationRequest.objects.filter(
-        status=RegistrationRequest.Status.PENDING,
-        preferred_station__isnull=False,
-    ).exclude(preferred_station=station).values_list("user_id", flat=True)
+    """Active users without membership whose pending request is this station.
+
+    Users with a pending request for another station, or without a named
+    station, stay out of this station's assignment list. Accounts without any
+    pending request remain assignable (admin-created users waiting for a
+    membership).
+    """
+    pending_elsewhere = (
+        RegistrationRequest.objects.filter(
+            status=RegistrationRequest.Status.PENDING,
+        )
+        .filter(Q(preferred_station__isnull=True) | ~Q(preferred_station=station))
+        .values_list("user_id", flat=True)
+    )
     return (
         User.objects.filter(is_active=True)
         .exclude(station_memberships__is_active=True)
-        .exclude(pk__in=foreign_pending_ids)
+        .exclude(pk__in=pending_elsewhere)
         .order_by("first_name", "username")
     )
 

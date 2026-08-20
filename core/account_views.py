@@ -278,7 +278,10 @@ def push_settings(request):
         return JsonResponse({"ok": True})
     active = PushSubscription.objects.filter(user=request.user, station=station).exists()
     return render(request, "core/push_settings.html", {
-        "vapid_public_key": vapid_public_key(),
+        "push_config": {
+            "vapidPublicKey": vapid_public_key(),
+            "subscribeUrl": reverse("push_settings"),
+        },
         "push_active": active,
     })
 

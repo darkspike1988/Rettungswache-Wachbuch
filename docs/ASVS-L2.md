@@ -66,7 +66,7 @@ Legende: **OK** umgesetzt / **Teil** teilweise / **Offen** geplant / **n/a** nic
 
 | Kontrolle | Status | Hinweis |
 | --- | --- | --- |
-| CSP | OK | streng; `connect-src` erlaubt HTTPS fuer Push |
+| CSP | OK | streng; `connect-src` nur `'self'` und Push-Allowlist |
 | Permissions-Policy | OK | WebAuthn self; Sensoren denied |
 | Clickjacking | OK | frame-ancestors/XFO |
 

@@ -8,6 +8,7 @@ nicht geloggt.
 from __future__ import annotations
 
 import logging
+import re
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
@@ -18,6 +19,36 @@ from .errors import (
     correlation_id_for_request,
     log_exception,
 )
+
+
+# Hostname or leading-dot suffix, e.g. fcm.googleapis.com / .push.apple.com.
+_CSP_HOST_RE = re.compile(
+    r"^\.?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+)
+
+
+def csp_connect_src(allowed_hosts=None):
+    """Build ``connect-src`` from the Push HTTPS allowlist.
+
+    The previous ``https:`` scheme source allowed the browser to talk to any
+    HTTPS origin. Push subscriptions only need the configured push hosts.
+    """
+    hosts = (
+        allowed_hosts
+        if allowed_hosts is not None
+        else getattr(settings, "PUSH_ALLOWED_ENDPOINT_HOSTS", set())
+    )
+    extra = set()
+    for raw in hosts or ():
+        entry = (raw or "").strip().lower()
+        if not entry or not _CSP_HOST_RE.fullmatch(entry):
+            continue
+        if entry.startswith("."):
+            extra.add(f"https://{entry[1:]}")
+            extra.add(f"https://*{entry}")
+        else:
+            extra.add(f"https://{entry}")
+    return " ".join(["'self'", *sorted(extra)])
 
 
 class SecurityHeadersMiddleware:
@@ -36,7 +67,7 @@ class SecurityHeadersMiddleware:
 
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; img-src 'self' data:; style-src 'self'; "
-            "script-src 'self'; font-src 'self'; connect-src 'self' https:; "
+            f"script-src 'self'; font-src 'self'; connect-src {csp_connect_src()}; "
             "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         )
         response.headers["Permissions-Policy"] = (
@@ -101,4 +132,9 @@ class ClientIPMiddleware:
         return ip
 
 
-__all__ = ["SecurityHeadersMiddleware", "CorrelationIdMiddleware", "ClientIPMiddleware"]
+__all__ = [
+    "SecurityHeadersMiddleware",
+    "CorrelationIdMiddleware",
+    "ClientIPMiddleware",
+    "csp_connect_src",
+]

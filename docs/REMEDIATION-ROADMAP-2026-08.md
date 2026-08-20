@@ -30,7 +30,9 @@ Empfängerauswahl und JSON-Einbettung wurden CSP-kompatibel auf DOM-APIs/`json_s
 
 ### [x] R-002 Sichere JSON-Einbettung
 
-Betroffene Chat-/Post-Templates verwenden Djangos `json_script`; unsichere `|safe`-JSON-Sinks wurden entfernt und Benutzerwerte werden nicht als HTML interpretiert.
+Betroffene Chat-/Post-Templates und die Push-Einstellungen verwenden Djangos
+`json_script`; unsichere `|safe`-JSON-Sinks wurden entfernt und Benutzerwerte
+werden nicht als HTML interpretiert.
 
 ### [x] R-003 Sicherheitsregressionstests
 
@@ -184,6 +186,21 @@ Umgesetzt:
 Nachweise: `makemigrations --check`, 264 Django-Tests (darunter die neuen
 Negativtests), `check --deploy` ohne neue Fehler, GitHub-Job `django` und
 `docker` auf dem PR-Head grün. Client-Logout liegt im parallelen Client-PR.
+
+### [~] R-024 CSP-/Registrierungs-Nachzügler 2026-08-20
+
+Ursache: Review-Nachkontrolle nach R-023. `connect-src https:` erlaubte beliebige
+HTTPS-Origins; Push-JSON lag ohne `json_script` im Template; Registrierungen
+ohne Wunschwache erschienen in keiner Ablehnungsliste, aber im Freigabe-Dropdown
+jeder Station.
+
+Umgesetzt:
+
+- Push-Konfiguration über Djangos `json_script:"push-config"`.
+- `connect-src` nur `'self'` plus Hosts aus `PUSH_ALLOWED_ENDPOINT_HOSTS`.
+- Wunschwache ist Pflicht; Pending ohne Station bleibt stationsübergreifend unsichtbar.
+
+Status erst nach belegten Django-Gates auf `[x]` setzen.
 
 ## Wave 3 – Pilot- und Produktionsabnahme
 

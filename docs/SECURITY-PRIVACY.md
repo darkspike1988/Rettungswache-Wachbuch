@@ -43,7 +43,8 @@ Dieses Dokument ist keine Rechtsberatung.
   unabhaengige Schluesselverifikation nicht durch das heutige Modell abgedeckt
 - Login-Passwoerter mit **Argon2id**; TOTP-Geheimnisse AES-256-GCM at rest
 - Krypto-Zuordnung und Bedrohungsmodell: [`CRYPTO-BSI.md`](CRYPTO-BSI.md)
-- sichere Session-Cookies, CSRF-Schutz, CSP und restriktive Browser-Header
+- sichere Session-Cookies, CSRF-Schutz, CSP (`connect-src` nur `'self'` und
+  Hosts aus `PUSH_ALLOWED_ENDPOINT_HOSTS`) und restriktive Browser-Header
 - serverseitige Objekt- und Rollenpruefung
 - separate Datenbank ohne veroeffentlichten Port
 - Abhaengigkeits-, Container- und Anwendungsscan vor Go-live

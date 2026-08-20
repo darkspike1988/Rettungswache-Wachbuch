@@ -13,6 +13,6 @@
     <button type="button" class="button secondary" data-push-unsubscribe {% if not push_active %}hidden{% endif %}>Deaktivieren</button>
   </div>
   <p class="hint" data-push-status hidden></p>
-  <script type="application/json" id="push-config">{"vapidPublicKey":"{{ vapid_public_key }}","subscribeUrl":"{% url 'push_settings' %}"}</script>
+  {{ push_config|json_script:"push-config" }}
 </section>
 {% endblock %}

@@ -276,6 +276,7 @@ VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "").strip()
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "").strip()
 VAPID_ADMIN_EMAIL = os.getenv("VAPID_ADMIN_EMAIL", "ops@localhost").strip() or "ops@localhost"
 # HTTPS host allowlist for browser push subscription endpoints (SSRF guard).
+# The same list feeds CSP ``connect-src`` (no scheme-wide ``https:``).
 # Entries match an exact host; entries starting with "." match that suffix
 # (subdomains included). Override via PUSH_ALLOWED_ENDPOINT_HOSTS; an empty
 # value keeps the built-in list of known browser push services.

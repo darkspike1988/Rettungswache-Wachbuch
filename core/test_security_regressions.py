@@ -13,7 +13,7 @@ from .errors import (
     correlation_id_for_request,
     json_error,
 )
-from .middleware import CorrelationIdMiddleware, SecurityHeadersMiddleware
+from .middleware import CorrelationIdMiddleware, SecurityHeadersMiddleware, csp_connect_src
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -25,6 +25,7 @@ class TemplateSecurityRegressionTests(SimpleTestCase):
         "templates/core/private_chat_thread.html",
         "templates/core/secure_mail_inbox.html",
         "templates/core/secure_mail_detail.html",
+        "templates/core/push_settings.html",
     )
 
     def source(self, relative_path):
@@ -79,6 +80,32 @@ class MiddlewareSecurityRegressionTests(SimpleTestCase):
         policy = response.headers["Content-Security-Policy"]
         self.assertIn("script-src 'self'", policy)
         self.assertNotIn("'unsafe-inline'", policy)
+
+    def test_csp_connect_src_uses_push_allowlist_not_any_https(self):
+        policy = self.middleware_for(HttpResponse("ok"))(self.request).headers[
+            "Content-Security-Policy"
+        ]
+        connect = next(
+            part.strip()
+            for part in policy.split(";")
+            if part.strip().startswith("connect-src")
+        )
+        tokens = connect.split()
+        self.assertEqual(tokens[0], "connect-src")
+        self.assertIn("'self'", tokens)
+        self.assertNotIn("https:", tokens)
+        self.assertIn("https://fcm.googleapis.com", tokens)
+        self.assertIn("https://*.push.apple.com", tokens)
+        self.assertIn("https://push.apple.com", tokens)
+
+    def test_csp_connect_src_rejects_unlisted_and_malformed_hosts(self):
+        self.assertEqual(
+            csp_connect_src({"fcm.googleapis.com", ".push.apple.com"}),
+            "'self' https://*.push.apple.com https://fcm.googleapis.com https://push.apple.com",
+        )
+        self.assertEqual(csp_connect_src({"https://evil.example"}), "'self'")
+        self.assertEqual(csp_connect_src({"evil example.com; script-src"}), "'self'")
+        self.assertEqual(csp_connect_src(set()), "'self'")
 
     def test_scheme_relative_redirect_is_rejected(self):
         response = HttpResponse(status=302)

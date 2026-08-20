@@ -89,6 +89,11 @@ Dringende Uebergaben schreiben innerhalb der Handover-Transaktion einen
 Tabelle, sendet ueber `pywebpush` und loescht das Abo bei HTTP 404/410.
 Der Gunicorn-Request selbst macht **keinen** externen Netzaufruf.
 
+Die Browser-CSP `connect-src` erlaubt nur `'self'` und die Hosts aus
+`PUSH_ALLOWED_ENDPOINT_HOSTS` (Standard: FCM, Mozilla Autopush, Apple, WNS).
+Ein Override dieser Variable gilt gemeinsam fuer das Speichern von
+Subscriptions und fuer die CSP.
+
 Der Container laeuft mit dedizierter DB-Rolle `PUSH_DB_USER` (Least Privilege)
 und eigenem `PUSH_WORKER_SECRET_KEY`. Erreichbar nur ueber `worker-db` und
 `egress`, kein direkter App-DB-User.
