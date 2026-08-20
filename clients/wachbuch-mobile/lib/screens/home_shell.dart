@@ -579,98 +579,33 @@ class _ModuleTiles extends StatelessWidget {
   final WachbuchApi api;
   final Map<String, dynamic> modules;
 
+  /// Module key -> list of tiles to render when the module is enabled.
+  /// `chat` renders two tiles (chat + groups); `assets` also matches `inventory`.
+  static const _moduleTiles = <_ModuleTileSpec>[
+    _ModuleTileSpec(['calendar'], 'module-tile-calendar', Icons.event_outlined),
+    _ModuleTileSpec(['coffee'], 'module-tile-coffee', Icons.coffee_outlined),
+    _ModuleTileSpec(['checklists'], 'module-tile-checklists', Icons.checklist_outlined),
+    _ModuleTileSpec(['defects'], 'module-tile-defects', Icons.report_problem_outlined),
+    _ModuleTileSpec(['assets', 'inventory'], 'module-tile-assets', Icons.directions_car_outlined),
+    _ModuleTileSpec(['reports'], 'module-tile-reports', Icons.insights_outlined),
+    _ModuleTileSpec(['chat'], 'module-tile-chat', Icons.forum_outlined),
+    _ModuleTileSpec(['chat'], 'module-tile-groups', Icons.groups_outlined),
+    _ModuleTileSpec(['pinboard'], 'module-tile-pinboard', Icons.push_pin_outlined),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final destinations = <_ModuleDestination>[];
-    if (modules['calendar'] == true) {
-      destinations.add(
-        _ModuleDestination(
-          key: 'module-tile-calendar',
-          icon: Icons.event_outlined,
-          title: l.moduleCalendarTitle,
-          subtitle: l.moduleCalendarSubtitle,
-        ),
-      );
-    }
-    if (modules['coffee'] == true) {
-      destinations.add(
-        _ModuleDestination(
-          key: 'module-tile-coffee',
-          icon: Icons.coffee_outlined,
-          title: l.moduleCoffeeTitle,
-          subtitle: l.moduleCoffeeSubtitle,
-        ),
-      );
-    }
-    if (modules['checklists'] == true) {
-      destinations.add(
-        _ModuleDestination(
-          key: 'module-tile-checklists',
-          icon: Icons.checklist_outlined,
-          title: l.moduleChecklistsTitle,
-          subtitle: l.moduleChecklistsSubtitle,
-        ),
-      );
-    }
-    if (modules['defects'] == true) {
-      destinations.add(
-        _ModuleDestination(
-          key: 'module-tile-defects',
-          icon: Icons.report_problem_outlined,
-          title: l.moduleDefectsTitle,
-          subtitle: l.moduleDefectsSubtitle,
-        ),
-      );
-    }
-    if (modules['assets'] == true || modules['inventory'] == true) {
-      destinations.add(
-        _ModuleDestination(
-          key: 'module-tile-assets',
-          icon: Icons.directions_car_outlined,
-          title: l.moduleAssetsTitle,
-          subtitle: l.moduleAssetsSubtitle,
-        ),
-      );
-    }
-    if (modules['reports'] == true) {
-      destinations.add(
-        _ModuleDestination(
-          key: 'module-tile-reports',
-          icon: Icons.insights_outlined,
-          title: l.moduleReportsTitle,
-          subtitle: l.moduleReportsSubtitle,
-        ),
-      );
-    }
-    if (modules['chat'] == true) {
-      destinations.add(
-        _ModuleDestination(
-          key: 'module-tile-chat',
-          icon: Icons.forum_outlined,
-          title: l.chatTitle,
-          subtitle: l.chatSubtitle,
-        ),
-      );
-      destinations.add(
-        _ModuleDestination(
-          key: 'module-tile-groups',
-          icon: Icons.groups_outlined,
-          title: l.groupsTitle,
-          subtitle: l.groupsSubtitle,
-        ),
-      );
-    }
-    if (modules['pinboard'] == true) {
-      destinations.add(
-        _ModuleDestination(
-          key: 'module-tile-pinboard',
-          icon: Icons.push_pin_outlined,
-          title: l.pinboardTitle,
-          subtitle: l.pinboardSubtitle,
-        ),
-      );
-    }
+    final destinations = [
+      for (final spec in _moduleTiles)
+        if (spec.keys.any((key) => modules[key] == true))
+          _ModuleDestination(
+            key: spec.tileKey,
+            icon: spec.icon,
+            title: _tileTitle(spec.tileKey, l),
+            subtitle: _tileSubtitle(spec.tileKey, l),
+          ),
+    ];
     if (destinations.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -703,6 +638,36 @@ class _ModuleTiles extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  static String _tileTitle(String key, AppLocalizations l) {
+    return switch (key) {
+      'module-tile-calendar' => l.moduleCalendarTitle,
+      'module-tile-coffee' => l.moduleCoffeeTitle,
+      'module-tile-checklists' => l.moduleChecklistsTitle,
+      'module-tile-defects' => l.moduleDefectsTitle,
+      'module-tile-assets' => l.moduleAssetsTitle,
+      'module-tile-reports' => l.moduleReportsTitle,
+      'module-tile-chat' => l.chatTitle,
+      'module-tile-groups' => l.groupsTitle,
+      'module-tile-pinboard' => l.pinboardTitle,
+      _ => key,
+    };
+  }
+
+  static String _tileSubtitle(String key, AppLocalizations l) {
+    return switch (key) {
+      'module-tile-calendar' => l.moduleCalendarSubtitle,
+      'module-tile-coffee' => l.moduleCoffeeSubtitle,
+      'module-tile-checklists' => l.moduleChecklistsSubtitle,
+      'module-tile-defects' => l.moduleDefectsSubtitle,
+      'module-tile-assets' => l.moduleAssetsSubtitle,
+      'module-tile-reports' => l.moduleReportsSubtitle,
+      'module-tile-chat' => l.chatSubtitle,
+      'module-tile-groups' => l.groupsSubtitle,
+      'module-tile-pinboard' => l.pinboardSubtitle,
+      _ => '',
+    };
   }
 
   void _open(BuildContext context, _ModuleDestination destination) {
@@ -763,26 +728,17 @@ class _OverviewAssetBoardState extends State<_OverviewAssetBoard> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    List<StationAsset> assets = const [];
     try {
-      final assets = await widget.api.assets();
-      if (!mounted) return;
-      setState(() {
-        _assets = assets;
-        _loading = false;
-      });
-    } on ApiException catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _assets = const [];
-        _loading = false;
-      });
+      assets = await widget.api.assets();
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _assets = const [];
-        _loading = false;
-      });
+      // Module optional: hide on any error instead of breaking the overview.
     }
+    if (!mounted) return;
+    setState(() {
+      _assets = assets;
+      _loading = false;
+    });
   }
 
   @override
@@ -795,6 +751,14 @@ class _OverviewAssetBoardState extends State<_OverviewAssetBoard> {
     }
     return AssetStatusBoard(assets: _assets);
   }
+}
+
+class _ModuleTileSpec {
+  const _ModuleTileSpec(this.keys, this.tileKey, this.icon);
+
+  final List<String> keys;
+  final String tileKey;
+  final IconData icon;
 }
 
 class _ModuleDestination {
