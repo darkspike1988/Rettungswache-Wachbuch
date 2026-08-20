@@ -56,6 +56,14 @@ class TemplateSecurityRegressionTests(SimpleTestCase):
         application = source.index("core/app.js")
         self.assertLess(bridge, application)
 
+    def test_vorfuehrung_page_has_no_executable_inline_script_or_style(self):
+        source = self.source("templates/core/vorfuehrung.html")
+        self.assertNotIn("<script>", source)
+        self.assertNotIn("|safe", source)
+        self.assertNotIn("innerHTML", source)
+        self.assertNotIn(" style=", source)
+        self.assertIn("data-demo-deck", source)
+
     def test_json_bridge_uses_dom_text_not_html_parsing(self):
         source = self.source("core/static/core/json_data.js")
         self.assertNotIn("innerHTML", source)

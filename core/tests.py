@@ -76,6 +76,7 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertIn("javascript", worker["Content-Type"])
         self.assertEqual(worker["Service-Worker-Allowed"], "/")
         self.assertContains(worker, reverse("offline"))
+        self.assertContains(worker, "demo.css")
         offline = self.client.get(reverse("offline"))
         self.assertEqual(offline.status_code, 200)
         self.assertContains(offline, "Offline")
@@ -160,6 +161,52 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertRedirects(response, reverse("dashboard"))
         self.assertEqual(response.wsgi_request.user.username, "demo-admin")
 
+    def test_vorfuehrung_is_public_showcase_without_patient_or_alarm_scope(self):
+        self.client.logout()
+        response = self.client.get(reverse("vorfuehrung"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-demo-deck")
+        self.assertContains(response, "Für die Wache. Nicht für den Einsatz.")
+        self.assertContains(response, "kein Leitstellen-, Alarmierungs-, Diagnose- oder Patientensystem")
+        self.assertContains(response, "Im Umfang")
+        self.assertContains(response, "Nicht im Umfang")
+        self.assertContains(response, "core/demo.css")
+        self.assertContains(response, reverse("login"))
+        self.assertNotContains(response, "Demo starten")
+        self.assertNotContains(response, reverse("demo_login"))
+
+    def test_vorfuehrung_stays_reachable_after_login(self):
+        response = self.client.get(reverse("vorfuehrung"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-demo-deck")
+        self.assertContains(response, "Für die Wache. Nicht für den Einsatz.")
+
+    def test_vorfuehrung_template_is_csp_safe(self):
+        source = (Path(settings.BASE_DIR) / "templates" / "core" / "vorfuehrung.html").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("|safe", source)
+        self.assertNotIn("<script>", source)
+        self.assertNotIn("innerHTML", source)
+        self.assertNotIn(" style=", source)
+        css = (Path(settings.BASE_DIR) / "core" / "static" / "core" / "demo.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("prefers-reduced-motion", css)
+        js = (Path(settings.BASE_DIR) / "core" / "static" / "core" / "app.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("[data-demo-deck]", js)
+        self.assertIn("prefers-reduced-motion", js)
+        self.assertNotIn("innerHTML", js)
+
+    @override_settings(DEMO_MODE=True)
+    def test_vorfuehrung_shows_one_click_demo_only_when_demo_mode(self):
+        self.client.logout()
+        response = self.client.get(reverse("vorfuehrung"))
+        self.assertContains(response, "Demo starten")
+        self.assertContains(response, reverse("demo_login"))
+
 
 class SecurityAndAccessTests(PilotTestCase):
     def test_health_endpoint_and_security_headers(self):
@@ -203,6 +250,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Wachwerk")
         self.assertContains(response, reverse("login"))
+        self.assertContains(response, reverse("vorfuehrung"))
         self.assertContains(response, "Zugang nach Login und Freigabe")
         self.assertContains(response, "Master-Admin")
         self.assertNotContains(response, reverse("register"))

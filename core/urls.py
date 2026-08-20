@@ -5,6 +5,7 @@ from . import account_views, community_views, secure_views, views, wachalltag_me
 
 urlpatterns = [
     path("", views.landing, name="landing"),
+    path("vorfuehrung/", views.vorfuehrung, name="vorfuehrung"),
     path("demo-einstieg/", views.demo_login, name="demo_login"),
     path("zugang/", views.access, name="access"),
     path("uebersicht/", views.dashboard, name="dashboard"),

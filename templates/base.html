@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="{% static 'core/app.css' %}">
   <link rel="stylesheet" href="{% static 'core/accessibility.css' %}">
   <link rel="stylesheet" href="{% static 'core/crypto_unlock.css' %}">
+  {% block extra_css %}{% endblock %}
 </head>
 <body class="{% if current_membership %}has-app-nav profile-{{ current_membership.station.organization_profile|default:'general' }} {% endif %}{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#inhalt">Zum Inhalt</a>
@@ -116,6 +117,7 @@
   <footer class="site-footer">
     <div class="footer-links">
       <a href="{{ source_url }}" rel="noopener noreferrer">Quellcode (AGPL-3.0)</a>
+      <a href="{% url 'vorfuehrung' %}">Vorführung</a>
       <a href="{% url 'privacy' %}">Datenschutz &amp; Cookies</a>
       <span class="app-version">Version {{ app_version }}</span>
     </div>

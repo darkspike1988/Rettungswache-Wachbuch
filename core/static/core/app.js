@@ -704,6 +704,184 @@
     })();
   }
 
+  const demoDeck = doc.querySelector("[data-demo-deck]");
+  if (demoDeck) {
+    const slides = [...demoDeck.querySelectorAll("[data-demo-slide]")];
+    const prevBtn = demoDeck.querySelector("[data-demo-prev]");
+    const nextBtn = demoDeck.querySelector("[data-demo-next]");
+    const musicBtn = demoDeck.querySelector("[data-demo-music]");
+    const countEl = demoDeck.querySelector("[data-demo-count]");
+    const bar = demoDeck.querySelector("[data-demo-bar]");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const autoplay = new URLSearchParams(window.location.search).get("autoplay") === "1" && !reduceMotion;
+    const AUTO_MS = 6200;
+    let index = 0;
+    let timer = null;
+    let audioCtx = null;
+    let masterGain = null;
+    let padOsc = null;
+    let phraseTimer = null;
+    let playing = false;
+
+    function show(nextIndex) {
+      index = (nextIndex + slides.length) % slides.length;
+      slides.forEach((slide, slideIndex) => {
+        const on = slideIndex === index;
+        slide.classList.toggle("is-on", on);
+        slide.setAttribute("aria-hidden", on ? "false" : "true");
+      });
+      demoDeck.setAttribute("data-demo-index", String(index));
+      if (countEl) {
+        countEl.textContent = `${index + 1} / ${slides.length}`;
+      }
+    }
+
+    function armAuto() {
+      window.clearInterval(timer);
+      if (autoplay) {
+        timer = window.setInterval(() => {
+          show(index + 1);
+        }, AUTO_MS);
+      }
+    }
+
+    function startPhrase() {
+      if (!audioCtx || !masterGain || !playing) {
+        return;
+      }
+      const seq = [261.63, 329.63, 392, 440, 392, 329.63];
+      seq.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.value = 0;
+        osc.connect(gain);
+        gain.connect(masterGain);
+        const t0 = audioCtx.currentTime + idx * 0.95;
+        gain.gain.setValueAtTime(0, t0);
+        gain.gain.linearRampToValueAtTime(0.18, t0 + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + 1.4);
+        osc.start(t0);
+        osc.stop(t0 + 1.5);
+      });
+    }
+
+    function startMusic() {
+      const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextCtor || playing) {
+        return;
+      }
+      audioCtx = audioCtx || new AudioContextCtor();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.07;
+      masterGain.connect(audioCtx.destination);
+      const notes = [196, 246.94, 293.66, 329.63, 392, 329.63, 293.66, 246.94];
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.value = 0;
+        osc.connect(gain);
+        gain.connect(masterGain);
+        const t0 = audioCtx.currentTime + idx * 0.85;
+        gain.gain.setValueAtTime(0, t0);
+        gain.gain.linearRampToValueAtTime(0.22, t0 + 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, t0 + 1.6);
+        osc.start(t0);
+        osc.stop(t0 + 1.7);
+      });
+      padOsc = audioCtx.createOscillator();
+      const padGain = audioCtx.createGain();
+      padOsc.type = "triangle";
+      padOsc.frequency.value = 98;
+      padGain.gain.value = 0.04;
+      padOsc.connect(padGain);
+      padGain.connect(masterGain);
+      padOsc.start();
+      playing = true;
+      if (musicBtn) {
+        musicBtn.setAttribute("aria-pressed", "true");
+      }
+      phraseTimer = window.setInterval(startPhrase, 6800);
+    }
+
+    function stopMusic() {
+      playing = false;
+      window.clearInterval(phraseTimer);
+      phraseTimer = null;
+      if (padOsc) {
+        try {
+          padOsc.stop();
+        } catch (_error) {
+          /* already stopped */
+        }
+        padOsc.disconnect();
+        padOsc = null;
+      }
+      if (masterGain) {
+        masterGain.disconnect();
+        masterGain = null;
+      }
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
+      if (musicBtn) {
+        musicBtn.setAttribute("aria-pressed", "false");
+      }
+    }
+
+    demoDeck.classList.add("is-js");
+    if (bar) {
+      bar.hidden = false;
+    }
+    show(0);
+    armAuto();
+
+    if (prevBtn) {
+      prevBtn.addEventListener("click", () => {
+        show(index - 1);
+        armAuto();
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener("click", () => {
+        show(index + 1);
+        armAuto();
+      });
+    }
+    if (musicBtn) {
+      musicBtn.addEventListener("click", () => {
+        if (playing) {
+          stopMusic();
+          return;
+        }
+        if (audioCtx && audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+        startMusic();
+      });
+    }
+    doc.addEventListener("keydown", (event) => {
+      const tag = event.target && event.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        return;
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        show(index + 1);
+        armAuto();
+      }
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        show(index - 1);
+        armAuto();
+      }
+    });
+  }
+
   doc.addEventListener("click", (event) => {
     const btn = event.target.closest && event.target.closest(".copy-iban");
     if (!btn) {
