@@ -187,7 +187,7 @@ Nachweise: `makemigrations --check`, 264 Django-Tests (darunter die neuen
 Negativtests), `check --deploy` ohne neue Fehler, GitHub-Job `django` und
 `docker` auf dem PR-Head grün. Client-Logout liegt im parallelen Client-PR.
 
-### [~] R-024 CSP-/Registrierungs-Nachzügler 2026-08-20
+### [x] R-024 CSP-/Registrierungs-Nachzügler 2026-08-20
 
 Ursache: Review-Nachkontrolle nach R-023. `connect-src https:` erlaubte beliebige
 HTTPS-Origins; Push-JSON lag ohne `json_script` im Template; Registrierungen
@@ -200,7 +200,9 @@ Umgesetzt:
 - `connect-src` nur `'self'` plus Hosts aus `PUSH_ALLOWED_ENDPOINT_HOSTS`.
 - Wunschwache ist Pflicht; Pending ohne Station bleibt stationsübergreifend unsichtbar.
 
-Status erst nach belegten Django-Gates auf `[x]` setzen.
+Nachweise: `makemigrations --check`, 269 Django-Tests (1 skipped),
+`check --deploy` ohne neue Fehler, GitHub-Jobs `django` und `docker` auf dem
+PR-Head grün.
 
 ## Wave 3 – Pilot- und Produktionsabnahme
 
