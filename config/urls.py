@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.urls import path
+from django.http import HttpResponse
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
@@ -27,8 +29,14 @@ handler429 = "core.views.rate_limited"
 handler500 = "core.views.server_error"
 
 
+def metrics(request):
+    from django_prometheus.metrics import export_metrics
+    return HttpResponse(export_metrics(), content_type='text/plain')
+
+
 urlpatterns = [
     path("healthz/", healthz, name="healthz"),
+    path("metrics/", metrics, name="prometheus_metrics"),
     path("manifest.webmanifest", web_manifest, name="web_manifest"),
     path("service-worker.js", service_worker, name="service_worker"),
     path("offline/", offline, name="offline"),

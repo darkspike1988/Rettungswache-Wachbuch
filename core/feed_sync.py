@@ -4,6 +4,7 @@ import hashlib
 import ipaddress
 import io
 import socket
+import re
 from datetime import datetime, timezone as datetime_timezone
 from urllib.parse import urlparse
 
@@ -16,6 +17,55 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 
 from .models import FeedItem, FeedSource
+
+
+def validate_feed_host(host: str) -> bool:
+    """Validiert einen Host für FEED_ALLOWED_HOSTS.
+    
+    Industriestandard: OWASP Input Validation
+    - Keine Wildcards (*.example.com)
+    - Keine IP-Adressen (nur Hostnames)
+    - Keine IDN-Homograph-Angriffe (Punycode-Prüfung)
+    - Keine leeren Hosts
+    """
+    if not host:
+        return False
+    
+    # Keine Wildcards
+    if '*' in host:
+        return False
+    
+    # Keine IP-Adressen (IPv4 oder IPv6)
+    try:
+        ipaddress.ip_address(host)
+        return False
+    except ValueError:
+        pass
+    
+    # IDN-Prüfung: Host muss in Punycode konvertierbar sein
+    try:
+        host.encode('idna').decode('ascii')
+    except UnicodeError:
+        return False
+    
+    # Keine speziellen Zeichen (nur alphanumerisch, -, .)
+    if not re.match(r'^[a-zA-Z0-9\-\.]+$', host):
+        return False
+    
+    return True
+
+
+def validate_feed_allowed_hosts():
+    """Validiert alle Hosts in FEED_ALLOWED_HOSTS.
+    
+    Wirft ValueError, wenn ein Host ungültig ist.
+    """
+    for host in settings.FEED_ALLOWED_HOSTS:
+        if not validate_feed_host(host):
+            raise ValueError(
+                f"Ungültiger Host in FEED_ALLOWED_HOSTS: {host}. "
+                "Erlaubt sind nur Hostnames ohne Wildcards, IP-Adressen oder IDN-Homographen."
+            )
 
 
 def fetch_source(source):
