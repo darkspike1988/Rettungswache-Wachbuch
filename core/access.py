@@ -1,12 +1,13 @@
 from functools import wraps
 from urllib.parse import urlencode
 
+from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse
 
-from .models import Membership
+from .models import Membership, RegistrationRequest
 
 
 CONTENT_ROLES = {
@@ -24,6 +25,33 @@ def get_membership(user):
         Membership.objects.select_related("station", "user")
         .filter(user=user, is_active=True, station__is_active=True)
         .first()
+    )
+
+
+def pending_registrations_for_station(station):
+    """Pending sign-ups that named this station. Cross-station rows stay hidden."""
+    return (
+        RegistrationRequest.objects.filter(
+            status=RegistrationRequest.Status.PENDING,
+            user__is_active=True,
+            preferred_station=station,
+        )
+        .select_related("user", "preferred_station")
+        .order_by("created_at")
+    )
+
+
+def users_awaiting_station_access(station):
+    """Active users without membership who did not request a different station."""
+    foreign_pending_ids = RegistrationRequest.objects.filter(
+        status=RegistrationRequest.Status.PENDING,
+        preferred_station__isnull=False,
+    ).exclude(preferred_station=station).values_list("user_id", flat=True)
+    return (
+        User.objects.filter(is_active=True)
+        .exclude(station_memberships__is_active=True)
+        .exclude(pk__in=foreign_pending_ids)
+        .order_by("first_name", "username")
     )
 
 

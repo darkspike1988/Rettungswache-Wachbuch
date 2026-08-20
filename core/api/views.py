@@ -19,7 +19,6 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
-from django_ratelimit.decorators import ratelimit
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -49,44 +48,6 @@ from ..services import audit, change_handover_status, create_handover, create_pi
 from ..version import APP_VERSION
 
 API_VERSION = "v1"
-
-
-# Rate-Limit-Decorators für API-Endpunkte
-# Industriestandard: OWASP ASVS V5.3
-
-
-def api_ratelimit_anonymous(view):
-    """Rate-Limit für anonyme API-Aufrufe: 100/Stunde pro IP."""
-    return ratelimit(
-        group='anonymous',
-        key=lambda group, request: request.META.get('REMOTE_ADDR'),
-        rate=settings.RATELIMIT_API_ANONYMOUS,
-        method='GET',
-        block=True
-    )(view)
-
-
-def api_ratelimit_authenticated(view):
-    """Rate-Limit für authentifizierte API-Aufrufe: 1000/Stunde pro User."""
-    return ratelimit(
-        group='authenticated',
-        key=lambda group, request: request.user.pk if request.user.is_authenticated else request.META.get('REMOTE_ADDR'),
-        rate=settings.RATELIMIT_API_AUTHENTICATED,
-        method='ALL',
-        block=True
-    )(view)
-
-
-def api_ratelimit_token(view):
-    """Rate-Limit für Token-Erzeugung: 10/Minute pro IP."""
-    return ratelimit(
-        group='token',
-        key=lambda group, request: request.META.get('REMOTE_ADDR'),
-        rate=settings.RATELIMIT_API_TOKEN,
-        method='POST',
-        block=True
-    )(view)
-
 TOKEN_PREFIX = "wb_"
 DEFAULT_TOKEN_TTL_DAYS = 90
 WRITE_ROLES = {Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN}
@@ -220,9 +181,6 @@ def _scope_allowed(token: ApiToken, scope: str) -> bool:
 
 @csrf_exempt
 @require_GET
-@csrf_exempt
-@api_ratelimit_anonymous
-@require_GET
 def api_root(request):
     return JsonResponse({
         "ok": True,
@@ -233,6 +191,7 @@ def api_root(request):
         "docs": "/api/v1/openapi.yaml",
         "endpoints": {
             "token": "/api/v1/token/",
+            "token_revoke": "/api/v1/token/",
             "anmeldung": "/api/v1/anmeldung/",
             "me": "/api/v1/me/",
             "status": "/api/v1/status/",
@@ -258,9 +217,6 @@ def api_root(request):
 
 @csrf_exempt
 @require_GET
-@csrf_exempt
-@api_ratelimit_anonymous
-@require_GET
 def openapi_spec(request):
     from pathlib import Path
 
@@ -269,9 +225,15 @@ def openapi_spec(request):
 
 
 @csrf_exempt
-@require_POST
+@require_http_methods(["POST", "DELETE"])
+def token_endpoint(request):
+    """POST mints a token; DELETE revokes the token presented in Authorization."""
+    if request.method == "DELETE":
+        return revoke_current_token(request)
+    return obtain_token(request)
+
+
 @csrf_exempt
-@api_ratelimit_token
 @require_POST
 def obtain_token(request):
     """Paperless-style token exchange: username + password → API token."""
@@ -335,6 +297,20 @@ def obtain_token(request):
         "station": membership.station.name,
         "role": membership.role,
     })
+
+
+@api_token_required
+def revoke_current_token(request):
+    """Deactivate only the presented app token. Logout remains possible offline."""
+    token = request.api_token
+    updated = ApiToken.objects.filter(pk=token.pk, is_active=True).update(is_active=False)
+    if updated:
+        audit(request.user, request.membership.station, "api.token_revoked", request.user, {
+            "fields": ["is_active"],
+            "via": "api.token",
+            "token_prefix": token.token_prefix,
+        })
+    return JsonResponse({"ok": True, "revoked": True})
 
 
 @csrf_exempt
@@ -411,8 +387,6 @@ def _handover_json(item, *, detail=False):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 @api_token_required
-@csrf_exempt
-@api_ratelimit_authenticated
 def handovers_list(request):
     if request.method == "POST":
         return handover_create(request)
@@ -538,8 +512,6 @@ def handover_create(request):
 @csrf_exempt
 @require_GET
 @api_token_required
-@csrf_exempt
-@api_ratelimit_authenticated
 def handover_detail(request, pk):
     if not _scope_allowed(request.api_token, "read:handovers"):
         return _json_error(request, "Scope read:handovers fehlt.", status=403)

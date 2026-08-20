@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # --- Build: dependencies + collectstatic ---
-FROM python:3.14-alpine@sha256:012d2551153d7e8357e319445244946875371f8635701233520181071122193 AS builder
+FROM python:3.14.6-slim-bookworm@sha256:86f975aca15cf04a40b399eebede9aea7c82eae084d1f1a0a6ef6bcaae871a30 AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -9,8 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apk add --no-cache gcc musl-dev libpq && \
-    python -m venv /opt/venv
+RUN python -m venv /opt/venv
 
 COPY requirements.lock .
 RUN --mount=type=cache,target=/root/.cache/pip \
@@ -26,7 +25,7 @@ RUN SECRET_KEY=build-only-secret-key-not-used-at-runtime \
     python manage.py collectstatic --noinput
 
 # --- Runtime: slim image ---
-FROM python:3.14-alpine@sha256:012d2551153d7e8357e319445244946875371f8635701233520181071122193 AS runtime
+FROM python:3.14.6-slim-bookworm@sha256:86f975aca15cf04a40b399eebede9aea7c82eae084d1f1a0a6ef6bcaae871a30 AS runtime
 
 LABEL org.opencontainers.image.title="Rettungswache-Wachbuch" \
       org.opencontainers.image.description="Selbst gehostetes Wachbuch fuer Rettungswachen" \
@@ -40,8 +39,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apk add --no-cache libpq && \
-    groupadd --gid 10001 app && useradd --uid 10001 --gid app --create-home app
+RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --create-home app
 
 COPY --from=builder /opt/venv /opt/venv
 COPY --chown=app:app manage.py .

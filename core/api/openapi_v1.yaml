@@ -8,7 +8,7 @@ info:
     Checklisten, Schlüssel-/Pool-Geräte, Quittierungen und leichte Auswertung.
     Patienten-, Einsatz-, Alarmierungs- und Vorgangsdaten sind ausdrücklich
     nicht Teil dieser API.
-  version: "1.2.1"
+  version: "1.2.2"
 servers:
   - url: /api/v1
     description: Relative to the Wachbuch origin
@@ -46,6 +46,11 @@ paths:
         "200": { description: Token created and shown once }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Revoke the presented API token
+      responses:
+        "200": { description: Token deactivated }
+        "401": { $ref: "#/components/responses/Error" }
   /anmeldung/:
     post:
       summary: German alias for /token/
@@ -54,6 +59,11 @@ paths:
         "200": { description: Token created and shown once }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: German alias for DELETE /token/
+      responses:
+        "200": { description: Token deactivated }
+        "401": { $ref: "#/components/responses/Error" }
   /me/:
     get:
       summary: Current user, membership, station modules and Wachalltag capabilities

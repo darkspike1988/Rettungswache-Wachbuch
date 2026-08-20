@@ -1,9 +1,6 @@
 from django.contrib import admin
-from django.urls import path
-from django.http import HttpResponse
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
-from core.metrics import metrics_view
 
 from core import account_views, community_views, secure_views
 from core.auth_views import PasswordLoginView
@@ -28,7 +25,6 @@ handler403 = "core.views.permission_denied"
 handler404 = "core.views.page_not_found"
 handler429 = "core.views.rate_limited"
 handler500 = "core.views.server_error"
-
 
 
 urlpatterns = [
@@ -58,6 +54,5 @@ urlpatterns = [
     path("abmelden/", auth_views.LogoutView.as_view(), name="logout"),
     path("django-admin/", admin.site.urls),
     path("api/v1/", include("core.api.urls")),
-    path("metrics/", metrics_view, name="prometheus-metrics"),
     path("", include("core.urls")),
 ]

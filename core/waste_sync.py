@@ -3,7 +3,8 @@
 Die offizielle AbfallNavi/RegioIT-Quelle fuer den Kreis Guetersloh ist noch
 nicht freigegeben. Bis dahin kann jede Wache eine eigene ICS-URL hinterlegen.
 Der Abruf nutzt dasselbe Haertungsprofil wie die Feed-Sync
-(``core/feed_sync.py``): HTTPS-only, Port 443, keine Weiterleitungen, DNS wird
+(``core/feed_sync.py``): HTTPS-only, Port 443, Host in
+``FEED_ALLOWED_HOSTS``, keine Weiterleitungen, DNS wird
 aufgeloest und es darf nur globale Adressen erreicht werden, der Request geht
 direkt an die aufgeloeste IP (DNS-Pinning mit SNI/Host-Header).
 """
@@ -48,6 +49,9 @@ def fetch_waste_calendar(url):
         raise ValueError("Die Portangabe der Muellkalender-URL ist ungueltig.") from exc
     if port not in {None, 443}:
         raise ValueError("Muellkalender-URL darf nur HTTPS-Port 443 verwenden.")
+    host = parsed.hostname.lower()
+    if host not in settings.FEED_ALLOWED_HOSTS:
+        raise ValueError("Muellkalender-Host ist nicht in FEED_ALLOWED_HOSTS freigegeben.")
 
     resolved = socket.getaddrinfo(parsed.hostname, 443, type=socket.SOCK_STREAM)
     addresses = list(dict.fromkeys(item[4][0] for item in resolved))

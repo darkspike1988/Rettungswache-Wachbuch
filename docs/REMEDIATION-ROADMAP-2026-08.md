@@ -166,6 +166,25 @@ PR #54 schließt zwei in der Nachkontrolle gefundene Edge Cases:
 
 Status erst nach grünem finalem PR-Head auf `[x]` setzen.
 
+### [x] R-023 Review-Findings 2026-08-20
+
+Ursache: Vibe-P0-P3-Commits auf `main` (gebrochene CI, unauthentisierte Metriken)
+plus offene Invarianten aus dem Dual-Repo-Review.
+
+Umgesetzt:
+
+- Vibe-Commits `9bfb3d8`/`a36936b` zurückgenommen (Dockerfile slim-bookworm, kein
+  `/metrics/`, kein django-ratelimit neben R-011).
+- **S1** Registrierungsliste, Ablehnung, Freigabe-Dropdown und Zähler bleiben an
+  `request.membership.station` gebunden.
+- **S2** Audit-Diffs für Zahlungs-/URL-Freitexte speichern nur `changed`.
+- **S4** Müllkalender-Hosts brauchen `FEED_ALLOWED_HOSTS` (Form + Fetch).
+- **C2** `DELETE /api/v1/token/` widerruft das vorgelegte App-Token.
+
+Nachweise: `makemigrations --check`, 264 Django-Tests (darunter die neuen
+Negativtests), `check --deploy` ohne neue Fehler, GitHub-Job `django` und
+`docker` auf dem PR-Head grün. Client-Logout liegt im parallelen Client-PR.
+
 ## Wave 3 – Pilot- und Produktionsabnahme
 
 ### [ ] R-015 Externe ASVS-L2-Prüfung und Penetrationstest

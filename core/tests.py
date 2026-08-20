@@ -1240,6 +1240,27 @@ class RetentionAuditExitAndMfaTests(PilotTestCase):
         self.assertIn("name", event.metadata["changes"])
         self.assertEqual(event.metadata["changes"]["name"]["to"], "Wache Diff")
 
+    def test_station_settings_audit_redacts_payment_values(self):
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        response = self.client.post(reverse("station_settings"), {
+            "name": self.station.name,
+            "calendar_enabled": "on",
+            "coffee_enabled": "on",
+            "iban": "DE89370400440532013000",
+            "bic": "COBADEFFXXX",
+            "payment_note": "Verwendungszweck: Kaffeekasse",
+        })
+        self.assertRedirects(response, reverse("station_settings"))
+        event = AuditEvent.objects.filter(action="station.settings_updated").latest("created_at")
+        payload = json.dumps(event.metadata)
+        self.assertNotIn("DE89370400440532013000", payload)
+        self.assertNotIn("COBADEFFXXX", payload)
+        self.assertNotIn("Kaffeekasse", payload)
+        self.assertEqual(event.metadata["changes"]["iban"], {"changed": True})
+        self.assertEqual(event.metadata["changes"]["bic"], {"changed": True})
+        self.assertEqual(event.metadata["changes"]["payment_note"], {"changed": True})
+
     def test_mfa_login_requires_totp_code(self):
         import pyotp
 
@@ -1406,6 +1427,47 @@ class RegistrationAccountChatTests(PilotTestCase):
         self.assertEqual(request_row.status, RegistrationRequest.Status.APPROVED)
         self.client.force_login(user)
         self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
+
+    def test_admin_cannot_see_or_reject_foreign_station_registration(self):
+        from .forms import MembershipAssignmentForm
+        from .models import RegistrationRequest
+
+        self.membership.role = Membership.Role.ADMIN
+        self.membership.save(update_fields=["role"])
+        other = Station.objects.create(name="Westwache", slug="westwache")
+        foreign_user = User.objects.create_user("fremd@example.org", first_name="Fremd")
+        foreign = RegistrationRequest.objects.create(
+            user=foreign_user,
+            preferred_station=other,
+            note="Interne Schicht West",
+            status=RegistrationRequest.Status.PENDING,
+        )
+        local_user = User.objects.create_user("lokal@example.org", first_name="Lokal")
+        RegistrationRequest.objects.create(
+            user=local_user,
+            preferred_station=self.station,
+            note="Team Nord",
+            status=RegistrationRequest.Status.PENDING,
+        )
+        page = self.client.get(reverse("team"))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "lokal@example.org")
+        self.assertContains(page, "Team Nord")
+        self.assertNotContains(page, "fremd@example.org")
+        self.assertNotContains(page, "Interne Schicht West")
+        self.assertNotContains(page, "Westwache")
+
+        rejected = self.client.post(reverse("registration_reject", args=[foreign.pk]))
+        self.assertEqual(rejected.status_code, 404)
+        foreign.refresh_from_db()
+        foreign_user.refresh_from_db()
+        self.assertEqual(foreign.status, RegistrationRequest.Status.PENDING)
+        self.assertTrue(foreign_user.is_active)
+
+        form = MembershipAssignmentForm(station=self.station)
+        user_ids = set(form.fields["user"].queryset.values_list("pk", flat=True))
+        self.assertIn(local_user.pk, user_ids)
+        self.assertNotIn(foreign_user.pk, user_ids)
 
     def test_master_admin_creates_user_with_membership(self):
         self.membership.role = Membership.Role.ADMIN
@@ -1650,6 +1712,7 @@ class HolidayCalendarTests(PilotTestCase):
         self.assertFalse(is_upcoming_agenda_item(past_event, now=noon, today=today))
 
 
+@override_settings(FEED_ALLOWED_HOSTS={"abfall.example.org"})
 class WasteCalendarTests(PilotTestCase):
     def setUp(self):
         super().setUp()
@@ -1779,6 +1842,36 @@ class WasteCalendarTests(PilotTestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertIn("waste_calendar_url", form.errors)
+
+    def test_host_outside_allowlist_is_rejected(self):
+        from core.forms import StationSettingsForm
+        from .waste_sync import fetch_waste_calendar
+
+        with self.assertRaises(ValueError):
+            fetch_waste_calendar("https://evil.example.net/wache.ics")
+        form = StationSettingsForm(
+            data={
+                "name": "Testwache",
+                "waste_calendar_enabled": "on",
+                "waste_calendar_url": "https://evil.example.net/wache.ics",
+            },
+            instance=self.station,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("waste_calendar_url", form.errors)
+
+    def test_allowlisted_https_waste_url_is_accepted(self):
+        from core.forms import StationSettingsForm
+
+        form = StationSettingsForm(
+            data={
+                "name": "Testwache",
+                "waste_calendar_enabled": "on",
+                "waste_calendar_url": "https://abfall.example.org/wache.ics",
+            },
+            instance=self.station,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
 
 
 class ApiMobileFoundationTests(PilotTestCase):
@@ -2103,6 +2196,23 @@ class ApiUnifiedContractTests(PilotTestCase):
         ApiToken.objects.filter(user=self.user).update(is_active=False)
         response = self.client.get(reverse("api_v1_me"), **self._auth(raw))
         self.assertEqual(response.status_code, 401)
+
+    def test_delete_token_revokes_only_the_presented_token(self):
+        from .models import ApiToken
+
+        raw = self._token()
+        other = self._token()
+        unauthenticated = self.client.delete(reverse("api_v1_token"))
+        self.assertEqual(unauthenticated.status_code, 401)
+        revoked = self.client.delete(reverse("api_v1_token"), **self._auth(raw))
+        self.assertEqual(revoked.status_code, 200)
+        self.assertTrue(revoked.json()["revoked"])
+        self.assertEqual(self.client.get(reverse("api_v1_me"), **self._auth(raw)).status_code, 401)
+        self.assertEqual(self.client.get(reverse("api_v1_me"), **self._auth(other)).status_code, 200)
+        self.assertEqual(ApiToken.objects.filter(user=self.user, is_active=True).count(), 1)
+        alias = self.client.delete(reverse("api_v1_anmeldung"), **self._auth(other))
+        self.assertEqual(alias.status_code, 200)
+        self.assertFalse(ApiToken.objects.filter(user=self.user, is_active=True).exists())
 
     def test_password_change_revokes_api_tokens(self):
         from .models import ApiToken

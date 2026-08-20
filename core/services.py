@@ -32,13 +32,27 @@ def revoke_api_tokens_for_user(user) -> int:
     return ApiToken.objects.filter(user=user, is_active=True).update(is_active=False)
 
 
-def structure_changes(before, after):
+# Field names whose values must never appear in auditor-visible metadata.
+AUDIT_REDACT_VALUES = frozenset({
+    "iban",
+    "bic",
+    "payment_note",
+    "paypal_me_url",
+    "wero_link",
+    "waste_calendar_url",
+})
+
+
+def structure_changes(before, after, *, redact_values=AUDIT_REDACT_VALUES):
     """Build a safe before/after map for structured fields (no free text)."""
     changes = {}
     for key, old in before.items():
         new = after.get(key)
         if old != new:
-            changes[key] = {"from": old, "to": new}
+            if key in redact_values:
+                changes[key] = {"changed": True}
+            else:
+                changes[key] = {"from": old, "to": new}
     return changes
 
 

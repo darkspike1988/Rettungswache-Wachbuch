@@ -28,7 +28,6 @@ CSRF_TRUSTED_ORIGINS = [value.strip() for value in os.getenv(
 
 INSTALLED_APPS = [
     "axes",
-    "django_prometheus",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -50,21 +49,12 @@ MIDDLEWARE = [
     "core.middleware.CorrelationIdMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
     "core.middleware.ClientIPMiddleware",
-    "core.middleware.CorrelationIdMiddleware",
     "axes.middleware.AxesMiddleware",
-    "core.metrics.PrometheusMiddleware",
 ]
 
 # Optional Redis cache. Keep serialized values non-executable: django-redis uses
 # pickle by default, so Wachbuch selects the built-in JSON serializer instead.
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
-
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "unique-snowflake",
-    }
-}
 
 if REDIS_URL:
     CACHES = {
@@ -111,15 +101,11 @@ LOGGING = {
         "standard": {
             "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
         },
-        "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-            "format": "%(asctime)s %(levelname)s %(name)s %(message)s %(correlation_id)s",
-        },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "json",
+            "formatter": "standard",
         },
     },
     "root": {
@@ -154,20 +140,6 @@ AXES_COOLOFF_TIME = 1
 AXES_HTTP_RESPONSE_CODE = 429
 AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
 AXES_RESET_ON_SUCCESS = True
-
-# Rate Limiting für API-Endpunkte (django-ratelimit)
-# Industriestandard: OWASP ASVS V5.3
-RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = 'default'  # Nutze Django Cache (Redis oder Datenbank)
-RATELIMIT_CACHE_PREFIX = 'rl_'
-
-# API-spezifische Rate-Limits (pro IP oder User)
-# - Anonyme API-Aufrufe: 100/Stunde
-# - Authentifizierte API-Aufrufe: 1000/Stunde
-# - Token-Erzeugung: 10/Minute (Brute-Force-Schutz)
-RATELIMIT_API_ANONYMOUS = '100/h'
-RATELIMIT_API_AUTHENTICATED = '1000/h'
-RATELIMIT_API_TOKEN = '10/m'
 
 ROOT_URLCONF = "config.urls"
 TEMPLATES = [
@@ -281,8 +253,6 @@ FEED_ALLOWED_HOSTS = {
     for value in os.getenv("FEED_ALLOWED_HOSTS", "").split(",")
     if value.strip()
 }
-
-
 FEED_MAX_BYTES = 2_000_000
 WASTE_CALENDAR_MAX_BYTES = 1_048_576
 RETENTION_FEED_DAYS = int(os.getenv("RETENTION_FEED_DAYS", "90") or "0")

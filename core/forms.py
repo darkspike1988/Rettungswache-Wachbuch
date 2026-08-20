@@ -1,7 +1,9 @@
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
+from urllib.parse import urlparse
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -141,11 +143,14 @@ class MembershipAssignmentForm(forms.Form):
     user = forms.ModelChoiceField(queryset=User.objects.none(), label="Benutzerkonto")
     role = forms.ChoiceField(choices=Membership.Role.choices, label="Rolle")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, station=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["user"].queryset = User.objects.filter(is_active=True).exclude(
-            station_memberships__is_active=True
-        ).order_by("first_name", "username")
+        if station is None:
+            self.fields["user"].queryset = User.objects.none()
+            return
+        from .access import users_awaiting_station_access
+
+        self.fields["user"].queryset = users_awaiting_station_access(station)
 
 
 class MasterAdminCreateUserForm(forms.Form):
@@ -227,7 +232,7 @@ class StationSettingsForm(forms.ModelForm):
             "iban": "Deutsche IBAN (DE + 20 Ziffern), nur fuer die Anzeige.",
             "bic": "Optional, 8 oder 11 Zeichen.",
             "payment_note": "Freitext, z. B. Verwendungszweck oder Ansprechpartner.",
-            "waste_calendar_url": "Vollstaendige https://…-URL zu einer ICS-Datei der Abfuhrtermine.",
+            "waste_calendar_url": "Vollstaendige https://…-URL zu einer ICS-Datei. Der Host muss in FEED_ALLOWED_HOSTS stehen.",
         }
 
     def __init__(self, *args, **kwargs):
@@ -240,8 +245,26 @@ class StationSettingsForm(forms.ModelForm):
 
     def clean_waste_calendar_url(self):
         value = (self.cleaned_data.get("waste_calendar_url") or "").strip()
-        if value and not value.startswith("https://"):
+        if not value:
+            return value
+        if not value.startswith("https://"):
             raise forms.ValidationError("Muellkalender-URLs muessen mit https:// beginnen.")
+        parsed = urlparse(value)
+        host = (parsed.hostname or "").lower()
+        if not host:
+            raise forms.ValidationError("Muellkalender-URLs brauchen einen Hostnamen.")
+        if parsed.username or parsed.password:
+            raise forms.ValidationError("Muellkalender-URLs duerfen keine Zugangsdaten enthalten.")
+        try:
+            port = parsed.port
+        except ValueError:
+            raise forms.ValidationError("Die Portangabe der Muellkalender-URL ist ungueltig.")
+        if port not in {None, 443}:
+            raise forms.ValidationError("Muellkalender-URLs duerfen nur HTTPS-Port 443 verwenden.")
+        if host not in settings.FEED_ALLOWED_HOSTS:
+            raise forms.ValidationError(
+                "Der Host muss zuerst in FEED_ALLOWED_HOSTS freigegeben werden."
+            )
         return value
 
     def clean(self):

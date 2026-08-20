@@ -8,7 +8,7 @@ Stand: 10. August 2026.
 | --- | --- |
 | **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch · `0.16.x` |
 | **Client** | https://github.com/darkspike1988/Wachbuch-Client · `0.6.x` |
-| **API** | `/api/v1/` · OpenAPI `1.2.1` |
+| **API** | `/api/v1/` · OpenAPI `1.2.2` |
 | **Historischer Spiegel** | `clients/wachbuch-mobile/` – nicht als Quelle verwenden |
 
 **Wachbuch-Client ist die einzige Quelle der Wahrheit für Flutter/iOS/Android.** Der Server koppelt sich über den versionierten API-Vertrag an die App. Der historische Client-Ordner im Server-Repository darf keine neueren Client-Commits überschreiben; der frühere Publish-Workflow ist deshalb deaktiviert.
@@ -33,6 +33,7 @@ App                         Wachbuch-Server
 5. Wachalltag               /defects/ /assets/ /inventory/
 6. Checks/Reports           /checklisten/ /reports/
 7. Mängelfotos              /defects/{id}/attachments/
+8. Logout                   DELETE /api/v1/token/     best-effort, danach lokal
 ```
 
 Header: `Authorization: Token <wb_…>`.
