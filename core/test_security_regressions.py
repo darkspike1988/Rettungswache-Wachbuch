@@ -67,6 +67,12 @@ class TemplateSecurityRegressionTests(SimpleTestCase):
         self.assertNotIn('href="{% url \'chat\' %}"', source)
         self.assertIn("'private_chat' in request.resolver_match.url_name", source)
 
+    def test_high_contrast_follows_system_preference(self):
+        source = self.source("core/static/core/accessibility.css")
+        self.assertIn("prefers-contrast: more", source)
+        self.assertIn("#000000", source)
+        self.assertNotIn("innerHTML", source)
+
 
 class MiddlewareSecurityRegressionTests(SimpleTestCase):
     def setUp(self):

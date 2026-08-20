@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Web folgt `prefers-contrast: more` mit derselben Schwarz/Weiß-Palette wie
+  die Flutter-HighContrast-Themes.
+
 - **R-024 CSP- und Registrierungs-Nachzügler** – Push-Konfiguration über
   `json_script`; CSP `connect-src` nur `'self'` plus `PUSH_ALLOWED_ENDPOINT_HOSTS`;
   Wunschwache bei der Selbstregistrierung Pflicht.
