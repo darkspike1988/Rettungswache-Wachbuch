@@ -232,6 +232,7 @@ def service_worker(request):
     shell_assets = [
         _static_url("core/app.css"),
         _static_url("core/accessibility.css"),
+        _static_url("core/demo.css"),
         _static_url("core/app.js"),
         _static_url("core/fonts/SourceSans3-Regular.woff2"),
         _static_url("core/fonts/SourceSans3-Semibold.woff2"),
@@ -348,6 +349,12 @@ def landing(request):
             return redirect("dashboard")
         return redirect("access")
     return render(request, "core/landing.html")
+
+
+@require_GET
+def vorfuehrung(request):
+    """Öffentliche Vorführung ohne Fachdaten; bleibt auch nach Login erreichbar."""
+    return render(request, "core/vorfuehrung.html")
 
 
 @require_GET

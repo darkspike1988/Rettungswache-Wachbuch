@@ -8,6 +8,7 @@
   <p class="lead">Übergaben, Tagesaufgaben und Teamrollen für Rettungswache, Feuerwehr und vergleichbare Dienste. Kein Einsatzleit-, Dienstplan- oder Patientensystem.</p>
   <div class="form-actions landing-cta">
     <a class="button primary" href="{% url 'login' %}">Anmelden</a>
+    <a class="button secondary" href="{% url 'vorfuehrung' %}">Vorführung</a>
     {% if registration_enabled %}<a class="button secondary" href="{% url 'register' %}">Registrieren</a>{% endif %}
     <a class="button secondary" href="{% url 'privacy' %}">Datenschutz</a>
   </div>

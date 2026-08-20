@@ -1,8 +1,13 @@
 # Wachbuch-Vorführung
 
-Eigenständige Folien für Nutzer- und Dienststellenvorführungen. **Nicht** Teil der produktiven Web-PWA (eigenes HTML, kein Django-Template).
+Die produktive Vorführung liegt in der Web-PWA unter **`/vorfuehrung/`**
+(CSP-konform, Design-Tokens der App, Musik nur nach Klick).
 
-## Live zeigen
+Dieses Verzeichnis bleibt die eigenständige Folienfassung für Video-Export
+und Vorführungen ohne laufenden Django-Prozess. **Nicht** über die PWA
+ausgeliefert.
+
+## Live zeigen (ohne Django)
 
 Vom Repository-Root:
 

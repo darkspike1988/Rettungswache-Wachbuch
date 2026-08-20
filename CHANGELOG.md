@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Öffentliche Vorführungsseite unter `/vorfuehrung/` in der Web-PWA (Folien,
+  Original-Ambient nach Klick, CSP ohne Inline-Skript/-CSS). One-Click-Demo
+  bleibt nur bei `DEMO_MODE`.
+
 - Vorführ-Folien unter `docs/praesentation/` (Live-HTML plus optionales lokales MP4).
   Ambient-Musik ist original erzeugt, keine fremden Titel.
 

@@ -59,8 +59,9 @@ docker compose exec web python manage.py grant_station_admin BENUTZERNAME
 ```
 
 Danach ist die oeffentliche Startseite unter `http://127.0.0.1:8090/` und die
-Anmeldung unter `/anmelden/` erreichbar. Die Fachfunktionen (Uebersicht,
-Uebergaben usw.) stehen erst nach Login mit aktiver Mitgliedschaft bereit. Der
+Anmeldung unter `/anmelden/` erreichbar. Die Vorführung liegt unter
+`/vorfuehrung/`. Die Fachfunktionen (Uebersicht, Uebergaben usw.) stehen erst
+nach Login mit aktiver Mitgliedschaft bereit. Der
 Port bindet absichtlich nur an Loopback. `SECURE_COOKIES=false` ist
 ausschliesslich fuer diesen lokalen HTTP-Schnellstart vorgesehen.
 
