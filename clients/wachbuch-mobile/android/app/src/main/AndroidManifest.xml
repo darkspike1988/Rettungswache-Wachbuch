@@ -4,7 +4,7 @@
     <!-- Optional foreground location, used locally for sunrise/sunset only. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- Camera is optional and requested just in time for server QR scanning. -->
+    <!-- Camera is optional: QR setup plus explicit defect-photo capture. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature
         android:name="android.hardware.camera"

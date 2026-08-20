@@ -24,10 +24,19 @@ if [ ! -f android/key.properties ]; then
   done
 fi
 
-BUILD_NAME="${BUILD_NAME:-0.5.1}"
-BUILD_NUMBER="${BUILD_NUMBER:-10}"
+SOURCE_VERSION=$(awk '/^version:/{print $2; exit}' pubspec.yaml)
+DEFAULT_BUILD_NAME=${SOURCE_VERSION%%+*}
+DEFAULT_BUILD_NUMBER=${SOURCE_VERSION##*+}
+BUILD_NAME="${BUILD_NAME:-$DEFAULT_BUILD_NAME}"
+BUILD_NUMBER="${BUILD_NUMBER:-$DEFAULT_BUILD_NUMBER}"
+
+if [ "$SOURCE_VERSION" != "$BUILD_NAME+$BUILD_NUMBER" ]; then
+  echo "Requested build $BUILD_NAME+$BUILD_NUMBER does not match pubspec version $SOURCE_VERSION" >&2
+  exit 1
+fi
 
 flutter pub get
+flutter gen-l10n
 flutter analyze
 flutter test
 flutter build appbundle \

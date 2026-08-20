@@ -21,4 +21,12 @@
     <issue id="AndroidGradlePluginVersion">
         <ignore regexp="gradle-wrapper\.properties" />
     </issue>
+
+    <!--
+      AGP 9.3.x BidirectionalTextDetector can crash under JDK 17 with
+      NoSuchMethodError on List.removeLast() while analyzing plugin sources
+      (connectivity_plus, geolocator_android). CI runs lint on JDK 21; keep
+      this ignore as a belt-and-suspenders guard if a runner regresses to 17.
+    -->
+    <issue id="BidiSpoofing" severity="ignore" />
 </lint>

@@ -1,66 +1,53 @@
-# iOS- und TestFlight-Build
+# iOS / TestFlight / App Store – Wachbuch 1.0
 
-Der Flutter-Client enthält ein Xcode-Projekt unter `ios/` und verwendet die
-Bundle-ID `de.wachbuch.wachbuchMobile`. Der normale CI-Build benötigt keine
-Apple-Zugangsdaten. Ein TestFlight-Upload benötigt dagegen einen aktiven
-Apple-Developer-Account, ein App-Store-Provisioning-Profile und einen
-App-Store-Connect-API-Schlüssel.
+Stand: 10. August 2026
+
+Der Flutter-Client verwendet die Bundle-ID `de.wachbuch.wachbuchMobile`. Seit 28. April 2026 müssen App-Store-Connect-Uploads mit **Xcode 26 oder neuer** und einem **iOS-26-SDK oder neuer** gebaut werden. Sowohl `iOS CI` als auch der TestFlight-Workflow prüfen diese Mindestversionen explizit.
+
+Der verbindliche Abnahmeplan liegt in [`STORE-RELEASE-1.0.md`](STORE-RELEASE-1.0.md). Für das Upgrade bestehender Installationen gilt zusätzlich [`SECURE-STORAGE-MIGRATION-1.0.md`](SECURE-STORAGE-MIGRATION-1.0.md).
 
 ## Voraussetzungen
 
-- macOS mit einer von App Store Connect unterstützten Xcode-Version
+- Apple Developer Program aktiv
+- Explicit App ID `de.wachbuch.wachbuchMobile`
+- App-Eintrag in App Store Connect mit derselben Bundle-ID
+- iOS Distribution-Zertifikat
+- App-Store-Provisioning-Profile
+- App Store Connect API Key
+- Xcode 26+ / iOS SDK 26+
 - aktuelles Flutter Stable
-- Apple-Developer-Team mit registrierter Bundle-ID
-  `de.wachbuch.wachbuchMobile`
-- App-Eintrag in App Store Connect
-- iOS-Distribution-Zertifikat und App-Store-Provisioning-Profile
 
-## Lokaler Simulator-Build
+## Lokaler Simulator-/Release-Check
 
 ```bash
 flutter pub get
+flutter gen-l10n
+flutter analyze
+flutter test
 flutter build ios --simulator --debug
-```
-
-Danach kann das Projekt in Xcode geöffnet werden:
-
-```bash
-open ios/Runner.xcodeproj
-```
-
-Unter **Signing & Capabilities** muss das eigene Apple-Team ausgewählt werden,
-bevor die App auf einem echten iPhone oder iPad installiert wird.
-
-## Signierfreier Release-Check
-
-```bash
 flutter build ios --release --no-codesign
 ```
 
-Dieser Build prüft, ob Flutter, Plugins und das Xcode-Projekt kompilieren. Das
-erzeugte `Runner.app` ist nicht für TestFlight oder die Installation auf einem
-normalen Gerät signiert.
+Der unsigned Build ist nur ein technischer Check und nicht für App Store/TestFlight installierbar.
 
-## GitHub Actions
+## GitHub Actions – iOS CI
 
-### `iOS CI`
+`.github/workflows/ios.yml` läuft bei Pull Requests und Pushes auf `main` und prüft:
 
-Der Workflow `.github/workflows/ios.yml` läuft bei Pull Requests und Pushes auf
-`main`. Er erstellt:
+1. Xcode 26+ und iOS SDK 26+,
+2. Flutter-/Dependency-Auflösung und unveränderten Lockfile-Stand,
+3. iOS-Simulator-Build,
+4. unsigned iOS-Release-Build,
+5. Produktions-Bundle-ID,
+6. `ITSAppUsesNonExemptEncryption=false`,
+7. Syntax aller im finalen App-Bundle vorhandenen `PrivacyInfo.xcprivacy`-Dateien,
+8. Packaging des unsigned Prüfartefakts.
 
-1. einen Debug-Build für den iOS-Simulator,
-2. einen signierfreien iOS-Release-Build,
-3. das Artefakt `wachbuch-ios-unsigned` zur technischen Prüfung.
+## Geschützter TestFlight-/App-Store-Upload
 
-### `TestFlight`
+Der manuelle Workflow `.github/workflows/testflight.yml` verwendet das GitHub Environment `testflight`. Required Reviewer aktivieren.
 
-Der Workflow `.github/workflows/testflight.yml` wird ausschließlich manuell
-über **Actions → TestFlight → Run workflow** gestartet. Er archiviert die App,
-exportiert eine signierte IPA und lädt sie mit einem App-Store-Connect-API-Key
-hoch.
-
-Das GitHub-Environment `testflight` sollte mit erforderlichen Reviewern und den
-folgenden Secrets angelegt werden:
+Secrets:
 
 | Secret | Inhalt |
 | --- | --- |
@@ -70,7 +57,7 @@ folgenden Secrets angelegt werden:
 | `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | Base64-kodierte `.p8`-Datei |
 | `IOS_DISTRIBUTION_CERTIFICATE_BASE64` | Base64-kodierte `.p12`-Datei |
 | `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD` | Passwort der `.p12`-Datei |
-| `IOS_PROVISIONING_PROFILE_BASE64` | Base64-kodiertes App-Store-Profile |
+| `IOS_PROVISIONING_PROFILE_BASE64` | Base64-kodiertes App-Store-Profil |
 | `IOS_KEYCHAIN_PASSWORD` | starkes temporäres CI-Keychain-Passwort |
 
 Beispiel zum Kodieren unter macOS:
@@ -81,27 +68,98 @@ base64 -i Wachbuch_Distribution.p12 | pbcopy
 base64 -i Wachbuch_AppStore.mobileprovision | pbcopy
 ```
 
-Die geheimen Dateien dürfen nicht ins Repository eingecheckt werden.
+Die geheimen Dateien niemals committen.
 
-## Erster TestFlight-Upload
+## Was der Workflow vor dem Upload erzwingt
 
-1. In Apple Developer die Bundle-ID `de.wachbuch.wachbuchMobile` registrieren.
-2. In App Store Connect einen iOS-App-Eintrag mit derselben Bundle-ID anlegen.
-3. Zertifikat, Provisioning Profile und API-Key erstellen.
-4. Das GitHub-Environment und die Secrets konfigurieren.
-5. PR mit erfolgreichem `iOS CI` mergen.
-6. `TestFlight` manuell mit einer eindeutigen Build-Nummer starten.
-7. In App Store Connect unter **TestFlight** die Verarbeitung und mögliche
-   Warnungen kontrollieren.
+Für den aktuellen 1.0-Migrationskandidaten werden standardmäßig `1.0.0` und Build `12` vorgeschlagen. Der Workflow:
 
-## Datenschutz und Berechtigungen
+1. läuft nur von `main`,
+2. verlangt exakte Übereinstimmung mit `version: 1.0.0+12` in `pubspec.yaml`,
+3. prüft Xcode/iOS-SDK,
+4. validiert alle benötigten Secrets,
+5. prüft, dass das Provisioning Profile zu `de.wachbuch.wachbuchMobile` gehört,
+6. führt L10n, Analyze und die vollständigen Flutter-Tests aus,
+7. archiviert signiert,
+8. verifiziert archivierte Bundle-ID, Version, Build und Export-Compliance-Flag,
+9. validiert gebündelte Privacy-Manifeste und Codesignatur,
+10. exportiert die IPA,
+11. führt `xcrun altool --validate-app` aus,
+12. lädt erst danach über App Store Connect API Key hoch,
+13. entfernt temporäre Signing-/API-Key-Dateien.
 
-Die App enthält Nutzungstexte für Kamera und Standort. Vor dem öffentlichen
-App-Store-Release müssen zusätzlich die App-Privacy-Angaben in App Store
-Connect mit dem tatsächlichen Serverbetrieb und den verwendeten Flutter-Plugins
-abgeglichen werden. Standortdaten werden laut App-Konzept nur lokal für das
-Tag-/Nacht-Design verwendet.
+## Secure-Storage-Upgrade auf iOS
 
-Apple verlangt für verwendete Required-Reason-APIs passende Privacy-Manifeste.
-Bei jedem Plugin-Upgrade ist daher zu prüfen, ob die eingebetteten
-`PrivacyInfo.xcprivacy`-Dateien vollständig sind.
+`flutter_secure_storage` wird mit Build `1.0.0+12` auf 10.3.1 aktualisiert. **Die Keychain-Policy selbst wird in diesem Schritt bewusst nicht zusätzlich verändert.** Insbesondere wird nicht gleichzeitig eine Secure-Enclave-/Accessibility-Migration eingeführt. Dadurch bleibt die Zahl gleichzeitig veränderter Sicherheitsmechanismen klein.
+
+Vor öffentlicher Freigabe ist auf einem echten iPhone ein Upgrade von der vorherigen +11-Installation durchzuführen:
+
+1. +11 installieren und mit Testserver anmelden,
+2. Offline-Daten laden,
+3. ohne Logout auf +12 aktualisieren,
+4. bestehende Sitzung und Offline-Lesecache prüfen,
+5. Gerät neu starten/sperren und erneut öffnen,
+6. Logout und Serverwechsel auf vollständige Bereinigung prüfen.
+
+Ein späterer Wechsel auf `flutter_secure_storage` 11.x bleibt ein separater Change.
+
+## Datenschutz / App Privacy
+
+Öffentliche Datenschutzerklärung:
+
+`https://github.com/darkspike1988/Wachbuch-Client/blob/main/docs/PRIVACY-POLICY.md`
+
+Support:
+
+`https://github.com/darkspike1988/Wachbuch-Client/blob/main/docs/SUPPORT.md`
+
+Die wesentlichen Datenschutzinformationen sind zusätzlich bereits **vor der Anmeldung in der App erreichbar**.
+
+App-Privacy-Angaben müssen den tatsächlichen Build und den echten Serverbetrieb widerspiegeln. Für 1.0 gilt nach aktuellem Code:
+
+- keine Werbung / kein Tracking,
+- keine externe Analytics-/Crash-Telemetrie,
+- sichere lokale Speicherung von App-Token und Offline-Cache,
+- Organisations-/Login-Daten gehen nur an den vom Nutzer eingerichteten Server,
+- ausdrücklich ausgewählte Mängelfotos können an diesen Server übertragen werden; aktuelle Serverstände re-encodieren gespeicherte Mängelfotos metadata-frei,
+- QR-Kamera lokal,
+- ungefährer Standort nur lokal für Sonnenaufgang/-untergang.
+
+Apple verlangt für Required-Reason-APIs und bestimmte SDKs korrekte Privacy-Manifeste. CI validiert die im finalen Bundle enthaltenen Manifeste; zusätzlich bleibt die Verarbeitung des hochgeladenen Builds in App Store Connect das verbindliche Store-Gate.
+
+## Usage Descriptions
+
+`Info.plist` enthält:
+
+- `NSCameraUsageDescription`: QR-Scan + ausdrücklich ausgelöstes Mängelfoto
+- `NSPhotoLibraryUsageDescription`: ausdrücklich ausgewähltes bestehendes Mängelfoto
+- `NSLocationWhenInUseUsageDescription`: lokale Sonnenaufgang/-untergang-Berechnung
+- `ITSAppUsesNonExemptEncryption=false`
+
+Diese Texte müssen bei einer Funktionsänderung ebenfalls aktualisiert werden.
+
+## App Review / Login
+
+Apple verlangt für Apps mit Login grundsätzlich einen funktionsfähigen Review-Zugang. Der eingebaute Offline-Demo-Modus ist für schnelle Navigation vorhanden, ersetzt einen Demo-Account aber nur, wenn Apple dies akzeptiert.
+
+Bevorzugt einen dedizierten HTTPS-Review-Server bereitstellen:
+
+- keine realen Organisations-/Personendaten,
+- dauerhaft gültiger Testnutzer oder App-Token,
+- keine Einmal-MFA-Abhängigkeit,
+- alle Kernmodule aktiviert,
+- Zugangsdaten ausschließlich in App Store Connect hinterlegen.
+
+Review-Text und Store-Metadaten: [`STORE-METADATA.md`](STORE-METADATA.md).
+
+## 1.0-TestFlight-Reihenfolge
+
+1. Release-PR vollständig grün mergen.
+2. App-ID/App-Store-Connect-Eintrag und Signing-Assets anlegen.
+3. GitHub-Environment/Secrets konfigurieren.
+4. **Actions → TestFlight → Run workflow** auf `main`, Version `1.0.0`, Build `12`.
+5. App Store Connect muss den Upload vollständig verarbeiten; Warnungen/Fehler kontrollieren.
+6. Upgrade von +11 auf +12 mit bestehendem Token/Cache auf echtem iPhone testen.
+7. TestFlight auf echtem iPhone und iPad testen.
+8. Datenschutz, App Privacy, Altersfreigabe, Screenshots, Beschreibung und Review-Zugang vervollständigen.
+9. Erst dann den ausgewählten Build zu App Review senden.

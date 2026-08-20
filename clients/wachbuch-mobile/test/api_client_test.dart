@@ -240,6 +240,39 @@ void main() {
       expect((detail['author'] as Map)['display_name'], 'Michael');
     });
 
+    test('revokeCurrentToken deletes the presented token', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'DELETE');
+        expect(request.url.path, '/api/v1/token/');
+        expect(request.headers['Authorization'], 'Token wb_test');
+        return http.Response(jsonEncode({'ok': true, 'revoked': true}), 200);
+      });
+
+      await WachbuchApi(
+        baseUrl: 'https://wache.example.org',
+        token: 'wb_test',
+        client: client,
+      ).revokeCurrentToken();
+    });
+
+    test('revokeCurrentToken treats 401 as already revoked', () async {
+      final client = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'ok': false,
+            'error': {'code': 'auth_required', 'message': 'ungültig'},
+          }),
+          401,
+        );
+      });
+
+      await WachbuchApi(
+        baseUrl: 'https://wache.example.org',
+        token: 'wb_old',
+        client: client,
+      ).revokeCurrentToken();
+    });
+
     test('close releases the underlying HTTP client', () {
       final client = _TrackingClient();
       final api = WachbuchApi(

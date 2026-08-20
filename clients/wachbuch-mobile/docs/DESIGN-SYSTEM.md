@@ -1,18 +1,19 @@
 # Wachbuch Design System
 
-Stand: August 2026. Systemunabhängiges Design für iOS, Android und Web-PWA.
+Stand: 9. August 2026. Systemunabhängiges Design für iOS, Android und Web-PWA.
 
 ## Prinzipien
 
-1. **WCAG AAA Kontrast** (mindestens 7:1) — nutzbar bei Sonne, Nachtschicht, Helm-Beleuchtung
+1. **WCAG 2.2 AA als verbindliche Basis** — Textkontrast mindestens 4,5:1; kritische Flächen und High-Contrast-Modus werden strenger ausgelegt
 2. **48dp Touch-Ziele** — bedienbar mit Handschuhen und in Eile
-3. **Farbcodierung** — Rot/Gelb/Grün/Blau einheitlich für Prioritäten und Status
-4. **Mindest-Schriftgröße 14sp** — lesbar auf Wachenterminals und Handys
+3. **Semantik plus Farbe** — Rot/Gelb/Grün/Blau unterstützen Prioritäten und Status, sind aber nie die einzige Information
+4. **Mindest-Schriftgröße 14sp** für normalen Inhalt; kleinere Captions nur ergänzend
 5. **Dark/Light/HighContrast** — Solar-Berechnung, manueller Override, Emergency-Modus
+6. **Textfarbe getrennt von Statusfarbe** — semantische Akzentfarben dürfen den Textkontrast nicht verschlechtern
 
 ## Farbpalette
 
-### Prioritäten (Übergaben)
+### Prioritäten (Akzent)
 
 | Token | Hex | Bedeutung |
 | --- | --- | --- |
@@ -20,6 +21,11 @@ Stand: August 2026. Systemunabhängiges Design für iOS, Android und Web-PWA.
 | `important` | `#F59E0B` | Wichtig — zeitnahe Bearbeitung |
 | `normal` | `#2563EB` | Normal — reguläre Bearbeitung |
 | `done` | `#16A34A` | Erledigt — abgeschlossen |
+
+Die Akzentfarbe wird für Punkt, Rand oder Fläche verwendet. Text in Badges/Chips
+verwendet `onSurface` bzw. den passenden Material-`on*`-Token statt automatisch
+dieselbe Akzentfarbe. Dadurch bleiben auch Amber und Grün auf hellen Flächen gut
+lesbar.
 
 ### Status
 
@@ -42,14 +48,20 @@ Stand: August 2026. Systemunabhängiges Design für iOS, Android und Web-PWA.
 
 | Token | Hex |
 | --- | --- |
+| `primary` | `#0D47A1` |
+| `brandHover` | `#082E63` |
 | `brandDeep` | `#17343D` |
 | `brandAccent` | `#2563EB` |
+| `surfaceLight` | `#F7F9FC` |
+| `surfaceDark` | `#0B1220` |
+
+Dieselben Werte gelten für die Web-PWA (`core/static/core/app.css`).
 
 ## Typography
 
 | Rolle | Größe | Gewicht |
 | --- | --- | --- |
-| Caption | 12sp | Regular |
+| Caption | 12sp | Regular, nur ergänzende Information |
 | Body | 14sp | Regular |
 | Title | 16sp | Medium |
 | Headline | 20sp | SemiBold |
@@ -68,26 +80,26 @@ Stand: August 2026. Systemunabhängiges Design für iOS, Android und Web-PWA.
 
 ## Touch-Ziele
 
-Alle interaktiven Elemente: **mindestens 48×48dp** (WCAG 2.5.5).
+Interaktive Primärziele: mindestens **48×48dp**. Nicht interaktive Status-Chips
+dürfen kompakter sein, solange sie keine alleinige Interaktionsfläche bilden.
 
 ## Komponenten
 
 ### PriorityBadge
-`lib/ui/priority_badge.dart` — Farbcodiertes Badge für Übergabe-Priorität.
-- Props: `priority` (urgent/important/normal/done), `compact`, `label`
-- Hintergrund: 12% Opazität der Prioritätsfarbe
-- Rand: 50% Opazität
-- Punkt-Indikator + Text
+`lib/ui/priority_badge.dart`
+- farbiger Punkt + Rand + ausgeschriebener Text
+- Text nutzt kontraststarken Theme-Foreground
+- Deutsch/Englisch abhängig von der aktiven App-Locale
 
 ### StatusChip
-`lib/ui/status_chip.dart` — Status-Anzeige für Übergaben.
-- Props: `status` (open/in_progress/done), `label`
-- Abgerundete Ecken (radiusMd)
+`lib/ui/status_chip.dart`
+- Status ausgeschrieben
+- farbiger Punkt zusätzlich zum Text
+- Text nutzt kontraststarken Theme-Foreground
 
 ### CopyIconButton
-`lib/ui/copy_button.dart` — Einheitlicher Copy-Button.
-- Props: `text`, `label`, `iconSize`
-- Clipboard.setData + SnackBar-Feedback
+`lib/ui/copy_button.dart`
+- Clipboard + SnackBar-Feedback
 - 48dp Minimum
 
 ## Themes
@@ -98,25 +110,27 @@ Siehe `lib/theme/app_theme.dart` und `lib/theme/solar_theme.dart`.
 
 ### HighContrast (Emergency)
 `lib/theme/high_contrast_theme.dart` — Schwarz/Weiß mit maximalem Kontrast.
-- Light: Weißer Hintergrund, schwarzer Text
-- Dark: Schwarzer Hintergrund, weißer Text
-- Alle Buttons mit fetter Schrift
-- Karten mit schwarzem Rand
-
-Aktivierung über Settings → "Hoher Kontrast / Notfall-Modus".
+`MaterialApp` setzt `highContrastTheme` / `highContrastDarkTheme`, sobald die
+Plattform den System-High-Contrast-Modus meldet. Solar bleibt der Standard.
 
 ## Barrierefreiheit
 
-- **Kontrast**: Alle Text/Farb-Kombinationen erreichen mindestens 7:1 (WCAG AAA)
-- **Touch-Ziele**: 48dp Minimum für alle interaktiven Elemente
-- **Text-Skalierung**: Layouts bleiben bei 200% Skalierung stabil
-- **Screenreader**: Semantische Labels auf allen Icons, `aria-live` auf Fehlermeldungen
-- **Farb-Blindheit**: Priorität nicht nur durch Farbe, sondern auch durch Punkt-Indikator + Text-Label
+- **Kontrast:** WCAG 2.2 AA als harte Baseline; High-Contrast strenger
+- **Touch-Ziele:** 48dp für interaktive Kernaktionen
+- **Text-Skalierung:** scrollbare Detailansichten und adaptive Kachelspalten für große Systemschrift
+- **Screenreader:** semantische Labels auf Icons und nicht allein farbbasierte Statusinformation
+- **Farb-Blindheit:** Punkt/Fläche plus ausgeschriebenes Label
+- **Reduced Motion:** keine Information hängt von Animation ab
+
+Manuelle Abnahme mit VoiceOver/TalkBack, 200–400 % Text-/Zoom-Szenarien und
+kleinen Displays bleibt Teil der Pilotfreigabe; die Dokumentation behauptet
+bewusst keine pauschale AAA-Konformität ohne diese Abnahme.
 
 ## Rettungsdienst-spezifische Patterns
 
-1. **Dringend-Badge in Navigation**: Zahl der dringenden Übergaben als rotes Badge
-2. **Große Saldo-Anzeige**: Kaffeekasse-Saldo mit hoher Lesbarkeit
-3. **Quick-Access Kacheln**: Dashboard-Module groß und gut tippbar
-4. **Offline-Indikator**: Sichtbares Banner bei fehlender Verbindung
-5. **Demo-Modus Banner**: Gelbes Band für Test-Instanzen
+1. **Dringend-Badge in Navigation:** Anzahl dringender Übergaben
+2. **Große Saldo-Anzeige:** Kaffeekasse-Saldo mit hoher Lesbarkeit
+3. **Quick-Access Kacheln:** Dashboard-Module groß und gut tippbar
+4. **Offline-Indikator:** sichtbares Banner; echte Lese-Snapshots verschlüsselt und tokengebunden
+5. **Demo-Modus Banner:** deutliches Band für Musterdaten
+6. **Mängel-Fotos:** explizite Kamera/Galerie-Aktion mit Datenschutz-Hinweis, kein allgemeines Dateiarchiv

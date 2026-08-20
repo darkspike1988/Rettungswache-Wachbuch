@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/models/checkliste.dart';
+import 'package:wachbuch_mobile/models/defect.dart';
 import 'package:wachbuch_mobile/models/kaffeekasse.dart';
 import 'package:wachbuch_mobile/models/kalender_entry.dart';
+import 'package:wachbuch_mobile/models/inventory_item.dart';
+import 'package:wachbuch_mobile/models/station_asset.dart';
 import 'package:wachbuch_mobile/screens/home_shell.dart';
 
 import 'test_localization.dart';
@@ -22,6 +25,8 @@ class _ModulesApi extends WachbuchApi {
               'calendar': true,
               'coffee': true,
               'checklists': true,
+              'defects': true,
+              'assets': true,
             },
           },
         },
@@ -42,6 +47,21 @@ class _ModulesApi extends WachbuchApi {
   @override
   Future<List<Checklist>> checklisten() async => [
         Checklist(id: 1, title: 'Tagescheckliste'),
+      ];
+
+  @override
+  Future<List<Defect>> defects() async => const [
+        Defect(id: 1, title: 'Defi-Akku', status: 'open', priority: 'urgent'),
+      ];
+
+  @override
+  Future<List<StationAsset>> assets() async => const [
+        StationAsset(id: 'rtw-1', label: 'RTW 1', kind: 'vehicle'),
+      ];
+
+  @override
+  Future<List<InventoryItem>> inventory() async => const [
+        InventoryItem(id: 'funk-a', label: 'Funkgerät A'),
       ];
 }
 
@@ -76,31 +96,40 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('module-tile-calendar')), findsOneWidget);
-    expect(find.byKey(const Key('module-tile-coffee')), findsOneWidget);
-    expect(find.byKey(const Key('module-tile-checklists')), findsOneWidget);
+    expect(find.text('Fahrzeug- & Gerätestatus'), findsOneWidget);
+    expect(find.text('RTW 1'), findsOneWidget);
 
-    await tester.ensureVisible(find.byKey(const Key('module-tile-calendar')));
-    await tester.tap(find.byKey(const Key('module-tile-calendar')));
-    await tester.pumpAndSettle();
+    Future<void> openTile(Key key) async {
+      await tester.scrollUntilVisible(
+        find.byKey(key),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(key), findsOneWidget);
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
 
+    await openTile(const Key('module-tile-calendar'));
     expect(find.text('Kalender'), findsWidgets);
     expect(find.text('RTW-Dienst'), findsOneWidget);
-
     await _popTopRoute(tester);
 
-    await tester.ensureVisible(find.byKey(const Key('module-tile-coffee')));
-    await tester.tap(find.byKey(const Key('module-tile-coffee')));
-    await tester.pumpAndSettle();
-
+    await openTile(const Key('module-tile-coffee'));
     expect(find.text('Kaffeekasse'), findsWidgets);
-
     await _popTopRoute(tester);
 
-    await tester.ensureVisible(find.byKey(const Key('module-tile-checklists')));
-    await tester.tap(find.byKey(const Key('module-tile-checklists')));
-    await tester.pumpAndSettle();
-
+    await openTile(const Key('module-tile-checklists'));
     expect(find.text('Tagescheckliste'), findsOneWidget);
+    await _popTopRoute(tester);
+
+    await openTile(const Key('module-tile-defects'));
+    expect(find.text('Defi-Akku'), findsOneWidget);
+    await _popTopRoute(tester);
+
+    await openTile(const Key('module-tile-assets'));
+    expect(find.text('Schlüssel & Pools'), findsOneWidget);
+    expect(find.text('Funkgerät A'), findsOneWidget);
   });
 }

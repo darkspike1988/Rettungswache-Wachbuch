@@ -17,9 +17,11 @@ class WachbuchTokens {
   static const Color warning = Color(0xFFF59E0B);
   static const Color info = Color(0xFF2563EB);
 
-  static const Color surfaceLight = Color(0xFFF8FAFC);
-  static const Color surfaceDark = Color(0xFF0F172A);
+  static const Color surfaceLight = Color(0xFFF7F9FC);
+  static const Color surfaceDark = Color(0xFF0B1220);
+  static const Color primary = Color(0xFF0D47A1);
   static const Color brandDeep = Color(0xFF17343D);
+  static const Color brandHover = Color(0xFF082E63);
   static const Color brandAccent = Color(0xFF2563EB);
 
   static const double spaceXs = 4;
@@ -57,6 +59,7 @@ class WachbuchTokens {
     return switch (status) {
       'open' || 'new' => statusOpen,
       'in_progress' || 'active' => statusInProgress,
+      'waiting' || 'blocked' => important,
       'done' || 'closed' => statusDone,
       _ => normal,
     };

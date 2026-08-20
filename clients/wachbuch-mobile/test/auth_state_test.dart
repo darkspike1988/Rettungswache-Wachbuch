@@ -71,7 +71,22 @@ void main() {
     expect(state.stationName('Wachbuch'), 'Wache Nord');
     expect(state.roleLabel, 'Schichtleitung');
     expect(state.modules['coffee'], isTrue);
+    expect(state.username, 'michael');
     expect(state.hasData, isTrue);
+    state.dispose();
+  });
+
+  test('username falls back to top-level me.username', () async {
+    final api = _FakeApi(<String, dynamic>{
+      'username': 'demo-schicht',
+      'membership': {
+        'role_label': 'Schichtleitung',
+        'station': {'name': 'RW', 'modules': {}},
+      },
+    });
+    final state = AuthState(api: api);
+    await state.reload();
+    expect(state.username, 'demo-schicht');
     state.dispose();
   });
 

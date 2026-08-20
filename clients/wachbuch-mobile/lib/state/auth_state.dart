@@ -40,6 +40,15 @@ class AuthState extends ChangeNotifier {
     return {};
   }
 
+  /// Username from `/me/` (`user.username` or top-level `username`).
+  String? get username {
+    final nested = (_me?['user'] as Map?)?['username']?.toString().trim();
+    if (nested != null && nested.isNotEmpty) return nested;
+    final top = _me?['username']?.toString().trim();
+    if (top != null && top.isNotEmpty) return top;
+    return null;
+  }
+
   Future<void> reload() async {
     _loading = true;
     _error = null;

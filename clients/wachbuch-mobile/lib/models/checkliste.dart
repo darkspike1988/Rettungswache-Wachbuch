@@ -6,9 +6,14 @@ class Checklist {
     this.completed = false,
     this.completedAt,
     this.description = '',
+    this.interval = '',
+    this.dueNext,
+    this.overdue = false,
   });
 
   factory Checklist.fromJson(Map<String, dynamic> json) {
+    final dueNext = _readDate(json['due_next'] ?? json['dueNext']);
+    final overdueFlag = json['overdue'] == true || json['is_overdue'] == true;
     return Checklist(
       id: _readInt(json['id']),
       title: (json['title'] ?? json['name'] ?? '').toString().trim(),
@@ -19,6 +24,9 @@ class Checklist {
           _readDate((json['completion'] is Map
                   ? (json['completion'] as Map)['created_at']
                   : null)),
+      interval: _readInterval(json['interval']),
+      dueNext: dueNext,
+      overdue: overdueFlag || _isPastDue(dueNext),
     );
   }
 
@@ -28,10 +36,25 @@ class Checklist {
   final List<ChecklistItem> items;
   final bool completed;
   final DateTime? completedAt;
+  /// `daily` | `weekly` | `monthly` | empty when not recurring.
+  final String interval;
+  final DateTime? dueNext;
+  final bool overdue;
 
   int get checkedCount => items.where((item) => item.checked).length;
 
   bool get allChecked => items.isNotEmpty && items.every((item) => item.checked);
+
+  bool get isRecurring => interval.isNotEmpty;
+
+  bool get isDueToday {
+    if (completed) return false;
+    if (overdue) return true;
+    final due = dueNext;
+    if (due == null) return false;
+    final now = DateTime.now();
+    return due.year == now.year && due.month == now.month && due.day == now.day;
+  }
 
   Checklist copyWith({
     int? id,
@@ -40,6 +63,9 @@ class Checklist {
     List<ChecklistItem>? items,
     bool? completed,
     DateTime? completedAt,
+    String? interval,
+    DateTime? dueNext,
+    bool? overdue,
   }) {
     return Checklist(
       id: id ?? this.id,
@@ -48,6 +74,9 @@ class Checklist {
       items: items ?? this.items,
       completed: completed ?? this.completed,
       completedAt: completedAt ?? this.completedAt,
+      interval: interval ?? this.interval,
+      dueNext: dueNext ?? this.dueNext,
+      overdue: overdue ?? this.overdue,
     );
   }
 
@@ -94,6 +123,22 @@ List<ChecklistItem> _readItems(Object? value) {
 DateTime? _readDate(Object? value) {
   if (value == null) return null;
   return DateTime.tryParse(value.toString())?.toLocal();
+}
+
+bool _isPastDue(DateTime? due) {
+  if (due == null) return false;
+  final today = DateTime.now();
+  final dueDay = DateTime(due.year, due.month, due.day);
+  final todayDay = DateTime(today.year, today.month, today.day);
+  return dueDay.isBefore(todayDay);
+}
+
+String _readInterval(Object? value) {
+  final raw = value?.toString().trim().toLowerCase() ?? '';
+  return switch (raw) {
+    'daily' || 'weekly' || 'monthly' => raw,
+    _ => '',
+  };
 }
 
 int _readInt(Object? value) {

@@ -2,6 +2,81 @@
 
 Alle wesentlichen Änderungen an Wachbuch Mobile werden hier dokumentiert.
 
+## Unreleased
+
+- Gemeinsame Palette mit der Web-PWA: Primary `#0D47A1`, Fläche `#F7F9FC`.
+- High-Contrast-Emergency-Themes sind an `MaterialApp` verdrahtet
+  (`highContrastTheme` / `highContrastDarkTheme`).
+- Logout ruft `DELETE /api/v1/token/` best-effort auf und räumt den lokalen
+  Speicher danach in jedem Fall. Demo-Sitzungen bleiben ohne Netzaufruf.
+- Die Vibe-P0-P3-Änderungen (nicht existierendes `geolocator 14.1.0`,
+  unwirksames Certificate Pinning) sind von `main` zurückgenommen.
+
+## 1.0.0 – Store-Release-Kandidat
+
+### Wachalltag
+
+- Reale Server-Parität für Übergaben, Quittierungen, Mängel, Mängelfotos,
+  Geräte-/Fahrzeugstatus, Inventar/Pools, wiederkehrende Checklisten und
+  Auswertungen.
+- Übergaben können direkt als Mangel übernommen werden.
+- Demo-Profile für Rettungsdienst, Feuerwehr, Freiwillige Feuerwehr und Polizei
+  spiegeln die produktiven Kernabläufe ohne externen Demo-Server.
+- Verschlüsselter, server- und tokengebundener Offline-Lesecache mit sauberer
+  Bereinigung bei Logout und Serverwechsel.
+
+### Sicherheit und Robustheit
+
+- Strukturierter API-Fehlervertrag inklusive MFA-Codes und Correlation-ID.
+- Schreibende, nicht idempotente API-Aufrufe werden nicht automatisch
+  wiederholt.
+- Mängelfotos werden auf Dateityp, Inhalt, Dateigröße und Serverkontingente
+  begrenzt.
+- Cold-Start-/Deep-Link-Sessionwechsel bereinigen alte Credentials und Caches;
+  ein Link zum bereits konfigurierten Server widerruft die Sitzung nicht.
+
+### Store-Release
+
+- Version `1.0.0+11`.
+- Production-ID Android: `de.wachbuch.mobile`.
+- Bundle-ID iOS/iPadOS: `de.wachbuch.wachbuchMobile`.
+- Android Signed Release mit echtem Upload-Key, API-36-, Permission-,
+  Signatur-, Lint-, Größen- und SBOM-Gates.
+- iOS-/TestFlight-Gates für Xcode 26+, iOS-SDK 26+, Bundle-/Build-Metadaten,
+  Provisioning Profile, Codesignatur, Privacy-Manifeste und App-Validierung vor
+  Upload.
+- Datenschutzinformationen bereits vor Login in der App erreichbar.
+- Öffentliche Datenschutz-/Support-Dokumente, Store-Metadaten, Review-Hinweise
+  und verbindliche 1.0-Abnahmecheckliste ergänzt.
+
+## Unreleased – Landingpage & Behörden-Demo
+
+### CI
+
+- Android-/Dependency-Workflows auf **JDK 21** (AGP 9.3 Lint braucht
+  `List.removeLast()`); `BidiSpoofing` in `lint.xml` abgesichert.
+
+### Neu
+
+- Statische Landingpage unter `landing/` mit Projektvorstellung und interaktivem
+  Demo-Modus für Rettungsdienst, Feuerwehr und Polizei.
+- Webapp unter `landing/app/` im Landingpage-Design: Organisationswahl, Übersicht,
+  Übergaben, Mängel-Workflow, Statusboard, Gerätepools, Quittierung, Kalender,
+  Kaffeekasse, Checklisten; Profile inkl. Freiwillige Feuerwehr.
+- Fachfahrplan `docs/FAHRPLAN-BEHOERDEN.md` (Phasen A–I, Server-/Mobile-Pfad).
+- Offline-Demo in der App: Startbildschirm → „Demo-Modus ausprobieren“ mit
+  Organisationsprofilen (RD, Feuerwehr, FFW, Polizei) und Muster-Übergaben,
+  Kalender, Kaffeekasse und Checklisten.
+- Flutter Phase A–D (Demo): Modelle `Defect` / `StationAsset` / `HandoverAck`,
+  Contract `docs/SCHEMA-WACHALLTAG.md`, Mängel-Screen, Statusboard auf der
+  Übersicht, Quittierung im Übergabe-Detail.
+- Flutter HTTP für `defects` / `assets` / `inventory` / `acks` verdrahtet
+  (404 = Modul nicht verfügbar); Demo-API + Inventar-Checkout; Checklisten mit
+  `interval` / `due_next` / `overdue`.
+- Webapp: Demo-Anhänge (Phase E), Fälligkeitsbereich Checklisten (F),
+  Auswertung (I), Inventar bereits unter Geräte (G).
+- Gelbes Demo-Banner in der App-Shell, analog zum Server-Demo-Modus.
+
 ## Unreleased – Module API (Kalender, Kaffeekasse, Checklisten)
 
 ### Neu

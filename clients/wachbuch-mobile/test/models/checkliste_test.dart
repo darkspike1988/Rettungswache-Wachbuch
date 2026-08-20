@@ -93,6 +93,31 @@ void main() {
       expect(a == b, isTrue);
       expect(a.hashCode, b.hashCode);
     });
+
+    test('parses recurring interval, due_next and overdue', () {
+      final due = Checklist.fromJson({
+        'id': 4,
+        'title': 'Wachabschluss',
+        'interval': 'daily',
+        'due_next': DateTime.now().toUtc().toIso8601String(),
+        'overdue': false,
+        'items': [
+          {'id': 1, 'label': 'x', 'checked': false},
+        ],
+      });
+      expect(due.interval, 'daily');
+      expect(due.isRecurring, isTrue);
+      expect(due.isDueToday, isTrue);
+
+      final overdue = Checklist.fromJson({
+        'id': 5,
+        'title': 'Wochenheck',
+        'interval': 'weekly',
+        'due_next': '2020-01-01T00:00:00Z',
+      });
+      expect(overdue.overdue, isTrue);
+      expect(overdue.interval, 'weekly');
+    });
   });
 
   group('ChecklistItem', () {

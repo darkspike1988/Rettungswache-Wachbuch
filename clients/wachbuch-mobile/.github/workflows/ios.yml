@@ -25,20 +25,53 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Toolchain information
+      - name: Enforce App Store toolchain
         run: |
+          set -euo pipefail
           xcodebuild -version
           flutter --version
           flutter doctor -v
+          xcode_major=$(xcodebuild -version | awk 'NR==1 {split($2,v,"."); print v[1]}')
+          sdk_major=$(xcrun --sdk iphoneos --show-sdk-version | cut -d. -f1)
+          if [ "$xcode_major" -lt 26 ]; then
+            echo "App Store Connect requires Xcode 26 or later" >&2
+            exit 1
+          fi
+          if [ "$sdk_major" -lt 26 ]; then
+            echo "App Store Connect requires the iOS 26 SDK or later" >&2
+            exit 1
+          fi
 
-      - name: Resolve dependencies
-        run: flutter pub get
+      - name: Resolve locked dependencies
+        run: |
+          set -euo pipefail
+          flutter pub get
+          git diff --exit-code -- pubspec.lock
+          flutter gen-l10n
 
       - name: Build for iOS Simulator
         run: flutter build ios --simulator --debug
 
       - name: Build unsigned iOS release
         run: flutter build ios --release --no-codesign
+
+      - name: Audit iOS release metadata and privacy manifests
+        run: |
+          set -euo pipefail
+          APP=build/ios/iphoneos/Runner.app
+          test -d "$APP"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = "de.wachbuch.wachbuchMobile"
+          encryption=$(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$APP/Info.plist" | tr '[:upper:]' '[:lower:]')
+          case "$encryption" in
+            false|no|0) ;;
+            *) echo "Unexpected ITSAppUsesNonExemptEncryption value: $encryption" >&2; exit 1 ;;
+          esac
+          manifest_count=0
+          while IFS= read -r -d '' manifest; do
+            plutil -lint "$manifest"
+            manifest_count=$((manifest_count + 1))
+          done < <(find "$APP" -name 'PrivacyInfo.xcprivacy' -type f -print0)
+          echo "Validated $manifest_count bundled privacy manifest(s)."
 
       - name: Package unsigned release artifact
         run: |

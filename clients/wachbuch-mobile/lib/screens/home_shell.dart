@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:wachbuch_mobile/api/client.dart';
+import 'package:wachbuch_mobile/demo/demo_api.dart';
+import 'package:wachbuch_mobile/demo/demo_profiles.dart';
 import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
+import 'package:wachbuch_mobile/models/handover_ack.dart';
+import 'package:wachbuch_mobile/models/station_asset.dart';
+import 'package:wachbuch_mobile/screens/assets_screen.dart';
+import 'package:wachbuch_mobile/screens/chat_screen.dart';
 import 'package:wachbuch_mobile/screens/checklisten_screen.dart';
+import 'package:wachbuch_mobile/screens/defects_screen.dart';
+import 'package:wachbuch_mobile/screens/groups_screen.dart';
 import 'package:wachbuch_mobile/screens/kaffeekasse_screen.dart';
 import 'package:wachbuch_mobile/screens/kalender_screen.dart';
+import 'package:wachbuch_mobile/screens/pinnwand_screen.dart';
+import 'package:wachbuch_mobile/screens/reports_screen.dart';
 import 'package:wachbuch_mobile/services/connectivity_service.dart';
 import 'package:wachbuch_mobile/state/auth_state.dart';
 import 'package:wachbuch_mobile/state/handover_state.dart';
+import 'package:wachbuch_mobile/ui/asset_status_board.dart';
+import 'package:wachbuch_mobile/ui/demo_banner.dart';
 import 'package:wachbuch_mobile/ui/error_banner.dart';
 import 'package:wachbuch_mobile/ui/handover_filter.dart';
 import 'package:wachbuch_mobile/ui/layout.dart';
@@ -82,6 +94,22 @@ class _HomeShellState extends State<HomeShell> {
       _authState.lastError?.statusCode == 0 ||
       _handoverState.lastError?.statusCode == 0;
 
+  bool get _isDemo =>
+      widget.api is DemoWachbuchApi || DemoService.isDemoUrl(widget.api.baseUrl);
+
+  String? _demoServiceLabel(AppLocalizations l10n) {
+    final service = widget.api is DemoWachbuchApi
+        ? (widget.api as DemoWachbuchApi).profile.service
+        : DemoService.fromServerUrl(widget.api.baseUrl);
+    return switch (service) {
+      DemoService.rettungsdienst => l10n.demoBannerRettungsdienst,
+      DemoService.feuerwehr => l10n.demoBannerFeuerwehr,
+      DemoService.ffw => l10n.demoBannerFfw,
+      DemoService.polizei => l10n.demoBannerPolizei,
+      null => null,
+    };
+  }
+
   String? _displayError(AppLocalizations l10n) {
     for (final error in [_authState.lastError, _handoverState.lastError]) {
       if (error == null) continue;
@@ -132,6 +160,7 @@ class _HomeShellState extends State<HomeShell> {
             _HandoversTab(
               api: widget.api,
               handoverState: _handoverState,
+              currentUsername: _authState.username,
               error: error,
               onRefresh: _reload,
             ),
@@ -162,8 +191,13 @@ class _HomeShellState extends State<HomeShell> {
         );
 
         final offlineBanner = OfflineBanner(
-          visible: offline,
+          visible: offline && !_isDemo,
           onRetry: loading ? () {} : _reload,
+        );
+        final demoBanner = DemoBanner(
+          visible: _isDemo,
+          label: l.demoBannerLabel,
+          serviceLabel: _demoServiceLabel(l),
         );
 
         if (tablet) {
@@ -171,6 +205,7 @@ class _HomeShellState extends State<HomeShell> {
             appBar: appBar,
             body: Column(
               children: [
+                demoBanner,
                 offlineBanner,
                 Expanded(
                   child: Row(
@@ -180,8 +215,8 @@ class _HomeShellState extends State<HomeShell> {
                         onDestinationSelected: (index) =>
                             setState(() => _tab = index),
                         labelType: width >= AppLayout.wideBreakpoint
-                        ? NavigationRailLabelType.all
-                        : NavigationRailLabelType.selected,
+                            ? NavigationRailLabelType.all
+                            : NavigationRailLabelType.selected,
                         destinations: [
                           NavigationRailDestination(
                             icon: const Icon(Icons.home_outlined),
@@ -213,7 +248,7 @@ class _HomeShellState extends State<HomeShell> {
         return Scaffold(
           appBar: appBar,
           body: Column(
-            children: [offlineBanner, Expanded(child: pages)],
+            children: [demoBanner, offlineBanner, Expanded(child: pages)],
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _tab,
@@ -268,6 +303,7 @@ class _OverviewTab extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
     final l = AppLocalizations.of(context)!;
+    final languageCode = Localizations.localeOf(context).languageCode;
     final width = MediaQuery.sizeOf(context).width;
     final maxW = AppLayout.contentMaxWidth(width);
     final openCount = handovers
@@ -339,6 +375,10 @@ class _OverviewTab extends StatelessWidget {
                   );
                 },
               ),
+              if (modules['assets'] == true) ...[
+                const SizedBox(height: 24),
+                _OverviewAssetBoard(api: api),
+              ],
               const SizedBox(height: 24),
               _SectionTitle(
                 icon: Icons.dashboard_customize_outlined,
@@ -355,7 +395,9 @@ class _OverviewTab extends StatelessWidget {
                       on ? Icons.check_circle : Icons.remove_circle_outline,
                       size: 18,
                     ),
-                    label: Text(moduleLabel(entry.key)),
+                    label: Text(
+                      moduleLabel(entry.key, languageCode: languageCode),
+                    ),
                   );
                 }).toList(),
               ),
@@ -571,6 +613,64 @@ class _ModuleTiles extends StatelessWidget {
         ),
       );
     }
+    if (modules['defects'] == true) {
+      destinations.add(
+        _ModuleDestination(
+          key: 'module-tile-defects',
+          icon: Icons.report_problem_outlined,
+          title: l.moduleDefectsTitle,
+          subtitle: l.moduleDefectsSubtitle,
+        ),
+      );
+    }
+    if (modules['assets'] == true || modules['inventory'] == true) {
+      destinations.add(
+        _ModuleDestination(
+          key: 'module-tile-assets',
+          icon: Icons.directions_car_outlined,
+          title: l.moduleAssetsTitle,
+          subtitle: l.moduleAssetsSubtitle,
+        ),
+      );
+    }
+    if (modules['reports'] == true) {
+      destinations.add(
+        _ModuleDestination(
+          key: 'module-tile-reports',
+          icon: Icons.insights_outlined,
+          title: l.moduleReportsTitle,
+          subtitle: l.moduleReportsSubtitle,
+        ),
+      );
+    }
+    if (modules['chat'] == true) {
+      destinations.add(
+        _ModuleDestination(
+          key: 'module-tile-chat',
+          icon: Icons.forum_outlined,
+          title: l.chatTitle,
+          subtitle: l.chatSubtitle,
+        ),
+      );
+      destinations.add(
+        _ModuleDestination(
+          key: 'module-tile-groups',
+          icon: Icons.groups_outlined,
+          title: l.groupsTitle,
+          subtitle: l.groupsSubtitle,
+        ),
+      );
+    }
+    if (modules['pinboard'] == true) {
+      destinations.add(
+        _ModuleDestination(
+          key: 'module-tile-pinboard',
+          icon: Icons.push_pin_outlined,
+          title: l.pinboardTitle,
+          subtitle: l.pinboardSubtitle,
+        ),
+      );
+    }
     if (destinations.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -614,10 +714,86 @@ class _ModuleTiles extends StatelessWidget {
         screen = KaffeekasseScreen(api: api);
       case 'module-tile-checklists':
         screen = ChecklistenScreen(api: api);
+      case 'module-tile-defects':
+        screen = DefectsScreen(api: api);
+      case 'module-tile-assets':
+        screen = AssetsScreen(api: api);
+      case 'module-tile-reports':
+        screen = ReportsScreen(api: api);
+      case 'module-tile-chat':
+        screen = ChatScreen(api: api);
+      case 'module-tile-groups':
+        screen = GroupsScreen(api: api);
+      case 'module-tile-pinboard':
+        screen = PinnwandScreen(api: api);
       default:
         return;
     }
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+}
+
+/// Loads station assets for the overview board; hides on 501 / empty.
+class _OverviewAssetBoard extends StatefulWidget {
+  const _OverviewAssetBoard({required this.api});
+
+  final WachbuchApi api;
+
+  @override
+  State<_OverviewAssetBoard> createState() => _OverviewAssetBoardState();
+}
+
+class _OverviewAssetBoardState extends State<_OverviewAssetBoard> {
+  List<StationAsset> _assets = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant _OverviewAssetBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.api != widget.api) {
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final assets = await widget.api.assets();
+      if (!mounted) return;
+      setState(() {
+        _assets = assets;
+        _loading = false;
+      });
+    } on ApiException catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _assets = const [];
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _assets = const [];
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading && _assets.isEmpty) {
+      return const SizedBox(
+        height: 48,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    return AssetStatusBoard(assets: _assets);
   }
 }
 
@@ -691,12 +867,14 @@ class _HandoversTab extends StatefulWidget {
   const _HandoversTab({
     required this.api,
     required this.handoverState,
+    required this.currentUsername,
     required this.error,
     required this.onRefresh,
   });
 
   final WachbuchApi api;
   final HandoverState handoverState;
+  final String? currentUsername;
   final String? error;
   final Future<void> Function() onRefresh;
 
@@ -724,8 +902,13 @@ class _HandoversTabState extends State<_HandoversTab> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) =>
-          _HandoverDetailSheet(future: detailFuture, fallback: item),
+      builder: (context) => _HandoverDetailSheet(
+        api: widget.api,
+        handoverId: id,
+        currentUsername: widget.currentUsername,
+        future: detailFuture,
+        fallback: item,
+      ),
     );
   }
 
@@ -1065,18 +1248,139 @@ class _HandoverChip extends StatelessWidget {
   }
 }
 
-class _HandoverDetailSheet extends StatelessWidget {
-  const _HandoverDetailSheet({required this.future, required this.fallback});
+class _HandoverDetailSheet extends StatefulWidget {
+  const _HandoverDetailSheet({
+    required this.api,
+    required this.handoverId,
+    required this.currentUsername,
+    required this.future,
+    required this.fallback,
+  });
 
+  final WachbuchApi api;
+  final int handoverId;
+  final String? currentUsername;
   final Future<Map<String, dynamic>> future;
   final Map<String, dynamic> fallback;
+
+  @override
+  State<_HandoverDetailSheet> createState() => _HandoverDetailSheetState();
+}
+
+class _HandoverDetailSheetState extends State<_HandoverDetailSheet> {
+  List<HandoverAck> _acks = const [];
+  bool _acksSupported = true;
+  bool _acking = false;
+  bool _creatingDefect = false;
+  String? _ackError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAcks();
+  }
+
+  Future<void> _loadAcks() async {
+    try {
+      final acks = await widget.api.handoverAcks(widget.handoverId);
+      if (!mounted) return;
+      setState(() {
+        _acks = acks;
+        _acksSupported = true;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (WachbuchApi.isModuleUnavailable(error)) {
+        setState(() => _acksSupported = false);
+        return;
+      }
+      setState(() => _ackError = error.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _acksSupported = false);
+    }
+  }
+
+  Future<void> _acknowledge(AppLocalizations l) async {
+    setState(() {
+      _acking = true;
+      _ackError = null;
+    });
+    try {
+      final ack = await widget.api.acknowledgeHandover(widget.handoverId);
+      if (!mounted) return;
+      setState(() {
+        _acks = [
+          ..._acks.where((item) => item.by != ack.by),
+          ack,
+        ];
+        _acking = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _acking = false;
+        _ackError = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _acking = false;
+        _ackError = l.handoverAckFailed;
+      });
+    }
+  }
+
+  Future<void> _createDefectFromHandover(
+    AppLocalizations l,
+    Map<String, dynamic> item,
+  ) async {
+    if (_creatingDefect) return;
+    setState(() => _creatingDefect = true);
+    final rawTitle = item['title']?.toString().trim() ?? '';
+    final title = rawTitle.isNotEmpty ? rawTitle : l.handoverFallback;
+    final details = item['details']?.toString().trim() ?? '';
+    try {
+      await widget.api.createDefect(
+        title: title,
+        description: details,
+        priority: _mapHandoverPriority(item['priority']),
+        category: 'task',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${l.moduleDefectsTitle}: $title')),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.defectCreateFailed)),
+      );
+    } finally {
+      if (mounted) setState(() => _creatingDefect = false);
+    }
+  }
+
+  String _mapHandoverPriority(Object? value) {
+    final raw = value?.toString().trim().toLowerCase() ?? '';
+    return switch (raw) {
+      'urgent' || 'high' => 'urgent',
+      'important' || 'medium' => 'important',
+      _ => 'normal',
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return SafeArea(
       child: FutureBuilder<Map<String, dynamic>>(
-        future: future,
+        future: widget.future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const SizedBox(
@@ -1093,12 +1397,18 @@ class _HandoverDetailSheet extends StatelessWidget {
               child: ErrorBanner(message: message),
             );
           }
-          final item = {...fallback, ...?snapshot.data};
+          final item = {...widget.fallback, ...?snapshot.data};
           final rawAuthor = item['author'];
           final author = rawAuthor is Map ? rawAuthor : null;
           final authorName = author?['display_name']?.toString();
           final details = item['details']?.toString().trim();
           final version = item['version'];
+          final me = widget.currentUsername ??
+              (widget.api is DemoWachbuchApi
+                  ? (widget.api as DemoWachbuchApi).profile.username
+                  : null);
+          final alreadyAcked =
+              me != null && _acks.any((ack) => ack.by == me);
           return SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
               24,
@@ -1159,6 +1469,68 @@ class _HandoverDetailSheet extends StatelessWidget {
                     icon: Icons.history,
                     value: l.detailsVersion(version.toString()),
                   ),
+                if (_acksSupported) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    l.handoverAckListTitle,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_acks.isEmpty)
+                    Text(
+                      l.handoverAckEmpty,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    )
+                  else
+                    ..._acks.map(
+                      (ack) => _DetailRow(
+                        icon: Icons.verified_outlined,
+                        value:
+                            '${ack.by} · ${_formatTimestamp(ack.at.toIso8601String())}',
+                      ),
+                    ),
+                  if (_ackError != null) ...[
+                    const SizedBox(height: 8),
+                    ErrorBanner(message: _ackError!),
+                  ],
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _acking || alreadyAcked
+                        ? null
+                        : () => _acknowledge(l),
+                    icon: _acking
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.done_all),
+                    label: Text(
+                      alreadyAcked ? l.handoverAckDone : l.handoverAckButton,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  key: const Key('handover-to-defect'),
+                  onPressed: _creatingDefect
+                      ? null
+                      : () => _createDefectFromHandover(l, item),
+                  icon: _creatingDefect
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.report_problem_outlined),
+                  label: Text(l.defectAdd),
+                ),
               ],
             ),
           );

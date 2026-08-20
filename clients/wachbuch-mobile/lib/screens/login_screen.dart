@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/auth/session_store.dart';
+import 'package:wachbuch_mobile/demo/demo_api.dart';
 import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
 import 'package:wachbuch_mobile/ui/error_banner.dart';
 import 'package:wachbuch_mobile/ui/layout.dart';
@@ -15,7 +16,7 @@ class LoginScreen extends StatefulWidget {
     required this.onLoggedIn,
     required this.onChangeServer,
     this.notice,
-    this.apiFactory = defaultWachbuchApiFactory,
+    this.apiFactory = demoAwareApiFactory,
   });
 
   final SessionStore store;

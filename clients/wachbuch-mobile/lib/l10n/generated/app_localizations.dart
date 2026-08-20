@@ -122,6 +122,24 @@ abstract class AppLocalizations {
   /// **'Wechseln'**
   String get commonSwitch;
 
+  /// No description provided for @commonSave.
+  ///
+  /// In de, this message translates to:
+  /// **'Speichern'**
+  String get commonSave;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In de, this message translates to:
+  /// **'Schließen'**
+  String get commonClose;
+
+  /// No description provided for @commonRetry.
+  ///
+  /// In de, this message translates to:
+  /// **'Erneut versuchen'**
+  String get commonRetry;
+
   /// No description provided for @noticeSessionExpired.
   ///
   /// In de, this message translates to:
@@ -254,11 +272,419 @@ abstract class AppLocalizations {
   /// **'Punkte abhaken und abschließen'**
   String get moduleChecklistsSubtitle;
 
+  /// No description provided for @moduleDefectsTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Mängel'**
+  String get moduleDefectsTitle;
+
+  /// No description provided for @moduleDefectsSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Offene Punkte mit Owner und Frist'**
+  String get moduleDefectsSubtitle;
+
+  /// No description provided for @moduleAssetsTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Geräte'**
+  String get moduleAssetsTitle;
+
+  /// No description provided for @moduleAssetsSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Fahrzeug- und Gerätestatus der Wache'**
+  String get moduleAssetsSubtitle;
+
+  /// No description provided for @moduleReportsTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Auswertung'**
+  String get moduleReportsTitle;
+
+  /// No description provided for @moduleReportsSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Mängel, Fälligkeiten und Einsatzklar-Quote'**
+  String get moduleReportsSubtitle;
+
   /// No description provided for @quickAccessTitle.
   ///
   /// In de, this message translates to:
   /// **'Schnellzugriff'**
   String get quickAccessTitle;
+
+  /// No description provided for @defectsTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Mängel'**
+  String get defectsTitle;
+
+  /// No description provided for @defectsHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Offene Punkte aus dem Wachalltag — Status und Zuständigkeit nachvollziehbar halten.'**
+  String get defectsHint;
+
+  /// No description provided for @defectsEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Mängel für diesen Filter.'**
+  String get defectsEmpty;
+
+  /// No description provided for @defectAdd.
+  ///
+  /// In de, this message translates to:
+  /// **'Mangel anlegen'**
+  String get defectAdd;
+
+  /// No description provided for @defectCreateTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Neuen Mangel anlegen'**
+  String get defectCreateTitle;
+
+  /// No description provided for @defectTitleLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Titel'**
+  String get defectTitleLabel;
+
+  /// No description provided for @defectDescriptionLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Beschreibung'**
+  String get defectDescriptionLabel;
+
+  /// No description provided for @defectCategoryLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Kategorie'**
+  String get defectCategoryLabel;
+
+  /// No description provided for @defectPriorityLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Priorität'**
+  String get defectPriorityLabel;
+
+  /// No description provided for @defectAssetLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Bezug'**
+  String get defectAssetLabel;
+
+  /// No description provided for @defectOwnerLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Zuständig'**
+  String get defectOwnerLabel;
+
+  /// No description provided for @defectOwnerSelf.
+  ///
+  /// In de, this message translates to:
+  /// **'Mir zuordnen'**
+  String get defectOwnerSelf;
+
+  /// No description provided for @defectDueLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Frist'**
+  String get defectDueLabel;
+
+  /// No description provided for @defectSetStatus.
+  ///
+  /// In de, this message translates to:
+  /// **'Status setzen'**
+  String get defectSetStatus;
+
+  /// No description provided for @defectStatusWaiting.
+  ///
+  /// In de, this message translates to:
+  /// **'Wartend'**
+  String get defectStatusWaiting;
+
+  /// No description provided for @defectCreateFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Mangel konnte nicht angelegt werden.'**
+  String get defectCreateFailed;
+
+  /// No description provided for @defectPhotosTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Fotos'**
+  String get defectPhotosTitle;
+
+  /// No description provided for @defectPhotosHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur Zustandsbilder des Mangels. Keine Patienten- oder Einsatzdaten fotografieren.'**
+  String get defectPhotosHint;
+
+  /// No description provided for @defectPhotosEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Fotos.'**
+  String get defectPhotosEmpty;
+
+  /// No description provided for @defectAddPhoto.
+  ///
+  /// In de, this message translates to:
+  /// **'Foto hinzufügen'**
+  String get defectAddPhoto;
+
+  /// No description provided for @defectTakePhoto.
+  ///
+  /// In de, this message translates to:
+  /// **'Kamera'**
+  String get defectTakePhoto;
+
+  /// No description provided for @defectChoosePhoto.
+  ///
+  /// In de, this message translates to:
+  /// **'Fotomediathek'**
+  String get defectChoosePhoto;
+
+  /// No description provided for @defectPhotoUploadFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Foto konnte nicht hochgeladen werden.'**
+  String get defectPhotoUploadFailed;
+
+  /// No description provided for @defectPhotoTooLarge.
+  ///
+  /// In de, this message translates to:
+  /// **'Das Bild darf maximal 2 MiB groß sein.'**
+  String get defectPhotoTooLarge;
+
+  /// No description provided for @defectPhotoUploaded.
+  ///
+  /// In de, this message translates to:
+  /// **'Foto wurde hochgeladen.'**
+  String get defectPhotoUploaded;
+
+  /// No description provided for @assetsBoardTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Fahrzeug- & Gerätestatus'**
+  String get assetsBoardTitle;
+
+  /// No description provided for @assetsScreenTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Geräte & Status'**
+  String get assetsScreenTitle;
+
+  /// No description provided for @assetsEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Geräte oder Pools verfügbar.'**
+  String get assetsEmpty;
+
+  /// No description provided for @assetStatusReady.
+  ///
+  /// In de, this message translates to:
+  /// **'Einsatzklar'**
+  String get assetStatusReady;
+
+  /// No description provided for @assetStatusLimited.
+  ///
+  /// In de, this message translates to:
+  /// **'Eingeschränkt'**
+  String get assetStatusLimited;
+
+  /// No description provided for @assetStatusOob.
+  ///
+  /// In de, this message translates to:
+  /// **'Außer Betrieb'**
+  String get assetStatusOob;
+
+  /// No description provided for @assetStatusWorkshop.
+  ///
+  /// In de, this message translates to:
+  /// **'Werkstatt'**
+  String get assetStatusWorkshop;
+
+  /// No description provided for @inventoryTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Schlüssel & Pools'**
+  String get inventoryTitle;
+
+  /// No description provided for @inventoryHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Checkout / Checkin für Pool-Geräte und Schlüssel.'**
+  String get inventoryHint;
+
+  /// No description provided for @inventoryAvailable.
+  ///
+  /// In de, this message translates to:
+  /// **'Verfügbar'**
+  String get inventoryAvailable;
+
+  /// No description provided for @inventoryHolderLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Bei'**
+  String get inventoryHolderLabel;
+
+  /// No description provided for @inventoryCheckout.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausgeben'**
+  String get inventoryCheckout;
+
+  /// No description provided for @inventoryCheckin.
+  ///
+  /// In de, this message translates to:
+  /// **'Zurückgeben'**
+  String get inventoryCheckin;
+
+  /// No description provided for @checklistIntervalDaily.
+  ///
+  /// In de, this message translates to:
+  /// **'Täglich'**
+  String get checklistIntervalDaily;
+
+  /// No description provided for @checklistIntervalWeekly.
+  ///
+  /// In de, this message translates to:
+  /// **'Wöchentlich'**
+  String get checklistIntervalWeekly;
+
+  /// No description provided for @checklistIntervalMonthly.
+  ///
+  /// In de, this message translates to:
+  /// **'Monatlich'**
+  String get checklistIntervalMonthly;
+
+  /// No description provided for @checklistDueToday.
+  ///
+  /// In de, this message translates to:
+  /// **'Fällig heute'**
+  String get checklistDueToday;
+
+  /// No description provided for @checklistOverdue.
+  ///
+  /// In de, this message translates to:
+  /// **'Überfällig'**
+  String get checklistOverdue;
+
+  /// No description provided for @checklistDueSection.
+  ///
+  /// In de, this message translates to:
+  /// **'Fällig heute / überfällig'**
+  String get checklistDueSection;
+
+  /// No description provided for @reportsTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Auswertung'**
+  String get reportsTitle;
+
+  /// No description provided for @reportsHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Leichte Stationsübersicht ohne individuelle Leistungsbewertung.'**
+  String get reportsHint;
+
+  /// No description provided for @reportsOpenDefects.
+  ///
+  /// In de, this message translates to:
+  /// **'Offene Mängel'**
+  String get reportsOpenDefects;
+
+  /// No description provided for @reportsOverdueDefects.
+  ///
+  /// In de, this message translates to:
+  /// **'Mängel überfällig'**
+  String get reportsOverdueDefects;
+
+  /// No description provided for @reportsOverdueChecks.
+  ///
+  /// In de, this message translates to:
+  /// **'Checks überfällig'**
+  String get reportsOverdueChecks;
+
+  /// No description provided for @reportsAssetReady.
+  ///
+  /// In de, this message translates to:
+  /// **'Assets einsatzklar'**
+  String get reportsAssetReady;
+
+  /// No description provided for @reportsInventoryOut.
+  ///
+  /// In de, this message translates to:
+  /// **'Pools ausgegeben'**
+  String get reportsInventoryOut;
+
+  /// No description provided for @reportsUnacked.
+  ///
+  /// In de, this message translates to:
+  /// **'Unquittierte Übergaben'**
+  String get reportsUnacked;
+
+  /// No description provided for @reportsOldestOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Ältester offener Mangel'**
+  String get reportsOldestOpen;
+
+  /// No description provided for @reportsDays.
+  ///
+  /// In de, this message translates to:
+  /// **'Tage'**
+  String get reportsDays;
+
+  /// No description provided for @reportsByOwner.
+  ///
+  /// In de, this message translates to:
+  /// **'Offene Mängel nach Zuständigkeit'**
+  String get reportsByOwner;
+
+  /// No description provided for @reportsNoOwner.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Zuständigkeit'**
+  String get reportsNoOwner;
+
+  /// No description provided for @reportsPrivacyHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Auswertung dient der Stationsorganisation, nicht zur Leistungsbewertung einzelner Beschäftigter.'**
+  String get reportsPrivacyHint;
+
+  /// No description provided for @handoverAckButton.
+  ///
+  /// In de, this message translates to:
+  /// **'Übernommen'**
+  String get handoverAckButton;
+
+  /// No description provided for @handoverAckDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Von Ihnen quittiert'**
+  String get handoverAckDone;
+
+  /// No description provided for @handoverAckListTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Quittierungen'**
+  String get handoverAckListTitle;
+
+  /// No description provided for @handoverAckEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch nicht quittiert.'**
+  String get handoverAckEmpty;
+
+  /// No description provided for @handoverAckFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Quittierung fehlgeschlagen.'**
+  String get handoverAckFailed;
 
   /// No description provided for @handoverSearchHint.
   ///
@@ -662,6 +1088,102 @@ abstract class AppLocalizations {
   /// **'Play-Store-Client: Verbindung nur zu Ihrem selbst gehosteten Server. Produktion: HTTPS erforderlich.'**
   String get setupFooter;
 
+  /// No description provided for @setupDemoButton.
+  ///
+  /// In de, this message translates to:
+  /// **'Demo-Modus ausprobieren'**
+  String get setupDemoButton;
+
+  /// No description provided for @setupDemoTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Demo-Modus wählen'**
+  String get setupDemoTitle;
+
+  /// No description provided for @setupDemoSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Lokale Musterdaten ohne Server — für Rettungsdienst, Feuerwehr, FFW oder Polizei.'**
+  String get setupDemoSubtitle;
+
+  /// No description provided for @setupDemoRettungsdienst.
+  ///
+  /// In de, this message translates to:
+  /// **'Rettungsdienst'**
+  String get setupDemoRettungsdienst;
+
+  /// No description provided for @setupDemoRettungsdienstHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Schichtübergabe & Material auf der Rettungswache'**
+  String get setupDemoRettungsdienstHint;
+
+  /// No description provided for @setupDemoFeuerwehr.
+  ///
+  /// In de, this message translates to:
+  /// **'Feuerwehr'**
+  String get setupDemoFeuerwehr;
+
+  /// No description provided for @setupDemoFeuerwehrHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Gerätehaus, Fahrzeuge und Dienstübergabe'**
+  String get setupDemoFeuerwehrHint;
+
+  /// No description provided for @setupDemoFfw.
+  ///
+  /// In de, this message translates to:
+  /// **'Freiwillige Feuerwehr'**
+  String get setupDemoFfw;
+
+  /// No description provided for @setupDemoFfwHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Gerätehaus, Fahrzeuge und ehrenamtlicher Wachalltag'**
+  String get setupDemoFfwHint;
+
+  /// No description provided for @setupDemoPolizei.
+  ///
+  /// In de, this message translates to:
+  /// **'Polizei'**
+  String get setupDemoPolizei;
+
+  /// No description provided for @setupDemoPolizeiHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Wachalltag, Material und Dienstgruppe'**
+  String get setupDemoPolizeiHint;
+
+  /// No description provided for @demoBannerLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Demo-Modus'**
+  String get demoBannerLabel;
+
+  /// No description provided for @demoBannerRettungsdienst.
+  ///
+  /// In de, this message translates to:
+  /// **'Rettungsdienst'**
+  String get demoBannerRettungsdienst;
+
+  /// No description provided for @demoBannerFeuerwehr.
+  ///
+  /// In de, this message translates to:
+  /// **'Feuerwehr'**
+  String get demoBannerFeuerwehr;
+
+  /// No description provided for @demoBannerFfw.
+  ///
+  /// In de, this message translates to:
+  /// **'Freiwillige Feuerwehr'**
+  String get demoBannerFfw;
+
+  /// No description provided for @demoBannerPolizei.
+  ///
+  /// In de, this message translates to:
+  /// **'Polizei'**
+  String get demoBannerPolizei;
+
   /// No description provided for @qrScanTitle.
   ///
   /// In de, this message translates to:
@@ -671,7 +1193,7 @@ abstract class AppLocalizations {
   /// No description provided for @qrScanCameraHint.
   ///
   /// In de, this message translates to:
-  /// **'Die Kamera wird nur zum Lesen der Server-Adresse genutzt. Es werden keine Fotos gespeichert oder hochgeladen.'**
+  /// **'Die Kamera wird hier nur zum Lesen der Server-Adresse genutzt. Es werden dabei keine Fotos gespeichert oder hochgeladen.'**
   String get qrScanCameraHint;
 
   /// No description provided for @qrScanInvalid.
@@ -695,7 +1217,7 @@ abstract class AppLocalizations {
   /// No description provided for @qrCameraDialogMessage.
   ///
   /// In de, this message translates to:
-  /// **'Wachbuch benötigt die Kamera ausschließlich, um den QR-Code mit der Server-Adresse Ihrer Wache zu scannen. Ohne Kamera können Sie die Adresse auch manuell eingeben.'**
+  /// **'Wachbuch benötigt die Kamera hier ausschließlich, um den QR-Code mit der Server-Adresse Ihrer Wache zu scannen. Ohne Kamera können Sie die Adresse auch manuell eingeben.'**
   String get qrCameraDialogMessage;
 
   /// No description provided for @qrCameraContinue.
@@ -799,6 +1321,246 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Nicht angegeben'**
   String get handoverEnumUnknown;
+
+  /// No description provided for @chatTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Wachenchat'**
+  String get chatTitle;
+
+  /// No description provided for @chatSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Ende-zu-Ende verschlüsselt'**
+  String get chatSubtitle;
+
+  /// No description provided for @chatSetupTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Chat-Schlüssel einrichten'**
+  String get chatSetupTitle;
+
+  /// No description provided for @chatSetupHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Lege eine Passphrase fest. Sie schützt deinen privaten Schlüssel und wird nie an den Server übertragen.'**
+  String get chatSetupHint;
+
+  /// No description provided for @chatSetupAction.
+  ///
+  /// In de, this message translates to:
+  /// **'Schlüssel erstellen'**
+  String get chatSetupAction;
+
+  /// No description provided for @chatUnlockTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Chat entsperren'**
+  String get chatUnlockTitle;
+
+  /// No description provided for @chatUnlockHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Gib deine Passphrase ein, um verschlüsselte Nachrichten zu lesen und zu schreiben.'**
+  String get chatUnlockHint;
+
+  /// No description provided for @chatUnlockAction.
+  ///
+  /// In de, this message translates to:
+  /// **'Entsperren'**
+  String get chatUnlockAction;
+
+  /// No description provided for @chatPassphrase.
+  ///
+  /// In de, this message translates to:
+  /// **'Passphrase'**
+  String get chatPassphrase;
+
+  /// No description provided for @chatWrongPassphrase.
+  ///
+  /// In de, this message translates to:
+  /// **'Falsche Passphrase oder beschädigter Schlüssel.'**
+  String get chatWrongPassphrase;
+
+  /// No description provided for @chatComposeHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Kurze Nachricht an die Wache …'**
+  String get chatComposeHint;
+
+  /// No description provided for @chatSend.
+  ///
+  /// In de, this message translates to:
+  /// **'Senden'**
+  String get chatSend;
+
+  /// No description provided for @chatEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Nachrichten.'**
+  String get chatEmpty;
+
+  /// No description provided for @chatUnreadable.
+  ///
+  /// In de, this message translates to:
+  /// **'Nachricht nicht lesbar (kein Schlüssel für dich).'**
+  String get chatUnreadable;
+
+  /// No description provided for @chatLoadError.
+  ///
+  /// In de, this message translates to:
+  /// **'Chat konnte nicht geladen werden.'**
+  String get chatLoadError;
+
+  /// No description provided for @chatMe.
+  ///
+  /// In de, this message translates to:
+  /// **'Ich'**
+  String get chatMe;
+
+  /// No description provided for @groupsTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppen'**
+  String get groupsTitle;
+
+  /// No description provided for @groupsSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppen-Chats (Ende-zu-Ende)'**
+  String get groupsSubtitle;
+
+  /// No description provided for @groupsEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Gruppen.'**
+  String get groupsEmpty;
+
+  /// No description provided for @groupsCreate.
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppe erstellen'**
+  String get groupsCreate;
+
+  /// No description provided for @groupName.
+  ///
+  /// In de, this message translates to:
+  /// **'Gruppenname'**
+  String get groupName;
+
+  /// No description provided for @groupMembers.
+  ///
+  /// In de, this message translates to:
+  /// **'Mitglieder'**
+  String get groupMembers;
+
+  /// No description provided for @groupCreateAction.
+  ///
+  /// In de, this message translates to:
+  /// **'Erstellen'**
+  String get groupCreateAction;
+
+  /// No description provided for @groupSelectMembers.
+  ///
+  /// In de, this message translates to:
+  /// **'Mitglieder auswählen'**
+  String get groupSelectMembers;
+
+  /// No description provided for @groupNoColleagues.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Kolleginnen und Kollegen mit Schlüsseln verfügbar.'**
+  String get groupNoColleagues;
+
+  /// No description provided for @pinboardTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Pinnwand'**
+  String get pinboardTitle;
+
+  /// No description provided for @pinboardSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Aushänge und Hinweise für die Wache'**
+  String get pinboardSubtitle;
+
+  /// No description provided for @pinboardEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Aushänge an der Pinnwand.'**
+  String get pinboardEmpty;
+
+  /// No description provided for @pinboardCreate.
+  ///
+  /// In de, this message translates to:
+  /// **'Aushang anlegen'**
+  String get pinboardCreate;
+
+  /// No description provided for @pinboardFieldTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Titel'**
+  String get pinboardFieldTitle;
+
+  /// No description provided for @pinboardFieldBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Text'**
+  String get pinboardFieldBody;
+
+  /// No description provided for @pinboardCategory.
+  ///
+  /// In de, this message translates to:
+  /// **'Art'**
+  String get pinboardCategory;
+
+  /// No description provided for @pinboardPinned.
+  ///
+  /// In de, this message translates to:
+  /// **'Angepinnt'**
+  String get pinboardPinned;
+
+  /// No description provided for @pinboardSave.
+  ///
+  /// In de, this message translates to:
+  /// **'Speichern'**
+  String get pinboardSave;
+
+  /// No description provided for @pinboardCancel.
+  ///
+  /// In de, this message translates to:
+  /// **'Abbrechen'**
+  String get pinboardCancel;
+
+  /// No description provided for @pinboardCategoryInfo.
+  ///
+  /// In de, this message translates to:
+  /// **'Info'**
+  String get pinboardCategoryInfo;
+
+  /// No description provided for @pinboardCategoryImportant.
+  ///
+  /// In de, this message translates to:
+  /// **'Wichtig'**
+  String get pinboardCategoryImportant;
+
+  /// No description provided for @pinboardCategoryEvent.
+  ///
+  /// In de, this message translates to:
+  /// **'Termin/Hinweis'**
+  String get pinboardCategoryEvent;
+
+  /// No description provided for @pinboardLoadError.
+  ///
+  /// In de, this message translates to:
+  /// **'Pinnwand konnte nicht geladen werden.'**
+  String get pinboardLoadError;
+
+  /// No description provided for @pinboardCreated.
+  ///
+  /// In de, this message translates to:
+  /// **'Aushang wurde angelegt.'**
+  String get pinboardCreated;
 }
 
 class _AppLocalizationsDelegate

@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/api/server_address.dart';
 import 'package:wachbuch_mobile/auth/session_store.dart';
+import 'package:wachbuch_mobile/demo/demo_api.dart';
+import 'package:wachbuch_mobile/demo/demo_profiles.dart';
 import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
+import 'package:wachbuch_mobile/screens/demo_picker_sheet.dart';
+import 'package:wachbuch_mobile/screens/privacy_screen.dart';
 import 'package:wachbuch_mobile/screens/qr_scan_screen.dart';
 import 'package:wachbuch_mobile/ui/error_banner.dart';
 import 'package:wachbuch_mobile/ui/layout.dart';
@@ -14,11 +18,13 @@ class ServerSetupScreen extends StatefulWidget {
     super.key,
     required this.store,
     required this.onServerReady,
-    this.apiFactory = defaultWachbuchApiFactory,
+    this.onDemoReady,
+    this.apiFactory = demoAwareApiFactory,
   });
 
   final SessionStore store;
   final Future<void> Function(String serverUrl) onServerReady;
+  final Future<void> Function(DemoService service)? onDemoReady;
   final WachbuchApiFactory apiFactory;
 
   @override
@@ -71,12 +77,30 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
     }
   }
 
+  Future<void> _openDemo() async {
+    final service = await showDemoPickerSheet(context);
+    if (service == null || !mounted) return;
+    final onDemoReady = widget.onDemoReady;
+    if (onDemoReady != null) {
+      await onDemoReady(service);
+      return;
+    }
+    await widget.onServerReady(service.serverUrl);
+  }
+
+  void _openPrivacy() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const PrivacyScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final width = MediaQuery.sizeOf(context).width;
     final maxW = AppLayout.isTablet(width) ? 480.0 : 420.0;
     final scheme = Theme.of(context).colorScheme;
+    final german = Localizations.localeOf(context).languageCode == 'de';
 
     return Scaffold(
       body: SafeArea(
@@ -173,7 +197,20 @@ class _ServerSetupScreenState extends State<ServerSetupScreen> {
                           )
                         : Text(l.setupConfirm),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: _busy ? null : _openDemo,
+                    icon: const Icon(Icons.science_outlined),
+                    label: Text(l.setupDemoButton),
+                  ),
+                  const SizedBox(height: 4),
+                  TextButton.icon(
+                    key: const Key('privacy-policy-button'),
+                    onPressed: _busy ? null : _openPrivacy,
+                    icon: const Icon(Icons.privacy_tip_outlined),
+                    label: Text(german ? 'Datenschutz' : 'Privacy'),
+                  ),
+                  const SizedBox(height: 20),
                   Text(
                     l.setupFooter,
                     textAlign: TextAlign.center,

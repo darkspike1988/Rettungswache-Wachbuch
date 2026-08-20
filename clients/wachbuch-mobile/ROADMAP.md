@@ -1,6 +1,16 @@
 # Wachbuch Client Roadmap
 
-Stand: 3. August 2026
+Stand: 9. August 2026
+
+## Behörden-Wachalltag (RD · Feuerwehr · FFW · Polizei)
+
+Fachlicher Fahrplan inkl. Webapp-Umsetzung:
+
+→ **[docs/FAHRPLAN-BEHOERDEN.md](docs/FAHRPLAN-BEHOERDEN.md)**
+
+Kurz: Mängel-Workflow → Statusboard → Quittierung → Anhänge → wiederkehrende
+Checks → Schlüssel/Pools → Offline-Cache → Auswertung. Prototyp Phase A–D in
+`landing/app/`.
 
 ## Android-Ziel: 10/10 Release Engineering
 

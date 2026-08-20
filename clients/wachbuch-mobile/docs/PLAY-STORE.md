@@ -1,37 +1,33 @@
 # Google Play Store – Freigabehandbuch
 
-Stand: 3. August 2026
+Stand: 10. August 2026
 
-Der verbindliche Fortschritt wird in [`ROADMAP.md`](../ROADMAP.md) geführt. Nur
-tatsächlich umgesetzte und geprüfte Schritte werden dort gestrichen.
+Der verbindliche 1.0-Abnahmeplan liegt in [`STORE-RELEASE-1.0.md`](STORE-RELEASE-1.0.md). Für bestehende Installationen ist zusätzlich [`SECURE-STORAGE-MIGRATION-1.0.md`](SECURE-STORAGE-MIGRATION-1.0.md) verbindlich.
 
 ## Offizielle Grundlagen
 
-- [Target-API-Anforderungen](https://developer.android.com/google/play/requirements/target-sdk)
+- [Target-API-Anforderungen](https://support.google.com/googleplay/android-developer/answer/11926878)
 - [App-Signierung und Play App Signing](https://developer.android.com/studio/publish/app-signing)
 - [Android App Bundles](https://developer.android.com/guide/app-bundle)
 - [Automatische Sicherung](https://developer.android.com/identity/data/autobackup)
 - [Network Security Configuration](https://developer.android.com/privacy-and-security/security-config)
 - [Data Safety](https://support.google.com/googleplay/android-developer/answer/10787469)
+- [App access / Review-Zugang](https://support.google.com/googleplay/android-developer/answer/15748846)
 
-Ab dem 31. August 2026 müssen neue Apps und Updates Android 16 beziehungsweise
-API 36 oder höher als Ziel verwenden. Das Projekt übernimmt `targetSdk` aus dem
-aktuellen Flutter-Stable-SDK und prüft den Produktionsbuild in CI.
+Ab dem 31. August 2026 müssen neue Apps und Updates Android 16 beziehungsweise API 36 oder höher als Ziel verwenden. Das Projekt übernimmt `targetSdk` aus Flutter Stable und der Produktions-Release-Workflow bricht ab, wenn der fertige APK-Build unter API 36 liegt.
 
-## Varianten
+## 1.0-Identität
 
 | Variante | Paket-ID | Name | Signierung | Zweck |
 | --- | --- | --- | --- | --- |
 | `internal` | `de.wachbuch.mobile.internal` | Wachbuch Internal | Android-Debug-Key | CI, Entwicklung und kontrolliertes Sideloading |
 | `production` | `de.wachbuch.mobile` | Wachbuch | eigener Upload-Key | Google Play und produktive APK-Verteilung |
 
-Die interne Variante ist bewusst als eigene App installierbar. Sie kann die
-Produktions-App nicht überschreiben und verwendet das separate URI-Schema
-`wachbuch-internal://`.
+Die interne Variante ist bewusst als eigene App installierbar und verwendet das separate URI-Schema `wachbuch-internal://`.
 
 ## Upload-Key erzeugen
 
-Der Upload-Key darf nicht ins Repository gelangen. Ein Beispiel:
+Der Upload-Key darf nicht ins Repository gelangen. Beispiel:
 
 ```bash
 keytool -genkeypair -v \
@@ -42,9 +38,7 @@ keytool -genkeypair -v \
   -validity 10000
 ```
 
-Den Keystore verschlüsselt offline sichern. Für Google Play sollte Play App
-Signing aktiviert werden, damit der App-Signaturschlüssel getrennt vom
-Upload-Key verwaltet wird.
+Den Keystore verschlüsselt offline sichern. Für Google Play **Play App Signing** aktivieren, damit der App-Signaturschlüssel getrennt vom Upload-Key verwaltet wird.
 
 ## Lokale Signing-Konfiguration
 
@@ -52,28 +46,22 @@ Upload-Key verwaltet wird.
 cp android/key.properties.example android/key.properties
 ```
 
-Danach die realen Werte in `android/key.properties` eintragen. Die Datei und
-alle üblichen Keystore-Endungen sind durch `.gitignore` ausgeschlossen.
+Danach die realen Werte in `android/key.properties` eintragen. Die Datei und übliche Keystore-Endungen sind durch `.gitignore` ausgeschlossen.
 
-Alternativ akzeptiert Gradle folgende Umgebungsvariablen:
+Alternativ akzeptiert Gradle:
 
 - `ANDROID_KEYSTORE_PATH`
 - `ANDROID_KEYSTORE_PASSWORD`
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-Mit `REQUIRE_RELEASE_SIGNING=true` bricht der Build ab, falls auch nur ein Wert
-fehlt. Einen Debug-Key-Fallback für `production` gibt es nicht.
+Mit `REQUIRE_RELEASE_SIGNING=true` bricht der Build ab, falls ein Wert fehlt. Einen Debug-Key-Fallback für `production` gibt es nicht.
 
-## Lokaler Produktionsbuild
+## Lokaler 1.0-Produktionsbuild
 
 ```bash
-BUILD_NAME=0.5.2 BUILD_NUMBER=11 ./scripts/build-aab.sh
+BUILD_NAME=1.0.0 BUILD_NUMBER=12 ./scripts/build-aab.sh
 ```
-
-Das Skript führt Analyse und Tests aus, baut ein obfuskiertes und signiertes
-Produktions-AAB, prüft die JAR-Signatur und speichert AAB, SHA-256-Hash und
-Symbole getrennt unter `dist/`.
 
 Direkter Flutter-Aufruf:
 
@@ -81,16 +69,23 @@ Direkter Flutter-Aufruf:
 REQUIRE_RELEASE_SIGNING=true flutter build appbundle \
   --release \
   --flavor production \
-  --build-name 0.5.2 \
-  --build-number 11 \
+  --build-name 1.0.0 \
+  --build-number 12 \
   --obfuscate \
   --split-debug-info=build/symbols/production
 ```
 
+## Secure-Storage-Migrationsbuild
+
+Build `1.0.0+12` aktualisiert `flutter_secure_storage` auf 10.3.1 und aktiviert die kontrollierte Android-Migration mit `migrateOnAlgorithmChange=true` sowie `migrateWithBackup=true`. Die Produktions-App bleibt von Android-Cloud-Backup/Geräteübertragung ausgeschlossen.
+
+Vor einem breiten Rollout muss mindestens ein echtes Upgrade **von einer bestehenden +11/9.x-Installation auf +12** geprüft werden. Dabei müssen bestehender App-Token und Offline-Cache erhalten bleiben; zusätzlich sind Logout, Serverwechsel sowie ein absichtlich unterbrochener erster Storage-Zugriff und anschließendes Recovery zu testen. Details: [`SECURE-STORAGE-MIGRATION-1.0.md`](SECURE-STORAGE-MIGRATION-1.0.md).
+
+Ein späteres Upgrade auf `flutter_secure_storage` 11.x ist ein eigener Breaking-Change und wird nicht zusammen mit diesem Release freigegeben.
+
 ## Geschützter GitHub-Release
 
-In GitHub ein Environment namens `google-play` anlegen und mindestens einen
-erforderlichen Reviewer konfigurieren. Folgende Secrets werden benötigt:
+GitHub Environment `google-play` mit mindestens einem Required Reviewer anlegen. Secrets:
 
 | Secret | Inhalt |
 | --- | --- |
@@ -99,76 +94,79 @@ erforderlichen Reviewer konfigurieren. Folgende Secrets werden benötigt:
 | `ANDROID_UPLOAD_KEY_ALIAS` | Alias des Upload-Schlüssels |
 | `ANDROID_UPLOAD_KEY_PASSWORD` | Schlüsselpasswort |
 
-Keystore unter Linux oder macOS kodieren:
+Der Workflow **Android Signed Release**:
 
-```bash
-base64 -w 0 wachbuch-upload.jks
-# macOS alternativ: base64 -i wachbuch-upload.jks
-```
+1. darf nur von `main` laufen,
+2. verlangt, dass Build-Name/-Nummer exakt `pubspec.yaml` entsprechen,
+3. validiert alle Signing-Secrets,
+4. installiert den Keystore nur temporär,
+5. führt Analyse, L10n-Generierung und Tests aus,
+6. baut signiertes Production-AAB und signierte ABI-APKs,
+7. führt Android-Lint aus,
+8. prüft Paket-ID, `debuggable=false`, min/target SDK, Permission-Allowlist, Signaturen und Größenbudgets,
+9. erzeugt Hashes, Zertifikatsbericht, Abhängigkeitsberichte, Symbole und CycloneDX-SBOM,
+10. entfernt den temporären Keystore auch bei Fehlern.
 
-Danach **Actions → Android Signed Release → Run workflow** öffnen und eine neue,
-streng steigende Build-Nummer angeben. Der Workflow:
-
-1. validiert alle Secrets,
-2. installiert den Keystore nur temporär,
-3. führt Analyse und Tests aus,
-4. baut signiertes AAB und signierte ABI-APKs,
-5. führt Android-Lint aus,
-6. prüft Paket-ID, `debuggable=false` und Signaturen,
-7. erzeugt Hashes, Zertifikatsbericht, Abhängigkeitsberichte und Symbole,
-8. löscht den temporären Keystore auch bei Fehlern.
-
-## Normaler Pull-Request-CI
-
-Der normale CI benötigt keine privaten Schlüssel. Er baut:
-
-- obfuskierte, R8-optimierte interne Split-APKs,
-- ein absichtlich nicht signiertes Production-AAB als Kompilier- und
-  Größenprüfung,
-- Android-Lint,
-- Signatur-, Paket-ID- und Größenprüfungen,
-- Abhängigkeits- und Symbolartefakte.
-
-Das unsigned Production-AAB wird nicht als Download veröffentlicht und darf
-nicht in die Play Console hochgeladen werden.
+Das erzeugte `.aab` zunächst **manuell in den internen Play-Test-Track** hochladen. Eine automatische Produktionseinreichung ist absichtlich nicht im Repository aktiviert.
 
 ## Datenschutz und Berechtigungen
 
 | Permission | Zweck | Verhalten ohne Freigabe |
 | --- | --- | --- |
-| `INTERNET` | Verbindung zum selbst gehosteten Wachbuch-Server | App nicht nutzbar |
-| `CAMERA` | optionaler QR-Scan der Server-Adresse | manuelle Eingabe funktioniert |
+| `INTERNET` | Verbindung zum selbst gehosteten Wachbuch-Server | Servermodus nicht nutzbar; Demo bleibt lokal |
+| `CAMERA` | QR-Scan und ausdrücklich ausgelöstes Mängelfoto | Serveradresse manuell; Mangel ohne Kamera möglich |
 | `ACCESS_COARSE_LOCATION` | lokale Sonnenaufgang-/Sonnenuntergangsberechnung | Systemtheme als Fallback |
+| `ACCESS_NETWORK_STATE` | Offline-/Online-Status | technische Netzwerkfunktion |
 
-Nicht vorhanden sind Medien-, Kontakt-, Mikrofon- oder
-Hintergrundstandortberechtigungen. Standortdaten verlassen nach App-Konzept das
-Gerät nicht. Kamera-Bilder werden nicht gespeichert.
+Nicht vorgesehen sind Hintergrundstandort, Kontakte, Mikrofon, SMS/Anruflisten oder breite Datei-/Medienspeicherberechtigungen.
 
-App-Daten sind sowohl von Cloud-Backups als auch von Geräteübertragungen
-explizit ausgeschlossen. Das betrifft insbesondere Token, Serveradresse und
-lokale Einstellungen.
+QR-Kameraframes werden nicht als Foto gespeichert/hochgeladen. Ausdrücklich ausgewählte Mängelfotos werden dagegen an den eingerichteten selbst gehosteten Server übertragen. Aktuelle Serverstände normalisieren gespeicherte Mängelfotos serverseitig als metadata-freies JPEG. Standortdaten verlassen nach aktuellem App-Konzept das Gerät nicht.
 
-## Data-Safety-Angaben
+Android-Appdaten sind von Cloud-Backups und Geräteübertragungen ausgeschlossen.
 
-Vor Einreichung mit dem realen Serverbetrieb abgleichen:
+## Datenschutzerklärung und Data Safety
 
-- Login- und Wachbuchdaten werden an den vom Nutzer gewählten Wachbuch-Server
-  übertragen.
-- Der App-Token wird lokal über Secure Storage beziehungsweise Android Keystore
-  geschützt.
-- Kamera wird nur für QR-Erkennung verarbeitet und nicht gespeichert.
-- Ungefährer Standort wird nur lokal verwendet und nicht übertragen.
-- Keine Werbung und kein Tracking-SDK.
-- Datenschutzerklärung muss öffentlich und ohne Login erreichbar sein.
+Öffentliche Datenschutzerklärung:
+
+`https://github.com/darkspike1988/Wachbuch-Client/blob/main/docs/PRIVACY-POLICY.md`
+
+Die App zeigt die wesentlichen Datenschutzinformationen zusätzlich **vor dem Login** an.
+
+Konservativer Data-Safety-Abgleich für 1.0:
+
+- kein Werbe-/Tracking-SDK und keine externe Analytics-/Crash-Telemetrie,
+- Login-/App-Token-Kommunikation nur mit dem vom Nutzer gewählten Wachbuch-Server,
+- Organisations-/Benutzerkennungen und nutzergenerierte Wachalltag-Inhalte können auf diesem Server für App-Funktion gespeichert werden,
+- ausdrücklich ausgewählte Mängelfotos können auf diesem Server gespeichert werden,
+- QR-Kameraframes lokal,
+- ungefährer Standort lokal und nicht übertragen,
+- Transportverschlüsselung per HTTPS im Produktionsmodus.
+
+Die endgültigen Play-Console-Antworten müssen mit dem tatsächlich betriebenen Review-/Produktionsserver übereinstimmen.
+
+## App access / Google Review
+
+Der Demo-Modus ist ohne Login vom ersten Bildschirm erreichbar. In der Play Console die englische Review-Anweisung aus [`STORE-METADATA.md`](STORE-METADATA.md) übernehmen.
+
+Wenn Google zusätzlich den echten Serverfluss prüfen soll, einen **dedizierten Review-Server** und dauerhaft gültige, wiederverwendbare Zugangsdaten hinterlegen. Keine Produktionsnutzer und keine Einmal-MFA-Codes verwenden.
+
+## Store Listing
+
+Texte, Positionierung und Screenshotplan liegen in [`STORE-METADATA.md`](STORE-METADATA.md). Wichtig:
+
+- nicht als offizielle Behörden-App darstellen,
+- nicht als Medizin-/Patienten-/Einsatzleit-App darstellen,
+- nur echte Screenshots des 1.0-Builds mit Demo-Daten,
+- keine echten Namen, Tokens, Serveradressen, Patienten- oder Einsatzdaten.
 
 ## Upload-Reihenfolge
 
-1. App `de.wachbuch.mobile` in der Play Console anlegen.
+1. App `de.wachbuch.mobile` in Play Console anlegen.
 2. Play App Signing aktivieren.
-3. Signiertes AAB zunächst in den internen Test-Track laden.
-4. Data Safety, Datenschutzerklärung, Altersfreigabe und Store-Eintrag ausfüllen.
-5. Interne Tester auf Login, QR, Deep Link, Standortverweigerung, Tablet,
-   Rotation und Sitzungsablauf testen lassen.
-6. Pre-Launch-Report prüfen und kritische Abstürze, ANRs oder Sicherheitsfehler
-   vor Produktion beheben.
-7. Erst danach stufenweise in Produktion ausrollen.
+3. GitHub **Android Signed Release** auf `main` für `1.0.0+12` ausführen.
+4. Signiertes AAB in den internen Test-Track laden.
+5. App access, Data Safety, Datenschutz, Altersfreigabe/Zielgruppe und Store Listing ausfüllen.
+6. Upgrade von +11 auf +12 auf echtem Gerät inklusive Secure-Storage-Recovery testen.
+7. Interne Tester auf Login, Demo, QR, Deep Link, Standort-/Kameraverweigerung, Tablet, Rotation, Offline/Logout/Serverwechsel testen lassen.
+8. Pre-Launch-Report prüfen und kritische Abstürze, ANRs, Permission- oder Policyfehler beheben.
+9. Erst danach Production-Release einreichen beziehungsweise stufenweise ausrollen.

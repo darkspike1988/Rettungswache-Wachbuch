@@ -139,8 +139,26 @@ class _ChecklistenScreenState extends State<ChecklistenScreen> {
               icon: Icons.checklist_outlined,
               message: AppLocalizations.of(context)!.checklistenEmpty,
             )
-          else
-            for (final list in _lists) ...[
+          else ...[
+            if (_dueLists.isNotEmpty) ...[
+              Text(
+                AppLocalizations.of(context)!.checklistDueSection,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              for (final list in _dueLists) ...[
+                _ChecklistCard(
+                  list: list,
+                  busy: _busy.contains(list.id),
+                  onComplete: () => _complete(list),
+                ),
+                const SizedBox(height: 12),
+              ],
+              const SizedBox(height: 8),
+            ],
+            for (final list in _otherLists) ...[
               _ChecklistCard(
                 list: list,
                 busy: _busy.contains(list.id),
@@ -148,10 +166,19 @@ class _ChecklistenScreenState extends State<ChecklistenScreen> {
               ),
               const SizedBox(height: 12),
             ],
+          ],
         ],
       ),
     );
   }
+
+  List<Checklist> get _dueLists => _lists
+      .where((list) => !list.completed && (list.isDueToday || list.overdue))
+      .toList();
+
+  List<Checklist> get _otherLists => _lists
+      .where((list) => list.completed || (!list.isDueToday && !list.overdue))
+      .toList();
 }
 
 class _ChecklistCard extends StatelessWidget {
@@ -198,6 +225,31 @@ class _ChecklistCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (list.isRecurring || list.overdue || list.isDueToday) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (list.interval == 'daily')
+                    Chip(label: Text(AppLocalizations.of(context)!.checklistIntervalDaily)),
+                  if (list.interval == 'weekly')
+                    Chip(label: Text(AppLocalizations.of(context)!.checklistIntervalWeekly)),
+                  if (list.interval == 'monthly')
+                    Chip(label: Text(AppLocalizations.of(context)!.checklistIntervalMonthly)),
+                  if (list.overdue)
+                    Chip(
+                      avatar: const Icon(Icons.warning_amber_rounded, size: 18),
+                      label: Text(AppLocalizations.of(context)!.checklistOverdue),
+                      backgroundColor: scheme.errorContainer,
+                    )
+                  else if (list.isDueToday)
+                    Chip(
+                      label: Text(AppLocalizations.of(context)!.checklistDueToday),
+                    ),
+                ],
+              ),
+            ],
             if (list.description.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(

@@ -1,10 +1,11 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wachbuch_mobile/security/secure_storage.dart';
 
 /// Persists server URL (prefs) and API token (secure storage).
 class SessionStore {
   SessionStore({FlutterSecureStorage? secureStorage})
-    : _secure = secureStorage ?? const FlutterSecureStorage();
+    : _secure = secureStorage ?? createWachbuchSecureStorage();
 
   static const _urlKey = 'wachbuch_server_url';
   static const _tokenKey = 'wachbuch_api_token';

@@ -111,6 +111,8 @@ android {
         checkReleaseBuilds = true
         warningsAsErrors = true
         lintConfig = file("lint.xml")
+        // See lint.xml — AGP 9.3 BidirectionalTextDetector / JDK pairing.
+        disable += "BidiSpoofing"
         htmlReport = true
         textReport = true
     }

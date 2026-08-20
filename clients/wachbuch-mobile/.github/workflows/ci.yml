@@ -23,6 +23,16 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Verify committed dependency lock
+        run: |
+          set -euo pipefail
+          if ! git diff --exit-code -- pubspec.lock; then
+            echo "pubspec.lock is stale. Commit the exact lock produced by flutter pub get." >&2
+            echo "--- RESOLVED PUBSPEC LOCK START ---"
+            cat pubspec.lock
+            echo "--- RESOLVED PUBSPEC LOCK END ---"
+            exit 1
+          fi
       - name: Generate localizations
         run: flutter gen-l10n
       - run: flutter analyze
@@ -37,7 +47,8 @@ jobs:
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
-          java-version: "17"
+          # AGP 9.3.x Android Lint calls List.removeLast() (JDK 21 API).
+          java-version: "21"
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable

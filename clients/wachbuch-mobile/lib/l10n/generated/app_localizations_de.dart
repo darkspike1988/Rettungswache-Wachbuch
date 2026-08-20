@@ -23,6 +23,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get commonSwitch => 'Wechseln';
 
   @override
+  String get commonSave => 'Speichern';
+
+  @override
+  String get commonClose => 'Schließen';
+
+  @override
+  String get commonRetry => 'Erneut versuchen';
+
+  @override
   String get noticeSessionExpired =>
       'Ihre Anmeldung ist abgelaufen. Bitte erneut anmelden.';
 
@@ -93,7 +102,217 @@ class AppLocalizationsDe extends AppLocalizations {
   String get moduleChecklistsSubtitle => 'Punkte abhaken und abschließen';
 
   @override
+  String get moduleDefectsTitle => 'Mängel';
+
+  @override
+  String get moduleDefectsSubtitle => 'Offene Punkte mit Owner und Frist';
+
+  @override
+  String get moduleAssetsTitle => 'Geräte';
+
+  @override
+  String get moduleAssetsSubtitle => 'Fahrzeug- und Gerätestatus der Wache';
+
+  @override
+  String get moduleReportsTitle => 'Auswertung';
+
+  @override
+  String get moduleReportsSubtitle =>
+      'Mängel, Fälligkeiten und Einsatzklar-Quote';
+
+  @override
   String get quickAccessTitle => 'Schnellzugriff';
+
+  @override
+  String get defectsTitle => 'Mängel';
+
+  @override
+  String get defectsHint =>
+      'Offene Punkte aus dem Wachalltag — Status und Zuständigkeit nachvollziehbar halten.';
+
+  @override
+  String get defectsEmpty => 'Keine Mängel für diesen Filter.';
+
+  @override
+  String get defectAdd => 'Mangel anlegen';
+
+  @override
+  String get defectCreateTitle => 'Neuen Mangel anlegen';
+
+  @override
+  String get defectTitleLabel => 'Titel';
+
+  @override
+  String get defectDescriptionLabel => 'Beschreibung';
+
+  @override
+  String get defectCategoryLabel => 'Kategorie';
+
+  @override
+  String get defectPriorityLabel => 'Priorität';
+
+  @override
+  String get defectAssetLabel => 'Bezug';
+
+  @override
+  String get defectOwnerLabel => 'Zuständig';
+
+  @override
+  String get defectOwnerSelf => 'Mir zuordnen';
+
+  @override
+  String get defectDueLabel => 'Frist';
+
+  @override
+  String get defectSetStatus => 'Status setzen';
+
+  @override
+  String get defectStatusWaiting => 'Wartend';
+
+  @override
+  String get defectCreateFailed => 'Mangel konnte nicht angelegt werden.';
+
+  @override
+  String get defectPhotosTitle => 'Fotos';
+
+  @override
+  String get defectPhotosHint =>
+      'Nur Zustandsbilder des Mangels. Keine Patienten- oder Einsatzdaten fotografieren.';
+
+  @override
+  String get defectPhotosEmpty => 'Noch keine Fotos.';
+
+  @override
+  String get defectAddPhoto => 'Foto hinzufügen';
+
+  @override
+  String get defectTakePhoto => 'Kamera';
+
+  @override
+  String get defectChoosePhoto => 'Fotomediathek';
+
+  @override
+  String get defectPhotoUploadFailed => 'Foto konnte nicht hochgeladen werden.';
+
+  @override
+  String get defectPhotoTooLarge => 'Das Bild darf maximal 2 MiB groß sein.';
+
+  @override
+  String get defectPhotoUploaded => 'Foto wurde hochgeladen.';
+
+  @override
+  String get assetsBoardTitle => 'Fahrzeug- & Gerätestatus';
+
+  @override
+  String get assetsScreenTitle => 'Geräte & Status';
+
+  @override
+  String get assetsEmpty => 'Keine Geräte oder Pools verfügbar.';
+
+  @override
+  String get assetStatusReady => 'Einsatzklar';
+
+  @override
+  String get assetStatusLimited => 'Eingeschränkt';
+
+  @override
+  String get assetStatusOob => 'Außer Betrieb';
+
+  @override
+  String get assetStatusWorkshop => 'Werkstatt';
+
+  @override
+  String get inventoryTitle => 'Schlüssel & Pools';
+
+  @override
+  String get inventoryHint =>
+      'Checkout / Checkin für Pool-Geräte und Schlüssel.';
+
+  @override
+  String get inventoryAvailable => 'Verfügbar';
+
+  @override
+  String get inventoryHolderLabel => 'Bei';
+
+  @override
+  String get inventoryCheckout => 'Ausgeben';
+
+  @override
+  String get inventoryCheckin => 'Zurückgeben';
+
+  @override
+  String get checklistIntervalDaily => 'Täglich';
+
+  @override
+  String get checklistIntervalWeekly => 'Wöchentlich';
+
+  @override
+  String get checklistIntervalMonthly => 'Monatlich';
+
+  @override
+  String get checklistDueToday => 'Fällig heute';
+
+  @override
+  String get checklistOverdue => 'Überfällig';
+
+  @override
+  String get checklistDueSection => 'Fällig heute / überfällig';
+
+  @override
+  String get reportsTitle => 'Auswertung';
+
+  @override
+  String get reportsHint =>
+      'Leichte Stationsübersicht ohne individuelle Leistungsbewertung.';
+
+  @override
+  String get reportsOpenDefects => 'Offene Mängel';
+
+  @override
+  String get reportsOverdueDefects => 'Mängel überfällig';
+
+  @override
+  String get reportsOverdueChecks => 'Checks überfällig';
+
+  @override
+  String get reportsAssetReady => 'Assets einsatzklar';
+
+  @override
+  String get reportsInventoryOut => 'Pools ausgegeben';
+
+  @override
+  String get reportsUnacked => 'Unquittierte Übergaben';
+
+  @override
+  String get reportsOldestOpen => 'Ältester offener Mangel';
+
+  @override
+  String get reportsDays => 'Tage';
+
+  @override
+  String get reportsByOwner => 'Offene Mängel nach Zuständigkeit';
+
+  @override
+  String get reportsNoOwner => 'Ohne Zuständigkeit';
+
+  @override
+  String get reportsPrivacyHint =>
+      'Diese Auswertung dient der Stationsorganisation, nicht zur Leistungsbewertung einzelner Beschäftigter.';
+
+  @override
+  String get handoverAckButton => 'Übernommen';
+
+  @override
+  String get handoverAckDone => 'Von Ihnen quittiert';
+
+  @override
+  String get handoverAckListTitle => 'Quittierungen';
+
+  @override
+  String get handoverAckEmpty => 'Noch nicht quittiert.';
+
+  @override
+  String get handoverAckFailed => 'Quittierung fehlgeschlagen.';
 
   @override
   String get handoverSearchHint => 'Übergaben durchsuchen';
@@ -315,11 +534,63 @@ class AppLocalizationsDe extends AppLocalizations {
       'Play-Store-Client: Verbindung nur zu Ihrem selbst gehosteten Server. Produktion: HTTPS erforderlich.';
 
   @override
+  String get setupDemoButton => 'Demo-Modus ausprobieren';
+
+  @override
+  String get setupDemoTitle => 'Demo-Modus wählen';
+
+  @override
+  String get setupDemoSubtitle =>
+      'Lokale Musterdaten ohne Server — für Rettungsdienst, Feuerwehr, FFW oder Polizei.';
+
+  @override
+  String get setupDemoRettungsdienst => 'Rettungsdienst';
+
+  @override
+  String get setupDemoRettungsdienstHint =>
+      'Schichtübergabe & Material auf der Rettungswache';
+
+  @override
+  String get setupDemoFeuerwehr => 'Feuerwehr';
+
+  @override
+  String get setupDemoFeuerwehrHint =>
+      'Gerätehaus, Fahrzeuge und Dienstübergabe';
+
+  @override
+  String get setupDemoFfw => 'Freiwillige Feuerwehr';
+
+  @override
+  String get setupDemoFfwHint =>
+      'Gerätehaus, Fahrzeuge und ehrenamtlicher Wachalltag';
+
+  @override
+  String get setupDemoPolizei => 'Polizei';
+
+  @override
+  String get setupDemoPolizeiHint => 'Wachalltag, Material und Dienstgruppe';
+
+  @override
+  String get demoBannerLabel => 'Demo-Modus';
+
+  @override
+  String get demoBannerRettungsdienst => 'Rettungsdienst';
+
+  @override
+  String get demoBannerFeuerwehr => 'Feuerwehr';
+
+  @override
+  String get demoBannerFfw => 'Freiwillige Feuerwehr';
+
+  @override
+  String get demoBannerPolizei => 'Polizei';
+
+  @override
   String get qrScanTitle => 'Server-QR scannen';
 
   @override
   String get qrScanCameraHint =>
-      'Die Kamera wird nur zum Lesen der Server-Adresse genutzt. Es werden keine Fotos gespeichert oder hochgeladen.';
+      'Die Kamera wird hier nur zum Lesen der Server-Adresse genutzt. Es werden dabei keine Fotos gespeichert oder hochgeladen.';
 
   @override
   String get qrScanInvalid => 'Kein gültiger Wachbuch-Server-QR.';
@@ -333,7 +604,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get qrCameraDialogMessage =>
-      'Wachbuch benötigt die Kamera ausschließlich, um den QR-Code mit der Server-Adresse Ihrer Wache zu scannen. Ohne Kamera können Sie die Adresse auch manuell eingeben.';
+      'Wachbuch benötigt die Kamera hier ausschließlich, um den QR-Code mit der Server-Adresse Ihrer Wache zu scannen. Ohne Kamera können Sie die Adresse auch manuell eingeben.';
 
   @override
   String get qrCameraContinue => 'Weiter';
@@ -386,4 +657,129 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get handoverEnumUnknown => 'Nicht angegeben';
+
+  @override
+  String get chatTitle => 'Wachenchat';
+
+  @override
+  String get chatSubtitle => 'Ende-zu-Ende verschlüsselt';
+
+  @override
+  String get chatSetupTitle => 'Chat-Schlüssel einrichten';
+
+  @override
+  String get chatSetupHint =>
+      'Lege eine Passphrase fest. Sie schützt deinen privaten Schlüssel und wird nie an den Server übertragen.';
+
+  @override
+  String get chatSetupAction => 'Schlüssel erstellen';
+
+  @override
+  String get chatUnlockTitle => 'Chat entsperren';
+
+  @override
+  String get chatUnlockHint =>
+      'Gib deine Passphrase ein, um verschlüsselte Nachrichten zu lesen und zu schreiben.';
+
+  @override
+  String get chatUnlockAction => 'Entsperren';
+
+  @override
+  String get chatPassphrase => 'Passphrase';
+
+  @override
+  String get chatWrongPassphrase =>
+      'Falsche Passphrase oder beschädigter Schlüssel.';
+
+  @override
+  String get chatComposeHint => 'Kurze Nachricht an die Wache …';
+
+  @override
+  String get chatSend => 'Senden';
+
+  @override
+  String get chatEmpty => 'Noch keine Nachrichten.';
+
+  @override
+  String get chatUnreadable =>
+      'Nachricht nicht lesbar (kein Schlüssel für dich).';
+
+  @override
+  String get chatLoadError => 'Chat konnte nicht geladen werden.';
+
+  @override
+  String get chatMe => 'Ich';
+
+  @override
+  String get groupsTitle => 'Gruppen';
+
+  @override
+  String get groupsSubtitle => 'Gruppen-Chats (Ende-zu-Ende)';
+
+  @override
+  String get groupsEmpty => 'Noch keine Gruppen.';
+
+  @override
+  String get groupsCreate => 'Gruppe erstellen';
+
+  @override
+  String get groupName => 'Gruppenname';
+
+  @override
+  String get groupMembers => 'Mitglieder';
+
+  @override
+  String get groupCreateAction => 'Erstellen';
+
+  @override
+  String get groupSelectMembers => 'Mitglieder auswählen';
+
+  @override
+  String get groupNoColleagues =>
+      'Keine Kolleginnen und Kollegen mit Schlüsseln verfügbar.';
+
+  @override
+  String get pinboardTitle => 'Pinnwand';
+
+  @override
+  String get pinboardSubtitle => 'Aushänge und Hinweise für die Wache';
+
+  @override
+  String get pinboardEmpty => 'Noch keine Aushänge an der Pinnwand.';
+
+  @override
+  String get pinboardCreate => 'Aushang anlegen';
+
+  @override
+  String get pinboardFieldTitle => 'Titel';
+
+  @override
+  String get pinboardFieldBody => 'Text';
+
+  @override
+  String get pinboardCategory => 'Art';
+
+  @override
+  String get pinboardPinned => 'Angepinnt';
+
+  @override
+  String get pinboardSave => 'Speichern';
+
+  @override
+  String get pinboardCancel => 'Abbrechen';
+
+  @override
+  String get pinboardCategoryInfo => 'Info';
+
+  @override
+  String get pinboardCategoryImportant => 'Wichtig';
+
+  @override
+  String get pinboardCategoryEvent => 'Termin/Hinweis';
+
+  @override
+  String get pinboardLoadError => 'Pinnwand konnte nicht geladen werden.';
+
+  @override
+  String get pinboardCreated => 'Aushang wurde angelegt.';
 }

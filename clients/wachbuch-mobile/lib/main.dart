@@ -3,14 +3,18 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:wachbuch_mobile/l10n/generated/app_localizations.dart';
+import 'package:wachbuch_mobile/api/api_cache.dart';
 import 'package:wachbuch_mobile/api/client.dart';
 import 'package:wachbuch_mobile/api/server_address.dart';
 import 'package:wachbuch_mobile/api/server_links.dart';
 import 'package:wachbuch_mobile/auth/session_store.dart';
+import 'package:wachbuch_mobile/demo/demo_api.dart';
+import 'package:wachbuch_mobile/demo/demo_profiles.dart';
 import 'package:wachbuch_mobile/screens/home_shell.dart';
 import 'package:wachbuch_mobile/screens/login_screen.dart';
 import 'package:wachbuch_mobile/screens/server_setup_screen.dart';
 import 'package:wachbuch_mobile/theme/app_theme.dart';
+import 'package:wachbuch_mobile/theme/high_contrast_theme.dart';
 import 'package:wachbuch_mobile/theme/solar_theme.dart';
 
 Future<void> main() async {
@@ -98,6 +102,10 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
     }
 
     if (token != null && await widget.store.isTokenExpired()) {
+      // Expired credentials must not retain their offline station snapshots.
+      if (url != null && url.isNotEmpty) {
+        await _clearCacheForSession(url, token);
+      }
       await widget.store.clearToken();
       token = null;
       _sessionNotice = 'Ihre Anmeldung ist abgelaufen. Bitte erneut anmelden.';
@@ -106,19 +114,33 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
     final initialLink = await widget.linkSource.getInitialLink();
     if (initialLink != null) {
       final linkedUrl = _parseLink(initialLink);
-      // Cold-start via deep link is intentional; confirm only for hot links.
-      if (linkedUrl != null &&
-          await _applyServerLink(linkedUrl, confirmIfNeeded: false)) {
+      if (linkedUrl != null && linkedUrl != url) {
+        // During bootstrap `_api` does not exist yet, so clear the persisted
+        // session cache directly before replacing a previously stored server.
+        if (url != null && url.isNotEmpty && token != null && token.isNotEmpty) {
+          await _clearCacheForSession(url, token);
+        }
+        await widget.store.clearAll();
+        await widget.store.writeServerUrl(linkedUrl);
         url = linkedUrl;
         token = null;
       }
+      // A cold-start link to the already configured server is a no-op: it must
+      // not revoke the current token or discard its offline snapshots.
     }
 
     if (!mounted) return;
     setState(() {
       _serverUrl = url;
       if (url != null && url.isNotEmpty && token != null && token.isNotEmpty) {
-        _api = WachbuchApi(baseUrl: url, token: token);
+        _api = createWachbuchApi(url, token: token);
+        _phase = _BootPhase.home;
+      } else if (url != null &&
+          url.isNotEmpty &&
+          DemoService.isDemoUrl(url)) {
+        // Resume demo without forcing a login form.
+        final service = DemoService.fromServerUrl(url)!;
+        _api = DemoWachbuchApi(profile: demoProfileFor(service));
         _phase = _BootPhase.home;
       } else if (url != null && url.isNotEmpty) {
         _phase = _BootPhase.login;
@@ -139,6 +161,23 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
     } on ArgumentError {
       return null;
     }
+  }
+
+  Future<void> _clearCacheForSession(String baseUrl, String token) async {
+    if (DemoService.isDemoUrl(baseUrl) || token.isEmpty) return;
+    try {
+      await SecureApiCache.forSession(baseUrl: baseUrl, token: token).clear();
+    } catch (_) {
+      // Logout/server changes must still complete if secure-storage cleanup
+      // encounters an OS/keychain failure. The token is removed regardless.
+    }
+  }
+
+  Future<void> _clearCurrentApiCache() async {
+    final api = _api;
+    final token = api?.token;
+    if (api == null || token == null || token.isEmpty) return;
+    await _clearCacheForSession(api.baseUrl, token);
   }
 
   Future<bool> _applyServerLink(
@@ -170,6 +209,7 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
       );
       if (confirmed != true) return false;
     }
+    await _clearCurrentApiCache();
     await widget.store.clearAll();
     await widget.store.writeServerUrl(url);
     return true;
@@ -211,11 +251,33 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
   }
 
   Future<void> _onServerReady(String url) async {
+    if (DemoService.isDemoUrl(url)) {
+      final service = DemoService.fromServerUrl(url)!;
+      await _onDemoReady(service);
+      return;
+    }
     await widget.store.writeServerUrl(url);
     if (!mounted) return;
     setState(() {
       _serverUrl = url;
       _phase = _BootPhase.login;
+    });
+  }
+
+  Future<void> _onDemoReady(DemoService service) async {
+    final profile = demoProfileFor(service);
+    final token = '$demoTokenPrefix${service.id}';
+    await widget.store.writeServerUrl(service.serverUrl);
+    await widget.store.writeToken(
+      token,
+      expiresAt: DateTime.now().add(const Duration(days: 7)),
+    );
+    if (!mounted) return;
+    setState(() {
+      _serverUrl = service.serverUrl;
+      _api = DemoWachbuchApi(profile: profile, token: token);
+      _phase = _BootPhase.home;
+      _sessionNotice = null;
     });
   }
 
@@ -229,13 +291,25 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
     if (!mounted) return;
     setState(() {
       _serverUrl = url;
-      _api = WachbuchApi(baseUrl: url, token: token);
+      _api = createWachbuchApi(url, token: token);
       _phase = _BootPhase.home;
       _sessionNotice = null;
     });
   }
 
+  Future<void> _revokeCurrentTokenBestEffort() async {
+    final api = _api;
+    if (api == null) return;
+    try {
+      await api.revokeCurrentToken();
+    } catch (_) {
+      // Local logout must succeed even if the server is unreachable.
+    }
+  }
+
   Future<void> _logout({String? notice}) async {
+    await _revokeCurrentTokenBestEffort();
+    await _clearCurrentApiCache();
     await widget.store.clearToken();
     if (!mounted) return;
     setState(() {
@@ -248,6 +322,8 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
   }
 
   Future<void> _changeServer() async {
+    await _revokeCurrentTokenBestEffort();
+    await _clearCurrentApiCache();
     await widget.store.clearAll();
     if (!mounted) return;
     setState(() {
@@ -268,6 +344,7 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
         home = ServerSetupScreen(
           store: widget.store,
           onServerReady: _onServerReady,
+          onDemoReady: _onDemoReady,
         );
       case _BootPhase.login:
         home = LoginScreen(
@@ -294,6 +371,8 @@ class _WachbuchAppState extends State<WachbuchApp> with WidgetsBindingObserver {
       supportedLocales: AppLocalizations.supportedLocales,
       theme: buildWachbuchTheme(Brightness.light),
       darkTheme: buildWachbuchTheme(Brightness.dark),
+      highContrastTheme: HighContrastTheme.light(),
+      highContrastDarkTheme: HighContrastTheme.dark(),
       themeMode: _themeMode,
       home: home,
     );

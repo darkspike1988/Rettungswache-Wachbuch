@@ -1,40 +1,41 @@
 version: 2
 updates:
-  - package-ecosystem: pub
-    directory: /
+  # Flutter dependencies
+  - package-ecosystem: "pub"
+    directory: "/"
     schedule:
-      interval: weekly
-      day: monday
-      time: "05:00"
-      timezone: Europe/Berlin
-    open-pull-requests-limit: 5
+      interval: "daily"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "flutter"
+    reviewers:
+      - "darkspike1988"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # v11 ist durch docs/SECURE-STORAGE-MIGRATION-1.0.md blockiert: erst
+      # 10.x auf echten Geräten verifizieren, danach eigener Migrations-Change.
+      - dependency-name: "flutter_secure_storage"
     groups:
-      flutter-dependencies:
+      flutter:
+        patterns:
+          - "flutter"
+          - "flutter_*"
+        update-types: ["minor", "patch"]
+      security:
         patterns:
           - "*"
+        update-types: ["security"]
 
-  - package-ecosystem: gradle
-    directory: /android
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
-      day: monday
-      time: "05:15"
-      timezone: Europe/Berlin
-    open-pull-requests-limit: 5
-    groups:
-      android-dependencies:
-        patterns:
-          - "*"
-
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-      day: monday
-      time: "05:30"
-      timezone: Europe/Berlin
-    open-pull-requests-limit: 5
-    groups:
-      github-actions:
-        patterns:
-          - "*"
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "actions"

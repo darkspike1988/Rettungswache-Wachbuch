@@ -1,43 +1,119 @@
-# Wachbuch Client – historischer Server-Spiegel
+# Wachbuch Client (AGPL)
 
-> **Quelle der Wahrheit ist ausschließlich**
-> https://github.com/darkspike1988/Wachbuch-Client
->
-> Dieser Ordner ist ein historischer Entwicklungs-Spiegel. Er darf nicht zurück
-> in das Standalone-Repository publiziert werden und kann hinter dem aktuellen
-> Mobile-Client zurückliegen.
+Open-Source-Begleit-App für das selbst gehostete **[Wachbuch](https://github.com/darkspike1988/Rettungswache-Wachbuch)** auf iOS und Android.
 
-Der produktive Flutter-Client für iOS und Android wird im eigenständigen
-`Wachbuch-Client`-Repository entwickelt, getestet und veröffentlicht. Server und
-Client koppeln sich über den versionierten `/api/v1/`-Vertrag, nicht über einen
-Datei-Mirror.
+| | |
+| --- | --- |
+| **Client** | https://github.com/darkspike1988/Wachbuch-Client |
+| **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch |
+| **Lizenz** | AGPL-3.0-or-later |
+| **API** | `/api/v1/` · Token-Auth |
+| **App-Version** | `1.0.0+12` |
+| **Produktiv-Paarung** | Server `0.16.x` |
+| **E2E-Abnahme** | [docs/E2E-WACHALLTAG.md](docs/E2E-WACHALLTAG.md) |
+| **Store-Release** | [docs/STORE-RELEASE-1.0.md](docs/STORE-RELEASE-1.0.md) |
+| **Secure-Storage-Migration** | [docs/SECURE-STORAGE-MIGRATION-1.0.md](docs/SECURE-STORAGE-MIGRATION-1.0.md) |
+| **Roadmap** | [ROADMAP.md](ROADMAP.md) |
 
-## Aktuelles Versionspaar
+## Quelle der Wahrheit
 
-| Server | Client | Vertrag |
-| --- | --- | --- |
-| 0.16.x | 0.6.x | Realer Wachalltag: Mängel, Assets, Schlüssel/Pools, Übergabe-Quittierung, wiederkehrende Checklisten, authentifizierte Mängelfotos, Reports und Offline-Lesen |
-| 0.15.x | 0.5.1+ | vorheriger Kernvertrag |
-| 0.14.1 | 0.5.0+ | API v1, App-Tokens, MFA |
+Dieses Repository ist die **kanonische Quelle** für den Flutter-/iOS-/Android-Client. Der historische Ordner `clients/wachbuch-mobile/` im Server-Repository darf diesen Stand nicht überschreiben.
 
-## Entwicklungsregel
+## Was 1.0 kann
 
-1. Mobile-Änderungen direkt in `darkspike1988/Wachbuch-Client` umsetzen.
-2. Dort `flutter analyze`, `flutter test`, Android-, iOS- und Security-CI bestehen lassen.
-3. Serveränderungen gegen den dokumentierten API-Vertrag testen.
-4. Diesen Spiegel niemals als neueren Clientstand behandeln.
-
-Das frühere Skript `scripts/publish-mobile-client-repo.sh`, das diesen Ordner mit
-`force-with-lease` auf das Standalone-Repository schreiben konnte, ist aus
-Sicherheitsgründen deaktiviert. Damit kann ein veralteter Mirror keine neueren
-Client-Commits mehr überschreiben.
+- Serveradresse oder QR verbinden; App-Token sicher in Keychain/Keystore speichern
+- Android Secure Storage 10.x mit RSA-OAEP/SHA-256 + AES-GCM und crash-resistenter Migration aus 9.x
+- strukturierter API-Fehlervertrag mit `code`, `message` und `correlation_id`
+- MFA-Fehler `mfa_required` und `mfa_setup_required` sauber behandeln
+- Übergaben suchen/filtern, Details öffnen und pro Benutzer quittieren
+- Übergabe direkt als echten Mangel übernehmen
+- Mängel anlegen, priorisieren, zuordnen, terminieren und Status ändern
+- authentifizierte Mängelfotos aus Kamera/Mediathek hoch- und herunterladen
+- Foto-Schutz: JPEG/PNG/WebP, 2 MiB je Datei; aktueller Server normalisiert gespeicherte Mängelfotos zusätzlich metadata-frei
+- Fahrzeug-/Gerätestatus anzeigen und bei berechtigter Rolle ändern
+- Schlüssel-/Poolgeräte ausgeben und zurückgeben
+- wiederkehrende Checklisten mit täglicher/wöchentlicher/monatlicher Fälligkeit
+- Auswertung für offene/überfällige Mängel, Checks, Einsatzklarquote, Pools und Quittierungen
+- token- und servergebundener verschlüsselter Offline-Lesecache
+- Offline-Fallback nur bei echten Netzwerkfehlern; 401/403 werden nie durch Cache verdeckt
+- Demo-Profile für Rettungsdienst, Feuerwehr, Freiwillige Feuerwehr und Polizei
+- Phone: Bottom-Navigation · Tablet: NavigationRail + Grid
+- Material Design 3, Dark/Light und große Textskalierung
+- Deutsch/Englisch für produktive Wachalltag-Oberflächen
+- direkt vor der Anmeldung erreichbare Datenschutzinformationen für Store-Compliance
 
 ## Produktgrenze
 
-Der Mobile-Client unterstützt den Wachalltag einer Wache. Patienten-, Einsatz-,
-Alarmierungs-, ePCR-, Personalakten- und vergleichbare sensible Fachdaten sind
-nicht Teil dieses Vertrages.
+Wachbuch ist ein Werkzeug für den **Stations-/Wachalltag**. Nicht Teil des Modells sind insbesondere Patienten-, ePCR-, Einsatz-, Alarmierungs-, ELS-, Personalakten- oder vergleichbare sensible Fachdaten. Wachbuch ist keine offizielle Behörden-App und kein Notrufsystem.
+
+## Landingpage & Web-Demo
+
+```bash
+cd landing && python3 -m http.server 4173
+# Landing → http://127.0.0.1:4173/
+# Webapp  → http://127.0.0.1:4173/app/
+```
+
+Die Demo dient als Produkt-/UX-Vorschau. Die entsprechenden Kernfunktionen Mängel, Geräte, Inventar, Quittierungen, wiederkehrende Checks, Fotos und Auswertung besitzen in `1.0` reale Server-Endpunkte.
+
+## Lokaler Start
+
+```bash
+git clone https://github.com/darkspike1988/Wachbuch-Client.git
+cd Wachbuch-Client
+flutter pub get
+flutter test
+flutter run --flavor internal
+```
+
+Auf iOS:
+
+```bash
+flutter pub get
+flutter build ios --simulator --debug
+```
+
+## Android Internal
+
+Die interne Variante besitzt die separate Paket-ID `de.wachbuch.mobile.internal` und kann parallel zur Produktions-App installiert werden:
+
+```bash
+./scripts/build-apk.sh
+```
+
+## Android Production
+
+Ein Produktionsbuild benötigt einen eigenen Upload-Key und fällt niemals auf einen Debug-Key zurück:
+
+```bash
+cp android/key.properties.example android/key.properties
+BUILD_NAME=1.0.0 BUILD_NUMBER=12 bash scripts/build-aab.sh
+```
+
+Der Release-Workflow erzeugt zusätzlich Hashes, Zertifikatsberichte, Obfuskationssymbole und eine CycloneDX-SBOM. Store-Builds werden ausschließlich aus `main` erzeugt und müssen exakt zur Version in `pubspec.yaml` passen.
+
+## Server-Kopplung
+
+Der Vertrag liegt im Server-Repository unter `docs/API.md`, `docs/CLIENT.md` und `docs/openapi.yaml`. Die Kopplung erfolgt ausschließlich über den versionierten API-Vertrag – nicht durch Kopieren eines Client-Quellbaums in das Server-Repository.
+
+## Qualitätsgates
+
+Vor Freigabe müssen mindestens bestehen:
+
+- `flutter analyze`
+- vollständige Flutter-Tests
+- Android Internal APKs
+- Production-AAB ohne Publishing-Credentials
+- Android Lint
+- Berechtigungs-/Signatur-/SDK-/Größen-Gates
+- SBOM-Erzeugung
+- iOS Simulator/Release-Build ohne Signierung
+- Xcode 26+ und iOS-26-SDK+
+- Dependency-Security
+- reales Upgrade 9.x → 10.3.1 für Secure Storage vor breitem Rollout
+
+Store-spezifisch siehe [docs/STORE-RELEASE-1.0.md](docs/STORE-RELEASE-1.0.md), [docs/STORE-METADATA.md](docs/STORE-METADATA.md), [docs/PRIVACY-POLICY.md](docs/PRIVACY-POLICY.md), [docs/PLAY-STORE.md](docs/PLAY-STORE.md), [docs/IOS-TESTFLIGHT.md](docs/IOS-TESTFLIGHT.md) und [docs/SECURE-STORAGE-MIGRATION-1.0.md](docs/SECURE-STORAGE-MIGRATION-1.0.md).
 
 ## Rechtliches
 
-AGPL-3.0-or-later – siehe `LICENSE` im kanonischen Client-Repository.
+AGPL-3.0-or-later – siehe `LICENSE`.
