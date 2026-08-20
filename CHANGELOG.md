@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Vorführ-Folien unter `docs/praesentation/` (Live-HTML plus optionales lokales MP4).
+  Ambient-Musik ist original erzeugt, keine fremden Titel.
+
 - Web folgt `prefers-contrast: more` mit derselben Schwarz/Weiß-Palette wie
   die Flutter-HighContrast-Themes.
 

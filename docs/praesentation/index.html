@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wachbuch – Vorführung</title>
+  <style>
+    @font-face {
+      font-family: "Source Sans 3";
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+      src: url("../../core/static/core/fonts/SourceSans3-Regular.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Source Sans 3";
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+      src: url("../../core/static/core/fonts/SourceSans3-Semibold.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Source Sans 3";
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+      src: url("../../core/static/core/fonts/SourceSans3-Bold.woff2") format("woff2");
+    }
+    :root {
+      --bg: #f7f9fc;
+      --brand: #0d47a1;
+      --brand-deep: #082e63;
+      --ink: #17343d;
+      --text: #172033;
+      --muted: #445066;
+      --line: #dce4ef;
+      --urgent: #dc2626;
+      --important: #f59e0b;
+      --done: #16a34a;
+      --accent: #2563eb;
+      --surface: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Source Sans 3", "Segoe UI", sans-serif;
+    }
+    body { overflow: hidden; }
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 6vh 8vw;
+      opacity: 0;
+      transform: translateY(28px) scale(.985);
+      pointer-events: none;
+      transition: opacity .7s ease, transform .8s cubic-bezier(.2,.8,.2,1);
+    }
+    .slide.is-on {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+      z-index: 2;
+    }
+    .kicker {
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--brand);
+      margin: 0 0 1rem;
+    }
+    h1, h2 {
+      margin: 0 0 1rem;
+      color: var(--ink);
+      line-height: 1.12;
+      font-weight: 700;
+    }
+    h1 { font-size: clamp(2.4rem, 5.4vw, 4.4rem); max-width: 16ch; }
+    h2 { font-size: clamp(2rem, 4vw, 3.2rem); max-width: 22ch; }
+    .lead {
+      font-size: clamp(1.15rem, 2vw, 1.55rem);
+      max-width: 42rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(105deg, rgba(8,46,99,.88), rgba(13,71,161,.45)),
+        url("../../core/static/core/landing-hero.jpg") center/cover;
+      transform: scale(1.08);
+      animation: drift 18s ease-in-out infinite alternate;
+    }
+    .hero-bg + .copy { position: relative; z-index: 1; color: #fff; }
+    .hero .kicker, .hero h1, .hero .lead { color: #fff; }
+    .hero h1 { max-width: 14ch; }
+    @keyframes drift { from { transform: scale(1.08) translateX(0); } to { transform: scale(1.14) translateX(-2%); } }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+      gap: 1.1rem;
+      margin-top: 1.6rem;
+      max-width: 70rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      padding: 1.15rem 1.2rem;
+      min-height: 8.5rem;
+      animation: rise .7s ease both;
+    }
+    .card:nth-child(2) { animation-delay: .08s; }
+    .card:nth-child(3) { animation-delay: .16s; }
+    .card:nth-child(4) { animation-delay: .24s; }
+    .card strong { display: block; color: var(--ink); font-size: 1.15rem; margin-bottom: .35rem; }
+    .card p { margin: 0; color: var(--muted); }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: none; }
+    }
+    .badges { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.4rem; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      min-height: 48px;
+      padding: 0 1rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-weight: 600;
+    }
+    .dot { width: .7rem; height: .7rem; border-radius: 50%; }
+    .dot.urgent { background: var(--urgent); }
+    .dot.important { background: var(--important); }
+    .dot.normal { background: var(--accent); }
+    .dot.done { background: var(--done); }
+    .phones {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+      align-items: stretch;
+    }
+    .phone {
+      width: 15rem;
+      border: 1px solid var(--line);
+      border-radius: 1.4rem;
+      padding: 1rem;
+      background: #fff;
+      box-shadow: 0 18px 40px rgba(8,46,99,.08);
+      animation: rise .8s ease both;
+    }
+    .phone h3 { margin: 0 0 .5rem; font-size: 1rem; color: var(--brand); }
+    .phone ul { margin: 0; padding-left: 1.1rem; color: var(--muted); }
+    .bar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .7rem 1.2rem calc(.7rem + env(safe-area-inset-bottom));
+      background: rgba(247,249,252,.92);
+      border-top: 1px solid var(--line);
+      z-index: 5;
+      font-size: .9rem;
+    }
+    .progress {
+      height: 4px;
+      background: var(--line);
+      flex: 1;
+      margin: 0 1rem;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--brand);
+      transition: width .4s ease;
+    }
+    button {
+      min-height: 48px;
+      min-width: 48px;
+      border: 1px solid var(--brand);
+      background: var(--brand);
+      color: #fff;
+      border-radius: .7rem;
+      font: inherit;
+      font-weight: 700;
+      padding: 0 1rem;
+      cursor: pointer;
+    }
+    button.ghost {
+      background: transparent;
+      color: var(--brand);
+    }
+    .no { color: var(--urgent); font-weight: 700; }
+    .yes { color: var(--done); font-weight: 700; }
+    .split { display: grid; grid-template-columns: 1.1fr .9fr; gap: 2rem; align-items: center; }
+    @media (max-width: 900px) {
+      .split, .phones { display: block; }
+      .phone { margin-top: 1rem; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <section class="slide hero is-on" data-title="Titel">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="copy">
+        <p class="kicker">Wachbuch</p>
+        <h1>Wachorganisation, die im Schichtalltag lesbar bleibt.</h1>
+        <p class="lead">Übergaben, Aufgaben und Teamrollen für Rettungswache, Feuerwehr und vergleichbare Dienste. Selbst gehostet. Mobil auf iOS und Android.</p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Grenze">
+      <p class="kicker">Produktgrenze</p>
+      <h2>Für die Wache. Nicht für den Einsatz.</h2>
+      <p class="lead">Wachbuch organisiert interne Abläufe hinter der Fahrzeughalle. Es ist kein Leitstellen-, Alarmierungs-, Diagnose- oder Patientensystem.</p>
+      <div class="grid">
+        <article class="card"><strong class="yes">Im Umfang</strong><p>Übergaben, Mängel, Checklisten, Geräte, Schlüssel, Kalender, Kasse, Team.</p></article>
+        <article class="card"><strong class="no">Nicht im Umfang</strong><p>Alarmierung, Einsatzleitung, eProtokoll, Patienten- oder Vorgangsdaten.</p></article>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Organisationen">
+      <p class="kicker">Für den öffentlichen Dienst</p>
+      <h2>Eine Oberfläche, vier Wachprofile.</h2>
+      <div class="grid">
+        <article class="card"><strong>Rettungsdienst</strong><p>Schichtübergabe, Fahrzeugstatus, wiederkehrende Checks.</p></article>
+        <article class="card"><strong>Berufsfeuerwehr</strong><p>Mängel, Pools, Quittierung – feldlesbar, nicht bunt.</p></article>
+        <article class="card"><strong>Freiwillige Feuerwehr</strong><p>Klar auf dem Handy, auch nach der Alarmierung auf der Wache.</p></article>
+        <article class="card"><strong>Polizei / vergleichbar</strong><p>Interne Wachenabläufe ohne Vorgangs- oder Einsatzdaten.</p></article>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Alltag">
+      <p class="kicker">Wachalltag</p>
+      <h2>Was die Schicht wirklich braucht.</h2>
+      <div class="badges">
+        <span class="badge"><i class="dot urgent"></i> Dringend – sofort</span>
+        <span class="badge"><i class="dot important"></i> Wichtig – zeitnah</span>
+        <span class="badge"><i class="dot normal"></i> Normal – regulär</span>
+        <span class="badge"><i class="dot done"></i> Erledigt</span>
+      </div>
+      <div class="grid">
+        <article class="card"><strong>Übergaben</strong><p>Versioniert, priorisiert, stationsbezogen. Farbe plus ausgeschriebener Status.</p></article>
+        <article class="card"><strong>Tagesaufgaben</strong><p>Wandbogen digital: Grün, Gelb, Blau. 48-Pixel-Ziele mit Handschuhen.</p></article>
+        <article class="card"><strong>Mängel &amp; Geräte</strong><p>Foto nur am Mangel, kein allgemeines Archiv. Pools und Schlüssel nachvollziehbar.</p></article>
+        <article class="card"><strong>Checklisten</strong><p>Wiederkehrend, quittiert, auditierbar. Keine stillen Änderungen.</p></article>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Web und Apps">
+      <p class="kicker">Drei Oberflächen, ein Vertrag</p>
+      <h2>Web-PWA, iOS und Android.</h2>
+      <div class="phones">
+        <div class="phone">
+          <h3>Web-PWA</h3>
+          <ul>
+            <li>Übersicht, Übergaben, Kalender, Mehr</li>
+            <li>Installierbar, offline lesbar</li>
+            <li>Ohne CDN, ohne Tracking-Cookies</li>
+          </ul>
+        </div>
+        <div class="phone" style="animation-delay:.12s">
+          <h3>iOS / iPadOS</h3>
+          <ul>
+            <li>Bundle <code>de.wachbuch.wachbuchMobile</code></li>
+            <li>TestFlight-fähig, VoiceOver-tauglich</li>
+            <li>Solar-Hell/Dunkel + High Contrast</li>
+          </ul>
+        </div>
+        <div class="phone" style="animation-delay:.24s">
+          <h3>Android</h3>
+          <ul>
+            <li>Paket <code>de.wachbuch.mobile</code></li>
+            <li>Signiertes AAB, Play-interner Test</li>
+            <li>Dieselben Tokens wie die Web-PWA</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Sicherheit">
+      <p class="kicker">Vertrauen</p>
+      <h2>Selbst gehostet. Nachvollziehbar. Ohne Tracking.</h2>
+      <div class="grid">
+        <article class="card"><strong>Eigene Infrastruktur</strong><p>Docker, TLS-Proxy, lokale Konten. Kein gemeinsames Cloud-Konto für die Wache.</p></article>
+        <article class="card"><strong>Rollen &amp; Station</strong><p>Jede Fachabfrage bleibt an die eigene Wache gebunden. Auditoren ohne Freitexte.</p></article>
+        <article class="card"><strong>Audit append-only</strong><p>Kasse, Checklisten und Übergaben werden korrigiert durch neue Sätze, nicht durch Stille.</p></article>
+        <article class="card"><strong>Chat verschlüsselt</strong><p>Gespeicherter Ciphertext ist geschützt. Der Webclient bleibt Teil des Vertrauensmodells.</p></article>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Arbeitgeber">
+      <p class="kicker">Für die Dienststelle</p>
+      <h2>Betrieb, der sich gegenüber Datenschutz vertreten lässt.</h2>
+      <p class="lead">Verantwortliche Stelle, VVT und Mitbestimmung bleiben bei euch. Das Produkt liefert die technische Baseline: keine Patientenfelder, nur notwendige Cookies, dokumentierte Löschpfade.</p>
+      <div class="grid">
+        <article class="card"><strong>Datenschutz</strong><p>Keine Analytics, kein Scoring, AI Act: kein KI-System im Produktkern.</p></article>
+        <article class="card"><strong>Store-Kandidat 1.0</strong><p>CI-Gates für iOS und Android sind da. Konten und Signatur liegen bei der Dienststelle.</p></article>
+      </div>
+    </section>
+
+    <section class="slide hero" data-title="Schluss">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="copy">
+        <p class="kicker">Nächster Schritt</p>
+        <h1>Vorführen. Pilotieren. Selbst hosten.</h1>
+        <p class="lead">Demo-Modus mit Musterwache, oder eure Instanz hinter dem eigenen Proxy. Wachbuch bleibt ein Wachenbuch – und wird keins für den Einsatz.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="bar">
+    <button class="ghost" type="button" id="prev" aria-label="Vorherige Folie">Zurück</button>
+    <div class="progress" aria-hidden="true"><span id="bar"></span></div>
+    <span id="count">1 / 8</span>
+    <button type="button" id="music" aria-pressed="false">Musik</button>
+    <button type="button" id="next">Weiter</button>
+  </div>
+
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    const bar = document.getElementById("bar");
+    const count = document.getElementById("count");
+    let i = 0;
+    let timer = null;
+    const AUTO_MS = 6200;
+
+    function show(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle("is-on", idx === i));
+      bar.style.width = ((i + 1) / slides.length * 100) + "%";
+      count.textContent = (i + 1) + " / " + slides.length;
+      document.title = "Wachbuch – " + (slides[i].dataset.title || "Vorführung");
+    }
+
+    function next() { show(i + 1); }
+    function prev() { show(i - 1); }
+
+    function armAuto() {
+      clearInterval(timer);
+      if (new URLSearchParams(location.search).get("autoplay") === "1") {
+        timer = setInterval(next, AUTO_MS);
+      }
+    }
+
+    document.getElementById("next").addEventListener("click", () => { next(); armAuto(); });
+    document.getElementById("prev").addEventListener("click", () => { prev(); armAuto(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); armAuto(); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); prev(); armAuto(); }
+    });
+
+    /* Original, kurzes Ambient – keine fremden Aufnahmen. */
+    let audioCtx = null;
+    let playing = false;
+    function startMusic() {
+      if (playing) return;
+      audioCtx = audioCtx || new AudioContext();
+      const master = audioCtx.createGain();
+      master.gain.value = 0.07;
+      master.connect(audioCtx.destination);
+      const notes = [196, 246.94, 293.66, 329.63, 392, 329.63, 293.66, 246.94];
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        g.gain.value = 0;
+        osc.connect(g);
+        g.connect(master);
+        const t0 = audioCtx.currentTime + idx * 0.85;
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(0.22, t0 + 0.12);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.6);
+        osc.start(t0);
+        osc.stop(t0 + 1.7);
+      });
+      const pad = audioCtx.createOscillator();
+      const pg = audioCtx.createGain();
+      pad.type = "triangle";
+      pad.frequency.value = 98;
+      pg.gain.value = 0.04;
+      pad.connect(pg);
+      pg.connect(master);
+      pad.start();
+      playing = true;
+      document.getElementById("music").setAttribute("aria-pressed", "true");
+      setInterval(() => {
+        if (!playing) return;
+        startPhrase(audioCtx, master);
+      }, 6800);
+    }
+    function startPhrase(ctx, master) {
+      const seq = [261.63, 329.63, 392, 440, 392, 329.63];
+      seq.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        g.gain.value = 0;
+        osc.connect(g);
+        g.connect(master);
+        const t0 = ctx.currentTime + idx * 0.95;
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(0.18, t0 + 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.4);
+        osc.start(t0);
+        osc.stop(t0 + 1.5);
+      });
+    }
+    document.getElementById("music").addEventListener("click", () => {
+      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+      startMusic();
+    });
+
+    if (new URLSearchParams(location.search).get("record") === "1") {
+      document.querySelector(".bar").style.display = "none";
+    }
+    if (new URLSearchParams(location.search).get("autoplay") === "1") {
+      show(0);
+      armAuto();
+      window.addEventListener("pointerdown", startMusic, { once: true });
+    }
+  </script>
+</body>
+</html>
