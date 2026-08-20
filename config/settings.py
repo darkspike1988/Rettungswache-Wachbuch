@@ -47,18 +47,24 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "core.middleware.CorrelationIdMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
     "core.middleware.ClientIPMiddleware",
     "core.middleware.CorrelationIdMiddleware",
-    "django_prometheus.middleware.PrometheusAfterMiddleware",
     "axes.middleware.AxesMiddleware",
+    "core.metrics.PrometheusMiddleware",
 ]
 
 # Optional Redis cache. Keep serialized values non-executable: django-redis uses
 # pickle by default, so Wachbuch selects the built-in JSON serializer instead.
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
 
 if REDIS_URL:
     CACHES = {
@@ -152,7 +158,7 @@ AXES_RESET_ON_SUCCESS = True
 # Rate Limiting für API-Endpunkte (django-ratelimit)
 # Industriestandard: OWASP ASVS V5.3
 RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = True  # Nutze Django Cache (Redis oder Datenbank)
+RATELIMIT_USE_CACHE = 'default'  # Nutze Django Cache (Redis oder Datenbank)
 RATELIMIT_CACHE_PREFIX = 'rl_'
 
 # API-spezifische Rate-Limits (pro IP oder User)
@@ -276,12 +282,7 @@ FEED_ALLOWED_HOSTS = {
     if value.strip()
 }
 
-# Validierung der FEED_ALLOWED_HOSTS (OWASP Input Validation)
-try:
-    from core.feed_sync import validate_feed_allowed_hosts
-    validate_feed_allowed_hosts()
-except ValueError as e:
-    raise ImproperlyConfigured(str(e))
+
 FEED_MAX_BYTES = 2_000_000
 WASTE_CALENDAR_MAX_BYTES = 1_048_576
 RETENTION_FEED_DAYS = int(os.getenv("RETENTION_FEED_DAYS", "90") or "0")

@@ -19,7 +19,7 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
-from ratelimit.decorators import ratelimit
+from django_ratelimit.decorators import ratelimit
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -58,7 +58,8 @@ API_VERSION = "v1"
 def api_ratelimit_anonymous(view):
     """Rate-Limit für anonyme API-Aufrufe: 100/Stunde pro IP."""
     return ratelimit(
-        key=lambda r: r.META.get('REMOTE_ADDR'),
+        group='anonymous',
+        key=lambda group, request: request.META.get('REMOTE_ADDR'),
         rate=settings.RATELIMIT_API_ANONYMOUS,
         method='GET',
         block=True
@@ -68,7 +69,8 @@ def api_ratelimit_anonymous(view):
 def api_ratelimit_authenticated(view):
     """Rate-Limit für authentifizierte API-Aufrufe: 1000/Stunde pro User."""
     return ratelimit(
-        key=lambda r: r.user.pk if r.user.is_authenticated else r.META.get('REMOTE_ADDR'),
+        group='authenticated',
+        key=lambda group, request: request.user.pk if request.user.is_authenticated else request.META.get('REMOTE_ADDR'),
         rate=settings.RATELIMIT_API_AUTHENTICATED,
         method='ALL',
         block=True
@@ -78,7 +80,8 @@ def api_ratelimit_authenticated(view):
 def api_ratelimit_token(view):
     """Rate-Limit für Token-Erzeugung: 10/Minute pro IP."""
     return ratelimit(
-        key=lambda r: r.META.get('REMOTE_ADDR'),
+        group='token',
+        key=lambda group, request: request.META.get('REMOTE_ADDR'),
         rate=settings.RATELIMIT_API_TOKEN,
         method='POST',
         block=True
