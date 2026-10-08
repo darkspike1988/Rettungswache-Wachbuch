@@ -6,9 +6,14 @@ info:
     Widerrufbare App-Tokens (`wb_…`) und stationsbezogene Rechte.
     Wachalltag umfasst Schichtübergaben, Mängel, Fahrzeug-/Gerätestatus,
     Checklisten, Schlüssel-/Pool-Geräte, Quittierungen und leichte Auswertung.
+    Zusätzliche, je Station aktivierbare Module: Pinnwand (`/pinnwand/`) sowie
+    der Ende-zu-Ende-verschlüsselte Nachrichtenbereich aus Wachenchat,
+    privaten Zweiergesprächen, Gruppenräumen und Secure Mail
+    (`/chat/*`, `/post/*`). Der Server speichert und liefert dabei nur
+    Ciphertext und Schlüsselumschläge aus; er kann Nachrichteninhalte nicht lesen.
     Patienten-, Einsatz-, Alarmierungs- und Vorgangsdaten sind ausdrücklich
     nicht Teil dieser API.
-  version: "1.2.2"
+  version: "1.3.0"
 servers:
   - url: /api/v1
     description: Relative to the Wachbuch origin
@@ -105,6 +110,33 @@ paths:
   /handovers/{id}/status/:
     post:
       summary: Set handover status
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Handover updated }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /uebergaben/:
+    get:
+      summary: German alias for GET /handovers/
+      responses:
+        "200": { description: Handover list }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      summary: German alias for POST /handovers/
+      responses:
+        "201": { description: Handover created }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /uebergaben/{id}/:
+    get:
+      summary: German alias for GET /handovers/{id}/
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Handover detail }
+        "404": { $ref: "#/components/responses/Error" }
+  /uebergaben/{id}/status/:
+    post:
+      summary: German alias for POST /handovers/{id}/status/
       parameters: [{$ref: "#/components/parameters/IntegerId"}]
       responses:
         "200": { description: Handover updated }
@@ -348,6 +380,191 @@ paths:
       summary: Lightweight station Wachalltag report
       responses:
         "200": { description: Aggregated counts and readiness percentage }
+  /chat/identity/:
+    get:
+      summary: Own E2EE key bundle for local unlock
+      description: Requires the station chat module and scope `read:chat`.
+      responses:
+        "200": { description: Key bundle, or configured=false while unset }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Register or replace the own E2EE identity
+      description: Scope `write:chat`. Replacing stored keys requires `replace=true`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CryptoIdentityWrite" }
+      responses:
+        "200": { description: Identity stored }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /chat/keys/:
+    get:
+      summary: Public keys of active station members for envelope encryption
+      description: Requires the station chat module, scope `read:chat` and a content role.
+      responses:
+        "200": { description: Member public key list }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /chat/:
+    get:
+      summary: Station chat feed
+      description: Requires the station chat module, scope `read:chat` and a content role.
+      responses:
+        "200": { description: Station chat feed }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Post into the station chat
+      description: Scope `write:chat`, content role and an own registered key required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EncryptedMessageWrite" }
+      responses:
+        "201": { description: Message stored as ciphertext }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /chat/private/:
+    get:
+      summary: Private 1:1 conversations of the current user
+      description: Requires the station chat module, scope `read:chat` and a content role.
+      responses:
+        "200": { description: Conversation list }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Open or continue a private conversation
+      description: Scope `write:chat` and a content role.
+      responses:
+        "200": { description: Conversation opened }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /chat/private/{id}/:
+    get:
+      summary: Read one private conversation
+      description: Scope `read:chat` and a content role.
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Private conversation }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Send into a private conversation
+      description: Scope `write:chat` and a content role.
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EncryptedMessageWrite" }
+      responses:
+        "201": { description: Message stored as ciphertext }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /post/:
+    get:
+      summary: Secure Mail inbox/outbox with colleague directory
+      description: Requires the station chat module, scope `read:chat` and a content role.
+      responses:
+        "200": { description: Mail overview }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Send a Secure Mail message
+      description: Scope `write:chat` and a content role; envelope plus recipient ids.
+      responses:
+        "201": { description: Mail stored }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /post/{id}/:
+    get:
+      summary: Read one Secure Mail message (marks it read)
+      description: Scope `read:chat` and a content role.
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Mail detail with recipient status }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /chat/groups/:
+    get:
+      summary: Group rooms the current user belongs to
+      description: Requires the station chat module, scope `read:chat` and a content role.
+      responses:
+        "200": { description: Group list }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Create a group room
+      description: Scope `write:chat` and a content role.
+      responses:
+        "201": { description: Group created }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /chat/groups/{id}/:
+    get:
+      summary: Read one group room
+      description: Scope `read:chat`, content role and group membership.
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Group room with messages }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Post into a group room
+      description: Scope `write:chat`, content role and group membership.
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EncryptedMessageWrite" }
+      responses:
+        "201": { description: Message stored as ciphertext }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /chat/groups/{id}/members/:
+    post:
+      summary: Add or remove group members (creator/admin)
+      description: Scope `write:chat` and the station chat module.
+      parameters: [{$ref: "#/components/parameters/IntegerId"}]
+      responses:
+        "200": { description: Membership updated }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /pinnwand/:
+    get:
+      summary: Station pinboard notices
+      description: Requires an enabled pinboard module, scope `read:pinboard` and a content role.
+      responses:
+        "200": { description: Notice list }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Create a short station notice
+      description: Requires an enabled pinboard module, scope `write:pinboard` and a content role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PinboardNoteWrite" }
+      responses:
+        "201": { description: Notice created }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
 components:
   securitySchemes:
     TokenAuth:
@@ -410,3 +627,60 @@ components:
         handover_id: { type: integer }
         by: { type: string }
         at: { type: string, format: date-time }
+    CryptoIdentityWrite:
+      type: object
+      description: >
+        Client-side E2EE identity. The server stores the public JWK and the
+        passphrase-wrapped private JWK; it never receives the passphrase.
+      required: [public_jwk, wrapped_private_jwk, kdf_salt]
+      properties:
+        public_jwk:
+          type: object
+          required: [kty, crv, x, y]
+          properties:
+            kty: { type: string, enum: [EC] }
+            crv: { type: string, enum: [P-256] }
+            x: { type: string }
+            y: { type: string }
+        wrapped_private_jwk: { type: string, minLength: 32, maxLength: 8000 }
+        kdf_salt: { type: string, minLength: 16, maxLength: 128 }
+        kdf_iterations:
+          type: integer
+          minimum: 100000
+          maximum: 1000000
+          default: 600000
+        replace:
+          type: boolean
+          description: Must be true to overwrite already stored keys.
+    EncryptedMessageWrite:
+      type: object
+      description: >
+        Client-encrypted message. The server validates structure and recipient
+        coverage only; it never decrypts the payload.
+      required: [ciphertext, nonce, key_wraps]
+      properties:
+        ciphertext: { type: string, description: Base64url AES-GCM ciphertext }
+        nonce: { type: string, description: Base64url nonce }
+        key_wraps:
+          type: object
+          description: Map of recipient user id to that recipient's wrapped content key.
+          additionalProperties:
+            type: object
+            required: [epk, wrapped_key]
+            properties:
+              epk:
+                type: object
+                properties:
+                  kty: { type: string }
+                  crv: { type: string }
+                  x: { type: string }
+                  y: { type: string }
+              wrapped_key: { type: string, description: "iv.data, both base64url" }
+        algo: { type: string, description: Declared algorithm, e.g. A256GCM }
+    PinboardNoteWrite:
+      type: object
+      required: [title, body]
+      properties:
+        title: { type: string, maxLength: 140 }
+        body: { type: string, maxLength: 2000 }
+        category: { type: string, enum: [info, important, event], default: info }

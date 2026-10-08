@@ -1,6 +1,6 @@
 # API für Mobile- und Drittclients
 
-Stand: 20. August 2026 · Server **0.16.x** · OpenAPI **1.2.2**.
+Stand: 8. Oktober 2026 · Server **0.16.x** · OpenAPI **1.3.0**.
 
 Versionierte JSON-API unter `/api/v1/` für den AGPL-Client [Wachbuch-Client](https://github.com/darkspike1988/Wachbuch-Client) und kontrollierte Drittclients.
 
@@ -72,6 +72,7 @@ Kanonische Codes: `validation_error`, `auth_required`, `forbidden`, `mfa_require
 | GET/POST | `/api/v1/uebergaben/` … | Deutsche Handovers-Aliase |
 | GET | `/api/v1/handovers/<id>/acks/` | Quittierungen lesen |
 | POST | `/api/v1/handovers/<id>/ack/` | Pro Benutzer idempotent quittieren |
+| GET/POST | `/api/v1/uebergaben/`, `/uebergaben/<id>/`, `/uebergaben/<id>/status/` | Deutsche Aliase der Handovers-Routen |
 | GET/POST | `/api/v1/defects/` | Mängel lesen/anlegen |
 | GET/PATCH | `/api/v1/defects/<id>/` | Mangel + Verlauf/Fotos lesen bzw. Metadaten ändern |
 | POST | `/api/v1/defects/<id>/status/` | Mangelstatus ändern |
@@ -89,8 +90,18 @@ Kanonische Codes: `validation_error`, `auth_required`, `forbidden`, `mfa_require
 | POST | `/api/v1/checklisten/<id>/abschluss/` | Client-Alias des Abschlusses |
 | GET/PUT/DELETE | `/api/v1/checklisten/<id>/schedule/` | tägliche/wöchentliche/monatliche Wiederholung |
 | GET | `/api/v1/reports/` | leichte Stationsauswertung |
+| GET/POST | `/api/v1/chat/identity/` | eigenes E2EE-Schlüsselpaar lesen bzw. anlegen/ersetzen |
+| GET | `/api/v1/chat/keys/` | öffentliche Schlüssel der aktiven Stationsmitglieder |
+| GET/POST | `/api/v1/chat/` | Wachenchat lesen/schreiben |
+| GET/POST | `/api/v1/chat/private/`, `/chat/private/<id>/` | private Zweiergespräche |
+| GET/POST | `/api/v1/post/`, `/post/<id>/` | Secure-Mail-Postfach und Einzelnachricht |
+| GET/POST | `/api/v1/chat/groups/`, `/chat/groups/<id>/` | Gruppenräume |
+| POST | `/api/v1/chat/groups/<id>/members/` | Gruppenmitglieder ändern (Ersteller/Admin) |
+| GET/POST | `/api/v1/pinnwand/` | Aushänge der Station |
 
 Die vollständige, maschinenlesbare Beschreibung ist `core/api/openapi_v1.yaml` und wird unter `/api/v1/openapi.yaml` ausgeliefert.
+
+Der Vertrag wird durch `core/test_api_contract.py` in beide Richtungen geprüft: Jeder dokumentierte Pfad muss als Django-Route existieren, jede Django-Route muss dokumentiert sein, und jede dokumentierte Methode muss die Route tatsächlich akzeptieren. Eine neue Route ohne Dokumentation lässt diesen Test rot werden.
 
 ## Wachalltag-Datenmodell
 
@@ -127,9 +138,15 @@ Eine Übergabe kann pro Benutzer einmal quittiert werden. Wiederkehrende Checkli
 
 Bestehende Scopes bleiben bewusst kompatibel:
 
-`read:me`, `read:handovers`, `write:handovers`, `read:calendar`, `write:calendar`, `read:coffee`, `write:coffee`, `read:checklists`, `write:checklists`.
+`read:me`, `read:handovers`, `write:handovers`, `read:calendar`, `write:calendar`, `read:coffee`, `write:coffee`, `read:checklists`, `write:checklists`, `read:chat`, `write:chat`, `read:pinboard`, `write:pinboard`.
 
 Wachalltag-Ressourcen nutzen aktuell die passenden Handovers-/Checklists-Scopes plus Rollen- und Stationsprüfung. Ein Scope ersetzt niemals die fachliche Rollenprüfung.
+
+Die Nachrichtenendpunkte (`/chat/*`, `/post/*`) verlangen zusätzlich das Stationsmodul `chat_enabled` und eine Inhaltsrolle; `/pinnwand/` verlangt `pinboard_enabled`. Der Server validiert bei verschlüsselten Nachrichten nur Struktur und Empfängerabdeckung der Schlüsselumschläge — er entschlüsselt nichts.
+
+## Vertrauensmodell der Nachrichtenfunktionen
+
+Gespeicherter Ciphertext ist geschützt; der Server speichert und liefert ausschließlich Ciphertext plus Schlüsselumschläge und besitzt keinen Inhaltszugriff. Bei der Web-PWA bleiben der ausgelieferte Webclient und der Server dennoch Teil des Vertrauensmodells, weil der Schlüssel im Browser entschlüsselt wird. Ein Schutzversprechen gegen einen aktiv böswilligen Serverbetreiber ist damit nicht verbunden (siehe `REMEDIATION-ROADMAP-2026-08.md`, R-020).
 
 ## Retry-Regeln für Clients
 

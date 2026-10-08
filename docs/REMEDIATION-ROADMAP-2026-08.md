@@ -204,6 +204,40 @@ Nachweise: `makemigrations --check`, 269 Django-Tests (1 skipped),
 `check --deploy` ohne neue Fehler, GitHub-Jobs `django` und `docker` auf dem
 PR-Head grün.
 
+### [x] R-026 API-Vertrag nachgezogen (OpenAPI 1.3.0)
+
+Ursache: Nachkontrolle zur Modernisierung. `core/api/openapi_v1.yaml` stand auf
+1.2.2 und dokumentierte 14 real vorhandene Endpunkte nicht, die der offizielle
+Client bereits aufruft: `/chat/identity/`, `/chat/keys/`, `/chat/`,
+`/chat/private/`, `/chat/private/{id}/`, `/post/`, `/post/{id}/`,
+`/chat/groups/`, `/chat/groups/{id}/`, `/chat/groups/{id}/members/`,
+`/pinnwand/` sowie die deutschen Handovers-Aliase `/uebergaben/`,
+`/uebergaben/{id}/` und `/uebergaben/{id}/status/`. `docs/CLIENT.md` nannte den
+Client außerdem `0.6.x`, tatsächlich ist er auf `1.0.0+12`. Damit konnte kein
+Client sauber gegen den veröffentlichten Vertrag gebaut oder gegengeprüft werden.
+
+Umgesetzt:
+
+- Spezifikation auf **1.3.0**: die 14 Pfade mit Methoden, Scopes sowie Modul- und
+  Rollenvoraussetzungen ergänzt, dazu die Schemas `CryptoIdentityWrite`,
+  `EncryptedMessageWrite` und `PinboardNoteWrite`.
+- `docs/API.md`: Endpunkttabelle ergänzt, Scope-Liste um `read:chat`,
+  `write:chat`, `read:pinboard`, `write:pinboard` erweitert und ein Abschnitt
+  zum realen Vertrauensmodell der Nachrichtenfunktionen aufgenommen.
+- `docs/CLIENT.md`: Client-Version korrigiert, Module Pinnwand/Chat/Gruppen
+  ergänzt, fehlende Secure-Mail-Screens als offene Client-Aufgabe benannt.
+- Neuer Vertragstest `core/test_api_contract.py`: prüft beide Richtungen
+  (dokumentiert ⇔ implementiert), dass jeder Pfad mindestens eine Methode
+  dokumentiert und dass jede dokumentierte Methode tatsächlich keinen HTTP 405
+  liefert. Der Test liest die YAML bewusst ohne PyYAML, damit für den Vertrag
+  keine neue Laufzeitabhängigkeit entsteht; Parser-Fehlerverhalten ist selbst
+  getestet, damit die Wache nicht still wirkungslos wird.
+
+Nachweise: 10 Vertragstests grün, Gesamtsuite **314 Django-Tests (1 skipped)**,
+`makemigrations --check` ohne Änderungen. Reine Dokumentations- und
+Teständerung: keine Migration, keine UI-Änderung, kein Eingriff in die
+öffentliche Demo.
+
 ## Wave 3 – Pilot- und Produktionsabnahme
 
 ### [ ] R-015 Externe ASVS-L2-Prüfung und Penetrationstest

@@ -1,14 +1,14 @@
 # AGPL-Client (iOS / Android)
 
-Stand: 10. August 2026.
+Stand: 8. Oktober 2026.
 
 ## Kanonische Repositories
 
 | | |
 | --- | --- |
 | **Server** | https://github.com/darkspike1988/Rettungswache-Wachbuch · `0.16.x` |
-| **Client** | https://github.com/darkspike1988/Wachbuch-Client · `0.6.x` |
-| **API** | `/api/v1/` · OpenAPI `1.2.2` |
+| **Client** | https://github.com/darkspike1988/Wachbuch-Client · `1.0.x` |
+| **API** | `/api/v1/` · OpenAPI `1.3.0` |
 | **Historischer Spiegel** | `clients/wachbuch-mobile/` – nicht als Quelle verwenden |
 
 **Wachbuch-Client ist die einzige Quelle der Wahrheit für Flutter/iOS/Android.** Der Server koppelt sich über den versionierten API-Vertrag an die App. Der historische Client-Ordner im Server-Repository darf keine neueren Client-Commits überschreiben; der frühere Publish-Workflow ist deshalb deaktiviert.
@@ -17,7 +17,7 @@ Stand: 10. August 2026.
 
 | Server | Client | Hinweis |
 | --- | --- | --- |
-| `0.16.x` | `0.6.x` | realer Wachalltag: Mängel, Fotos, Assets, Inventar, Quittierungen, wiederkehrende Checks, Reports, Offline-Lesen |
+| `0.16.x` | `1.0.x` | realer Wachalltag: Mängel, Fotos, Assets, Inventar, Quittierungen, wiederkehrende Checks, Reports, Offline-Lesen |
 | `0.15.x` | `0.5.1+` | vorheriger Kern-/Demo-Stand |
 | `0.14.1` | `0.5.0+` | API v1, App-Tokens, MFA |
 
@@ -44,7 +44,7 @@ Für produktive Nutzung ist ein im Web unter `/konto/api/` erzeugtes App-Token d
 
 ## Offline-Modell
 
-Der `0.6.x`-Client besitzt einen verschlüsselten Lesecache, der an Server und Token gebunden ist. Er wird nur bei Netzwerkfehlern als Fallback benutzt. Authentifizierungs-/Autorisierungsfehler (`401`/`403`) dürfen nicht durch Cache-Daten kaschiert werden.
+Der `1.0.x`-Client besitzt einen verschlüsselten Lesecache, der an Server und Token gebunden ist. Er wird nur bei Netzwerkfehlern als Fallback benutzt. Authentifizierungs-/Autorisierungsfehler (`401`/`403`) dürfen nicht durch Cache-Daten kaschiert werden.
 
 Offline-Schreiben bzw. eine allgemeine Synchronisationswarteschlange ist bewusst nicht Teil dieses Vertrags; damit entstehen keine schwer auflösbaren Konflikte bei Mängeln, Fotos, Inventar oder Checklisten.
 
@@ -54,7 +54,7 @@ Automatische Retries sind nur für GETs bzw. serverseitig nachweislich idempoten
 
 ## Produktiver Wachalltag
 
-Der Client `0.6.x` kann gegen Server `0.16.x`:
+Der Client `1.0.x` kann gegen Server `0.16.x`:
 
 - Übergaben lesen, filtern und quittieren
 - eine Übergabe als Mangel übernehmen
@@ -64,7 +64,11 @@ Der Client `0.6.x` kann gegen Server `0.16.x`:
 - Schlüssel-/Poolgeräte ausgeben/zurückgeben
 - wiederkehrende Checklisten abarbeiten
 - Stationsauswertung öffnen
+- Pinnwand lesen und Aushänge anlegen
+- Wachenchat, private Zweiergespräche und Gruppenräume nutzen (Ende-zu-Ende-verschlüsselt; siehe `API.md`, „Vertrauensmodell der Nachrichtenfunktionen“)
 - erfolgreiche Leseantworten offline verfügbar halten
+
+Das Secure-Mail-Postfach (`/api/v1/post/`) ist im Client auf API-Ebene vorhanden, hat aber noch keine eigenen Screens. Das ist eine offene Client-Aufgabe, keine Serverlücke — die Serverendpunkte sind dokumentiert und getestet.
 
 Demo-Profile verwenden denselben fachlichen UI-Pfad, werden aber lokal simuliert. Ziel der Demo ist damit nicht mehr ein separater Funktionsumfang, sondern die Vorschau auf reale Serverfunktionen.
 
