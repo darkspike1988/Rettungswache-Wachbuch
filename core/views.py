@@ -561,6 +561,70 @@ def handover_list(request):
 
 
 @membership_required(CONTENT_ROLES)
+@require_GET
+def handover_shift_overview(request):
+    station = request.membership.station
+    now = timezone.localtime(timezone.now())
+
+    open_handovers = prioritized_handovers(station)
+    attention_assets = (
+        StationAsset.objects.filter(station=station)
+        .exclude(status=StationAsset.Status.READY)
+        .select_related("updated_by")
+        .order_by("kind", "label")
+    )
+    open_defects = (
+        Defect.objects.filter(station=station)
+        .exclude(status=Defect.Status.DONE)
+        .select_related("owner", "created_by")
+        .order_by(
+            Case(
+                When(priority=Defect.Priority.URGENT, then=Value(0)),
+                When(priority=Defect.Priority.IMPORTANT, then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            ),
+            "due_at",
+            "-created_at",
+        )
+    )
+
+    tasks_board = None
+    if station.tasks_enabled:
+        ensure_default_station_tasks(station)
+        tasks_board = day_board(station, timezone.localdate())
+
+    due_checks = None
+    if station.checklists_enabled:
+        due_checks = (
+            ChecklistSchedule.objects.filter(
+                station=station,
+                checklist__is_active=True,
+                due_next__isnull=False,
+                due_next__lte=now,
+            )
+            .select_related("checklist")
+            .order_by("due_next")
+        )
+
+    return render(
+        request,
+        "core/handover_shift_overview.html",
+        {
+            "station": station,
+            "generated_at": now,
+            "open_handovers": open_handovers,
+            "attention_assets": attention_assets,
+            "open_defects": open_defects,
+            "tasks_board": tasks_board,
+            "tasks_enabled": station.tasks_enabled,
+            "due_checks": due_checks,
+            "checklists_enabled": station.checklists_enabled,
+        },
+    )
+
+
+@membership_required(CONTENT_ROLES)
 @require_http_methods(["GET", "POST"])
 def handover_create(request):
     form = HandoverForm(request.POST or None)

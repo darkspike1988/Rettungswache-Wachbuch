@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Schichtüberblick | {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/shift_overview.css' %}">
+{% endblock %}
+
+{% block content %}
+<a class="back-link no-print" href="{% url 'handover_list' %}">Zurück zu Übergaben</a>
+
+<header class="page-heading heading-with-action shift-overview-header">
+  <div>
+    <p class="context-line">{{ station.name }} &middot; {{ station.get_organization_profile_display }}</p>
+    <h1>Schichtüberblick</h1>
+    <p class="lead">Stand: {{ generated_at|date:"d.m.Y, H:i" }} Uhr &middot; Stationszeit</p>
+  </div>
+  <div class="header-actions no-print">
+    <button type="button" class="button secondary" data-action="print">Drucken (A4)</button>
+  </div>
+</header>
+
+<div class="shift-overview-notice" role="note">
+  <strong>Schichtüberblick – Wachenorganisation</strong>
+  <span>Aktueller Arbeitsstand zur Schichtübergabe auf Grundlage bestehender Wachendaten. Keine Patienten-, Einsatz- oder Personaldaten. Dieser Überblick dient der operativen Orientierung und stellt kein rechtsverbindliches Übergabeprotokoll dar.</span>
+</div>
+
+<!-- 1. Offene & wichtige Übergaben -->
+<section class="shift-overview-section" aria-labelledby="heading-handovers">
+  <div class="shift-section-header">
+    <h2 id="heading-handovers">Offene Übergaben</h2>
+    <span class="shift-section-badge">{{ open_handovers|length }} offen</span>
+  </div>
+  {% if open_handovers %}
+    <div class="shift-item-list">
+      {% for item in open_handovers %}
+        <article class="shift-card">
+          <div class="shift-card-header">
+            <span class="status-label priority-{{ item.priority }}">{{ item.get_priority_display }}</span>
+            <span class="status-label neutral">{{ item.get_category_display }}</span>
+            <span class="status-label neutral">{{ item.get_status_display }}</span>
+            <h3 class="shift-card-title">{{ item.title }}</h3>
+          </div>
+          {% if item.details %}
+            <div class="shift-card-body">{{ item.details|linebreaksbr }}</div>
+          {% endif %}
+          <div class="shift-card-meta">
+            <span>Erstellt von: {{ item.author.first_name|default:item.author.username }}</span>
+            <time datetime="{{ item.created_at|date:'c' }}">Am {{ item.created_at|date:"d.m.Y H:i" }} Uhr</time>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty-state">Keine offenen Übergaben vorhanden.</p>
+  {% endif %}
+</section>
+
+<!-- 2. Fahrzeuge & Geräte: Klarstand / Einschränkungen -->
+<section class="shift-overview-section" aria-labelledby="heading-assets">
+  <div class="shift-section-header">
+    <h2 id="heading-assets">Fahrzeuge &amp; Geräte (Einschränkungen)</h2>
+    <span class="shift-section-badge">{% if attention_assets %}{{ attention_assets|length }} eingeschränkt{% else %}Einsatzklar{% endif %}</span>
+  </div>
+  {% if attention_assets %}
+    <div class="shift-table-wrap">
+      <table class="shift-table">
+        <thead>
+          <tr>
+            <th scope="col">Typ</th>
+            <th scope="col">Bezeichnung</th>
+            <th scope="col">Status</th>
+            <th scope="col">Bemerkung</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asset in attention_assets %}
+            <tr>
+              <td><span class="status-label neutral">{{ asset.get_kind_display }}</span></td>
+              <td><strong>{{ asset.label }}</strong> <small>({{ asset.asset_id }})</small></td>
+              <td><span class="status-label priority-urgent">{{ asset.get_status_display }}</span></td>
+              <td>{{ asset.note|default:"-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty-state">Alle erfassten Fahrzeuge und Geräte sind einsatzklar gemeldet.</p>
+  {% endif %}
+</section>
+
+<!-- 3. Offene Mängel -->
+<section class="shift-overview-section" aria-labelledby="heading-defects">
+  <div class="shift-section-header">
+    <h2 id="heading-defects">Offene Mängel</h2>
+    <span class="shift-section-badge">{{ open_defects|length }} gemeldet</span>
+  </div>
+  {% if open_defects %}
+    <div class="shift-item-list">
+      {% for defect in open_defects %}
+        <article class="shift-card">
+          <div class="shift-card-header">
+            <span class="status-label priority-{{ defect.priority }}">{{ defect.get_priority_display }}</span>
+            <span class="status-label neutral">{{ defect.get_category_display }}</span>
+            <span class="status-label neutral">{{ defect.get_status_display }}</span>
+            <h3 class="shift-card-title">{{ defect.title }}</h3>
+          </div>
+          {% if defect.description %}
+            <div class="shift-card-body">{{ defect.description|linebreaksbr }}</div>
+          {% endif %}
+          <div class="shift-card-meta">
+            {% if defect.asset_ref %}<span>Objekt: {{ defect.asset_ref }}</span>{% endif %}
+            {% if defect.due_at %}<span>Frist: {{ defect.due_at|date:"d.m.Y H:i" }} Uhr</span>{% endif %}
+            {% if defect.owner %}<span>Zuständig: {{ defect.owner.first_name|default:defect.owner.username }}</span>{% endif %}
+            <span>Gemeldet am: {{ defect.created_at|date:"d.m.Y H:i" }} Uhr</span>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty-state">Keine offenen Mängel gemeldet.</p>
+  {% endif %}
+</section>
+
+{% if tasks_enabled and tasks_board %}
+{# 4. Heutige Wachenaufgaben #}
+<section class="shift-overview-section" aria-labelledby="heading-tasks">
+  <div class="shift-section-header">
+    <h2 id="heading-tasks">Heutige Wachenaufgaben</h2>
+    <span class="shift-section-badge">{{ tasks_board.done_count }} / {{ tasks_board.total }} erledigt ({{ tasks_board.week_label }})</span>
+  </div>
+
+  {% if tasks_board.total %}
+    <!-- Tägliche Routine -->
+    {% if tasks_board.groups.daily %}
+      <div class="task-band-group">
+        <h3 class="task-band-title"><span class="status-label band-daily">Täglich</span> Routineaufgaben</h3>
+        <div class="shift-task-list">
+          {% for item in tasks_board.groups.daily %}
+            <div class="shift-task-row{% if item.completion %} is-done{% endif %}">
+              <span class="shift-task-check" aria-hidden="true">[{% if item.completion %}&#10003;{% else %}&nbsp;{% endif %}]</span>
+              <div class="shift-task-content">
+                <strong>{{ item.task.title }}</strong>
+                {% if item.task.notes %}<small> &middot; {{ item.task.notes }}</small>{% endif %}
+              </div>
+              <div class="shift-task-meta">
+                {% if item.completion %}
+                  <span>Erledigt von {{ item.completion.completed_by.first_name|default:item.completion.completed_by.username }}</span>
+                {% else %}
+                  <span>Offen</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Wochentag -->
+    {% if tasks_board.groups.weekday %}
+      <div class="task-band-group">
+        <h3 class="task-band-title"><span class="status-label band-weekday">Wochentag</span> Wochentagsrotation</h3>
+        <div class="shift-task-list">
+          {% for item in tasks_board.groups.weekday %}
+            <div class="shift-task-row{% if item.completion %} is-done{% endif %}">
+              <span class="shift-task-check" aria-hidden="true">[{% if item.completion %}&#10003;{% else %}&nbsp;{% endif %}]</span>
+              <div class="shift-task-content">
+                <strong>{{ item.task.title }}</strong>
+                {% if item.task.notes %}<small> &middot; {{ item.task.notes }}</small>{% endif %}
+              </div>
+              <div class="shift-task-meta">
+                {% if item.completion %}
+                  <span>Erledigt von {{ item.completion.completed_by.first_name|default:item.completion.completed_by.username }}</span>
+                {% else %}
+                  <span>Offen</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Zusatz / Monat -->
+    {% if tasks_board.groups.extra %}
+      <div class="task-band-group">
+        <h3 class="task-band-title"><span class="status-label band-extra">Zusatz</span> Zusatzaufgaben</h3>
+        <div class="shift-task-list">
+          {% for item in tasks_board.groups.extra %}
+            <div class="shift-task-row{% if item.completion %} is-done{% endif %}">
+              <span class="shift-task-check" aria-hidden="true">[{% if item.completion %}&#10003;{% else %}&nbsp;{% endif %}]</span>
+              <div class="shift-task-content">
+                <strong>{{ item.task.title }}</strong>
+                {% if item.task.notes %}<small> &middot; {{ item.task.notes }}</small>{% endif %}
+              </div>
+              <div class="shift-task-meta">
+                {% if item.completion %}
+                  <span>Erledigt von {{ item.completion.completed_by.first_name|default:item.completion.completed_by.username }}</span>
+                {% else %}
+                  <span>Offen</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <p class="empty-state">Keine Aufgaben für den heutigen Tag hinterlegt.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if checklists_enabled %}
+{# 5. Fällige Checklisten #}
+<section class="shift-overview-section" aria-labelledby="heading-checklists">
+  <div class="shift-section-header">
+    <h2 id="heading-checklists">Fällige Checklisten &amp; Prüfungen</h2>
+    <span class="shift-section-badge">{% if due_checks %}{{ due_checks|length }} fällig{% else %}Keine fällig{% endif %}</span>
+  </div>
+  {% if due_checks %}
+    <div class="shift-table-wrap">
+      <table class="shift-table">
+        <thead>
+          <tr>
+            <th scope="col">Checkliste</th>
+            <th scope="col">Intervall</th>
+            <th scope="col">Fälligkeit</th>
+            <th scope="col">Beschreibung</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for check in due_checks %}
+            <tr>
+              <td><strong>{{ check.checklist.title }}</strong></td>
+              <td><span class="status-label neutral">{{ check.get_interval_display }}</span></td>
+              <td><time datetime="{{ check.due_next|date:'c' }}">{{ check.due_next|date:"d.m.Y H:i" }} Uhr</time></td>
+              <td>{{ check.checklist.description|default:"-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty-state">Keine überfälligen oder heute fälligen Checklisten.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

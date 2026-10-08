@@ -1,0 +1,369 @@
+/* Schichtüberblick – A4-Druck und Mobile-Optimierung
+   Kanonische Wachbuch-Klar Tokens, keine externen Abhängigkeiten, keine CSP-Ausnahmen. */
+
+.shift-overview-header {
+  margin-bottom: 1.25rem;
+}
+
+.shift-overview-notice {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: .85rem 1.15rem;
+  margin-bottom: 2rem;
+  font-size: .92rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.shift-overview-notice strong {
+  color: var(--text);
+  font-size: .95rem;
+}
+
+.shift-overview-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-bottom: 1.75rem;
+  overflow: hidden;
+}
+
+.shift-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: .65rem;
+  margin-bottom: 1rem;
+}
+
+.shift-section-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--brand-ink);
+}
+
+.shift-section-badge {
+  font-size: .82rem;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.shift-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.shift-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--surface);
+}
+
+.shift-card-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem .75rem;
+  margin-bottom: .5rem;
+}
+
+.shift-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text);
+  flex: 1 1 auto;
+}
+
+.shift-card-body {
+  margin: .35rem 0;
+  font-size: .95rem;
+  color: var(--text);
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.shift-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  font-size: .82rem;
+  color: var(--muted);
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+}
+
+.shift-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shift-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: .92rem;
+}
+
+.shift-table th,
+.shift-table td {
+  padding: .65rem .75rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.shift-table th {
+  background: var(--surface-soft);
+  color: var(--text);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.shift-table tr:last-child td {
+  border-bottom: none;
+}
+
+.task-band-group {
+  margin-bottom: 1.25rem;
+}
+
+.task-band-group:last-child {
+  margin-bottom: 0;
+}
+
+.task-band-title {
+  font-size: .95rem;
+  font-weight: 700;
+  margin: 0 0 .5rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.shift-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.shift-task-row {
+  display: flex;
+  align-items: baseline;
+  gap: .65rem;
+  padding: .5rem .65rem;
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  font-size: .92rem;
+}
+
+.shift-task-row.is-done {
+  opacity: .8;
+}
+
+.shift-task-check {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.shift-task-row.is-done .shift-task-check {
+  color: var(--success);
+}
+
+.shift-task-content {
+  flex: 1 1 auto;
+}
+
+.shift-task-meta {
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+/* Smartphone-Ansicht */
+@media (max-width: 48rem) {
+  .shift-overview-section {
+    padding: .85rem;
+    margin-bottom: 1.25rem;
+  }
+  .shift-card {
+    padding: .75rem;
+  }
+  .shift-table th,
+  .shift-table td {
+    padding: .5rem;
+  }
+}
+
+/* A4-Druckansicht */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 1.5cm 1.2cm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
+  }
+
+  /* Navigation, Buttons und Banner ausblenden */
+  .app-header,
+  .app-nav,
+  .site-footer,
+  .skip-link,
+  .demo-banner,
+  .connection-chip,
+  .install-banner,
+  .crypto-unlock,
+  .back-link,
+  .no-print,
+  .header-actions,
+  button,
+  .button {
+    display: none !important;
+  }
+
+  .page-shell {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+  }
+
+  .shift-overview-header {
+    margin-bottom: 1rem !important;
+    border-bottom: 2pt solid #111111 !important;
+    padding-bottom: .5rem !important;
+  }
+
+  .shift-overview-header h1 {
+    font-size: 18pt !important;
+    margin: 0 0 .25rem !important;
+    color: #000000 !important;
+  }
+
+  .shift-overview-header .context-line {
+    font-size: 9pt !important;
+    color: #444444 !important;
+  }
+
+  .shift-overview-header .lead {
+    font-size: 9.5pt !important;
+    color: #333333 !important;
+  }
+
+  .shift-overview-notice {
+    background: #f8f8f8 !important;
+    border: 1pt solid #999999 !important;
+    border-left: 3pt solid #333333 !important;
+    padding: .5rem .75rem !important;
+    margin-bottom: 1rem !important;
+    font-size: 8.5pt !important;
+    color: #333333 !important;
+  }
+
+  .shift-overview-section {
+    background: #ffffff !important;
+    border: 1pt solid #bbbbbb !important;
+    border-radius: 0 !important;
+    padding: .75rem !important;
+    margin-bottom: 1rem !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .shift-section-header {
+    border-bottom: 1pt solid #cccccc !important;
+    padding-bottom: .35rem !important;
+    margin-bottom: .65rem !important;
+  }
+
+  .shift-section-header h2 {
+    font-size: 12pt !important;
+    color: #000000 !important;
+  }
+
+  .shift-card {
+    border: 0.75pt solid #cccccc !important;
+    border-radius: 0 !important;
+    padding: .5rem .65rem !important;
+    margin-bottom: .5rem !important;
+    background: #ffffff !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .shift-card-title {
+    font-size: 10.5pt !important;
+  }
+
+  .shift-card-body {
+    font-size: 9pt !important;
+  }
+
+  .shift-card-meta {
+    font-size: 8pt !important;
+    border-top: 0.5pt dashed #cccccc !important;
+    color: #555555 !important;
+  }
+
+  .status-label {
+    border: 0.75pt solid #333333 !important;
+    background: transparent !important;
+    color: #111111 !important;
+    font-size: 7.5pt !important;
+    padding: .1rem .4rem !important;
+    min-height: auto !important;
+  }
+
+  .shift-table-wrap {
+    overflow: visible !important;
+  }
+
+  .shift-table {
+    font-size: 8.5pt !important;
+  }
+
+  .shift-table th,
+  .shift-table td {
+    padding: .4rem .5rem !important;
+    border-bottom: 0.5pt solid #cccccc !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .shift-table th {
+    background: #f0f0f0 !important;
+    color: #000000 !important;
+  }
+
+  .shift-task-row {
+    background: #fafafa !important;
+    border-bottom: 0.5pt solid #e0e0e0 !important;
+    padding: .3rem .4rem !important;
+    font-size: 8.5pt !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  a {
+    text-decoration: none !important;
+    color: #000000 !important;
+  }
+}

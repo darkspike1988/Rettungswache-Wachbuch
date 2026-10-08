@@ -3,7 +3,10 @@
 {% block content %}
 <header class="page-heading heading-with-action">
   <div><p class="context-line">Wachbuch</p><h1>Übergaben</h1><p class="lead">Nur Informationen für die Wachenorganisation.</p></div>
-  <a class="button primary" href="{% url 'handover_create' %}">Übergabe anlegen</a>
+  <div class="header-actions">
+    <a class="button secondary" href="{% url 'handover_shift_overview' %}">Schichtüberblick</a>
+    <a class="button primary" href="{% url 'handover_create' %}">Übergabe anlegen</a>
+  </div>
 </header>
 
 <nav class="filter-nav" aria-label="Übergaben filtern">

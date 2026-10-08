@@ -883,6 +883,11 @@
   }
 
   doc.addEventListener("click", (event) => {
+    const printBtn = event.target.closest && event.target.closest("[data-action='print']");
+    if (printBtn) {
+      window.print();
+      return;
+    }
     const btn = event.target.closest && event.target.closest(".copy-iban");
     if (!btn) {
       return;

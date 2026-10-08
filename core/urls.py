@@ -10,6 +10,7 @@ urlpatterns = [
     path("zugang/", views.access, name="access"),
     path("uebersicht/", views.dashboard, name="dashboard"),
     path("uebergaben/", views.handover_list, name="handover_list"),
+    path("uebergaben/schichtueberblick/", views.handover_shift_overview, name="handover_shift_overview"),
     path("uebergaben/neu/", views.handover_create, name="handover_create"),
     path("uebergaben/<int:pk>/", views.handover_detail, name="handover_detail"),
     path("uebergaben/<int:pk>/bearbeiten/", views.handover_edit, name="handover_edit"),

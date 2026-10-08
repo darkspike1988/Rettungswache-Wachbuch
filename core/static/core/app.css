@@ -469,6 +469,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
   justify-content: space-between;
   gap: 2rem;
 }
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: center;
+}
 .page-heading h1 {
   margin: .15rem 0 .5rem;
   font-size: clamp(1.85rem, 3.5vw, 2.5rem);
@@ -1214,6 +1220,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .site-footer { flex-direction: column; padding-bottom: 1.5rem; }
   .heading-with-action { align-items: stretch; flex-direction: column; gap: 1rem; }
   .heading-with-action .button { align-self: stretch; }
+  .heading-with-action .header-actions { flex-direction: column; width: 100%; gap: .5rem; }
+  .heading-with-action .header-actions .button { width: 100%; }
   .page-heading { margin-bottom: 1.25rem; }
   .page-heading h1 { font-size: 1.85rem; }
   .list-row { grid-template-columns: 1fr auto; gap: .35rem .75rem; padding: .85rem; }
