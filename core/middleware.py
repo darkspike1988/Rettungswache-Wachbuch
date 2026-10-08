@@ -162,6 +162,46 @@ PUBLIC_DEMO_BLOCKED_URL_NAMES = frozenset({
 })
 
 
+
+class MFAEnforcementMiddleware:
+    """Enforces MFA setup for authenticated users if required."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        if (
+            not getattr(settings, "DEMO_PUBLIC_MODE", False)
+            and hasattr(request, "user")
+            and request.user.is_authenticated
+            and not request.path_info.startswith("/api/")
+            and not request.path_info.startswith(settings.STATIC_URL)
+        ):
+            from .mfa import mfa_enabled, mfa_required, user_has_confirmed_mfa
+
+            if mfa_enabled() and mfa_required() and not user_has_confirmed_mfa(request.user):
+                try:
+                    match = resolve(request.path_info)
+                except Resolver404:
+                    match = None
+
+                if match:
+                    allowed_url_names = frozenset({
+                        "mfa_setup",
+                        "mfa_disable",
+                        "passkey_register_options",
+                        "passkey_register_verify",
+                        "passkey_delete",
+                        "logout",
+                        "serve_static",
+                    })
+                    if match.url_name not in allowed_url_names:
+                        from django.shortcuts import redirect
+                        return redirect("mfa_setup")
+
+        return self.get_response(request)
+
+
 class PublicDemoGuardMiddleware:
     """Server-side guard for the public, internet-facing demo instance.
 
@@ -199,6 +239,7 @@ __all__ = [
     "SecurityHeadersMiddleware",
     "CorrelationIdMiddleware",
     "ClientIPMiddleware",
+    "MFAEnforcementMiddleware",
     "PublicDemoGuardMiddleware",
     "PUBLIC_DEMO_BLOCKED_URL_NAMES",
     "csp_connect_src",

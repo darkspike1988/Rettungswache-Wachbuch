@@ -47,7 +47,7 @@ Umgesetzt und in den 0.16-Integrationsstand übernommen:
 - IBAN-Kopie-Handler liegt in `core/static/core/app.js`; kein CSP-blockiertes Inline-Skript.
 - MFA-Fehlercodes sind Teil des kanonischen API-Fehlervertrags.
 
-**Restgrenze:** Web-MFA-Setup/Durchsetzung weiterhin separat im manuellen Auth-Review prüfen.
+**Restgrenze:** Web-MFA-Setup/Durchsetzung wurde per Middleware (`MFAEnforcementMiddleware`) geschlossen; GET und mutierende Fachrouten sind nun vor Enrollment gesperrt, Ausnahme für legitimes Enrollment und Logout. Manueller Auth-Review und Browser/Screenreader-Abnahme der MFA-Flows bleiben für vollständigen Wave 3 Abschluss.
 
 ## Wave 1 – Anwendung und UX
 

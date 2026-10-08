@@ -50,6 +50,7 @@ MIDDLEWARE = [
     "core.middleware.SecurityHeadersMiddleware",
     "core.middleware.ClientIPMiddleware",
     "axes.middleware.AxesMiddleware",
+    "core.middleware.MFAEnforcementMiddleware",
     # Innermost guard: blocks demo-forbidden routes (by URL name) only when
     # DEMO_PUBLIC_MODE is enabled. Harmless in normal operation.
     "core.middleware.PublicDemoGuardMiddleware",

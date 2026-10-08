@@ -284,3 +284,57 @@ class CryptoUnlockDialogTests(SimpleTestCase):
         self.assertIn("aria-invalid", source)
         self.assertIn("Escape", source)
         self.assertIn("requestCryptoUnlock", source)
+
+from django.test import Client, TestCase
+from django.urls import reverse
+from core.models import User, Membership, Station
+
+class MFAEnforcementMiddlewareTests(TestCase):
+    def setUp(self):
+        self.station = Station.objects.create(name="Test Station")
+        self.user = User.objects.create_user("mfa_user", password="password")
+        Membership.objects.create(
+            user=self.user,
+            station=self.station,
+            role=Membership.Role.MEMBER,
+            is_active=True
+        )
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_mfa_enforcement_redirects_to_setup(self):
+        with self.settings(MFA_ENABLED=True, MFA_REQUIRED=True, DEMO_PUBLIC_MODE=False):
+            response = self.client.get(reverse("landing"))
+            self.assertRedirects(response, reverse("mfa_setup"), fetch_redirect_response=False)
+
+    def test_mfa_enforcement_allows_mfa_setup(self):
+        with self.settings(MFA_ENABLED=True, MFA_REQUIRED=True, DEMO_PUBLIC_MODE=False):
+            response = self.client.get(reverse("mfa_setup"))
+            if response.status_code == 302:
+                self.assertEqual(response.url, reverse("dashboard"))
+            else:
+                self.assertEqual(response.status_code, 200)
+
+    def test_mfa_enforcement_allows_logout(self):
+        with self.settings(MFA_ENABLED=True, MFA_REQUIRED=True, DEMO_PUBLIC_MODE=False):
+            response = self.client.post(reverse("logout"))
+            # Logout redirects to login page usually
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.url, reverse("landing"))
+
+    def test_mfa_enforcement_ignored_if_mfa_not_required(self):
+        with self.settings(MFA_ENABLED=True, MFA_REQUIRED=False, DEMO_PUBLIC_MODE=False):
+            response = self.client.get(reverse("landing"))
+            # Landing view requires membership and active station etc, should be 200
+            if response.status_code == 302:
+                self.assertEqual(response.url, reverse("dashboard"))
+            else:
+                self.assertEqual(response.status_code, 200)
+
+    def test_mfa_enforcement_ignored_if_demo_public_mode(self):
+        with self.settings(MFA_ENABLED=True, MFA_REQUIRED=True, DEMO_PUBLIC_MODE=True):
+            response = self.client.get(reverse("landing"))
+            if response.status_code == 302:
+                self.assertEqual(response.url, reverse("dashboard"))
+            else:
+                self.assertEqual(response.status_code, 200)
