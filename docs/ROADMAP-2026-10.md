@@ -32,13 +32,18 @@ und verteilt sie auf die verfügbaren Coding-Agenten.
    `chat/groups/{id}/`, `chat/groups/{id}/members/`, `pinnwand/`.
    Der Client ruft diese Endpunkte bereits auf (`lib/api/client.dart`).
    Der veröffentlichte Vertrag hinkt der Implementierung nach.
-3. **Phase-3-Merge-Status ist irreführend.** Server-PR #66 und #67 sowie
-   Client-PR #44, #45 sind **gemergt**. Server-PR #68 und Client-PR #46
-   (Chatgruppen) sind **geschlossen, nicht gemergt** – die Server-Modelle,
-   Migration `0025_chatgroup_groupmessage_chatgroupmember.py`, die Endpunkte
-   und `core/test_chat_groups_api.py` sind trotzdem im Branch vorhanden.
-   Offen ist die Frage, über welchen Weg das landed und ob die Client-Gruppen-UI
-   (`lib/screens/groups_screen.dart`) gegen den aktuellen Server getestet ist.
+3. **Phase-3-Merge-Status ist geklärt (war irreführend).** Server-PR #66 und #67
+   sowie Client-PR #44, #45 sind **gemergt**. Server-PR #68 und Client-PR #46
+   (Chatgruppen) stehen auf **CLOSED, nicht gemergt** – aber **nur automatisch**:
+   ihr Basisbranch war der jeweilige Chat-Branch, der Sekunden vorher gemergt
+   wurde. Der Code ist vollständig in `origin/main` enthalten
+   (`core/migrations/0025_chatgroup_groupmessage_chatgroupmember.py`,
+   `core/test_chat_groups_api.py`, Endpunkte `chat/groups/*`).
+   Belegter Ablauf: Server 20:41:12Z #67 gemergt → 20:41:15Z #68 geschlossen;
+   Client 21:10:18Z #45 gemergt → 21:10:20Z #46 geschlossen.
+   **Kein offener Merge – nur die PR-Anzeige war irreführend.** Offen bleibt
+   allein die inhaltliche Frage, ob die Client-Gruppen-UI
+   (`lib/screens/groups_screen.dart`) gegen den echten Server abgenommen ist.
 4. **Secure-Mail-Screens fehlen im Client.** Der Server hat `/api/v1/post/`, der
    Client hat die API-Methoden, aber keine Screens für Postfach/Thread.
 
@@ -207,8 +212,9 @@ Kaffeekassen-Befund des ersten Reviews entdeckt.
 
 1. **Quittierung:** Bleibt eine Quittierung gültig, wenn die Übergabe danach
    geändert wird? Erst danach S2 umsetzen.
-2. **Chatgruppen:** Über welchen Weg sind die Server-Modelle gelandet, wenn
-   PR #68 geschlossen ist? Vor C3 klären.
+2. **Chatgruppen:** Geklärt – der Code ist über PR #67 in `main` gelandet, PR #68
+   wurde nur automatisch geschlossen, weil sein Basisbranch mitgemergt wurde.
+   Offen bleibt allein die Abnahme der Client-Gruppen-UI (siehe C3).
 3. **Mistral-Kontingent:** Aktuelle Tarifstufe und Restbudget im Admin-Panel
    prüfen, bevor größere Läufe geplant werden.
 4. **Hetzner-Baustellen w1/w2/w4/w5** aus dem Sicherheitsauftrag sind weiter
