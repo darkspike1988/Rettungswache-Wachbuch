@@ -228,10 +228,16 @@ Umgesetzt:
   ergänzt, fehlende Secure-Mail-Screens als offene Client-Aufgabe benannt.
 - Neuer Vertragstest `core/test_api_contract.py`: prüft beide Richtungen
   (dokumentiert ⇔ implementiert), dass jeder Pfad mindestens eine Methode
-  dokumentiert und dass jede dokumentierte Methode tatsächlich keinen HTTP 405
-  liefert. Der Test liest die YAML bewusst ohne PyYAML, damit für den Vertrag
-  keine neue Laufzeitabhängigkeit entsteht; Parser-Fehlerverhalten ist selbst
-  getestet, damit die Wache nicht still wirkungslos wird.
+  dokumentiert, dass die dokumentierte Methodenmenge **identisch** mit der vom
+  Server akzeptierten ist (jede Methode wird auf HTTP 405 geprobt) und dass der
+  laufende Server die Spezifikation tatsächlich ausliefert. Der Test liest die
+  YAML bewusst ohne PyYAML, damit für den Vertrag keine neue
+  Laufzeitabhängigkeit entsteht; Parser-Fehlerverhalten ist selbst getestet,
+  damit die Wache nicht still wirkungslos wird.
+- Wirksamkeit durch echte Drift-Injektion belegt, nicht behauptet: ein
+  undokumentierter Pfad, eine dokumentierte-aber-nicht-bediente Methode und
+  eine bediente-aber-nicht-dokumentierte Methode machen den Test jeweils mit
+  exakter Pfad-/Methodennennung rot.
 
 Nachweise: 10 Vertragstests grün, Gesamtsuite **314 Django-Tests (1 skipped)**,
 `makemigrations --check` ohne Änderungen. Reine Dokumentations- und

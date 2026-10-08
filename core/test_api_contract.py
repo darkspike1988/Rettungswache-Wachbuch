@@ -187,23 +187,41 @@ class ApiContractTests(TestCase):
         self.assertIn('version: "1.3.0"', served)
         self.assertEqual(parse_spec(served), self.spec)
 
-    def test_documented_methods_are_accepted(self):
-        """A wrong method must yield 405; anything else means the method exists."""
-        rejected = {}
-        for path, methods in sorted(self.spec.items()):
+    def test_documented_methods_match_accepted_methods(self):
+        """Documented methods and actually accepted methods must be identical.
+
+        A wrong method yields HTTP 405, so probing every documented path with
+        every method yields the real, server-enforced method set. Comparing it
+        in both directions catches a method that is documented but not served
+        *and* a served method that nobody documented.
+        """
+        documented_missing = {}
+        undocumented_served = {}
+        for path, documented in sorted(self.spec.items()):
             url = concrete_url(path)
-            for method in sorted(methods):
+            served = set()
+            for method in METHODS:
                 response = self.client.generic(
                     method.upper(),
                     url,
                     data="{}",
                     content_type="application/json",
                 )
-                if response.status_code == 405:
-                    rejected.setdefault(path, []).append(method)
+                if response.status_code != 405:
+                    served.add(method)
+            if not documented <= served and documented:
+                documented_missing[path] = sorted(documented - served)
+            if served - documented:
+                undocumented_served[path] = sorted(served - documented)
         self.assertEqual(
-            rejected,
+            documented_missing,
             {},
-            "Dokumentierte Methoden, die die Route ablehnt: "
-            f"{ {path: sorted(ms) for path, ms in rejected.items()} }",
+            "Dokumentierte, aber vom Server abgelehnte Methoden: "
+            f"{documented_missing}",
+        )
+        self.assertEqual(
+            undocumented_served,
+            {},
+            "Vom Server akzeptierte, aber nicht dokumentierte Methoden: "
+            f"{undocumented_served}",
         )
