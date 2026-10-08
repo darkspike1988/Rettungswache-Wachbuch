@@ -4,8 +4,14 @@
 {% block body_class %}is-landing{% endblock %}
 {% block content %}
 <section class="landing-hero">
+  {% if demo_public_mode %}
+  <p class="eyebrow">Wachbuch · Interaktive Vorführung für die Wachleitung</p>
+  <h1>Eine klare Übergabe. Ein gemeinsamer Überblick.</h1>
+  <p class="lead">Übergaben, Aufgaben, Fahrzeugstatus und Mängel an einem Ort. Entdecken Sie die Idee des digitalen Wachbuchs – und testen Sie die Abläufe anschließend mit fiktiven Beispieldaten.</p>
+  {% else %}
   <h1>Wachorganisation für den öffentlichen Dienst – klar, mobil, selbst gehostet.</h1>
   <p class="lead">Übergaben, Tagesaufgaben und Teamrollen für Rettungswache, Feuerwehr und vergleichbare Dienste. Kein Einsatzleit-, Dienstplan- oder Patientensystem.</p>
+  {% endif %}
   <div class="form-actions landing-cta">
     <a class="button primary" href="{% url 'login' %}">Anmelden</a>
     <a class="button secondary" href="{% url 'vorfuehrung' %}">Vorführung</a>
@@ -23,18 +29,42 @@
   <ul class="landing-points">
     <li><strong>Übergaben</strong> – versioniert, priorisiert, stationsbezogen</li>
     <li><strong>Tagesaufgaben</strong> – Wandbogen digital mit Grün, Gelb und Blau</li>
+    {% if demo_public_mode %}
+    <li><strong>Kalender &amp; Kaffeekasse</strong> – Termine und fiktive Buchungen ausprobieren</li>
+    <li><strong>Mängel, Geräte &amp; Checklisten</strong> – Zustände, Bestände und Prüfroutinen ansehen</li>
+    <li><strong>Im Browser</strong> – keine App-Installation erforderlich</li>
+    {% else %}
     <li><strong>Kalender, Chat &amp; Team</strong> – Termine, Wachenchat und Freigaben</li>
     <li><strong>iOS &amp; Android</strong> – native Apps als mobile Schnittstelle über die versionierte API</li>
+    {% endif %}
     <li><strong>Audit &amp; Privacy</strong> – nachvollziehbar, ohne Tracking-Cookies</li>
   </ul>
 </section>
 
 <section class="landing-scope" aria-labelledby="landing-access">
+  {% if demo_public_mode %}
+  <h2 id="landing-access">Erst entdecken, dann selbst ausprobieren</h2>
+  <p class="lead">Die Vorführung erklärt typische Wachenabläufe. Anschließend melden Sie sich mit Demo / Demo an. Die Musterdaten sind veränderbar und werden von allen Besuchern gemeinsam genutzt. Konto-, Rollen- und Sicherheitseinstellungen sind gesperrt.</p>
+  {% else %}
   <h2 id="landing-access">Zugang nach Login und Freigabe</h2>
   <p class="lead">Der Master-Admin legt Nutzer an und gibt den Wachenzugang frei. Danach: Passwort, Zwei-Faktor und Profilbild unter Mein Konto; kurze Nachrichten im Wachenchat.</p>
+  {% endif %}
 </section>
 
-{% if demo_mode %}
+{% if demo_public_mode %}
+<section class="landing-scope demo-accounts" aria-labelledby="landing-demo">
+  <h2 id="landing-demo">Demo-Zugang</h2>
+  <p class="lead">Diese öffentliche Demo zeigt ausschließlich fiktive Musterdaten. Der Zugang erfolgt über das Anmeldeformular – bitte keine echten Daten eingeben.</p>
+  <ul class="landing-points">
+    <li><strong>Benutzername:</strong> {{ demo_public_username }}</li>
+    <li><strong>Passwort:</strong> {{ demo_public_password }}</li>
+    <li>Groß- und Kleinschreibung beachten.</li>
+  </ul>
+  <div class="form-actions">
+    <a class="button primary" href="{% url 'login' %}">Zum Anmeldeformular</a>
+  </div>
+</section>
+{% elif demo_mode %}
 <section class="landing-scope demo-accounts" aria-labelledby="landing-demo">
   <h2 id="landing-demo">Demo-Zugang</h2>
   <p class="lead">Diese Instanz ist mit fiktiven Musterdaten befüllt. Ein Klick genügt – du bist direkt als Demo-Admin drin.</p>

@@ -50,6 +50,9 @@ MIDDLEWARE = [
     "core.middleware.SecurityHeadersMiddleware",
     "core.middleware.ClientIPMiddleware",
     "axes.middleware.AxesMiddleware",
+    # Innermost guard: blocks demo-forbidden routes (by URL name) only when
+    # DEMO_PUBLIC_MODE is enabled. Harmless in normal operation.
+    "core.middleware.PublicDemoGuardMiddleware",
 ]
 
 # Optional Redis cache. Keep serialized values non-executable: django-redis uses
@@ -297,3 +300,23 @@ CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 60 * 60 * 12
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = False
+
+# Public, internet-facing demonstration instance. This is a superset of
+# DEMO_MODE with hard, non-optional guards so visitors can only ever see
+# fictional data and can never reach production-style operations (user
+# creation, token/passkey enrolment, push/feed egress, Django admin or
+# station configuration). Normal (non-demo) operation is untouched.
+DEMO_PUBLIC_MODE = env_bool("DEMO_PUBLIC_MODE", default=False)
+if DEMO_PUBLIC_MODE:
+    # Always behave like a demo instance: seed data, banner, one-click login.
+    DEMO_MODE = True
+    # No self-service sign-ups on a public instance.
+    REGISTRATION_ENABLED = False
+    # No outbound push/feed egress: keep both switches and their secrets empty
+    # so the worker has nothing to contact even if it is scheduled.
+    WEB_PUSH_ENABLED = False
+    VAPID_PUBLIC_KEY = ""
+    VAPID_PRIVATE_KEY = ""
+    FEED_ALLOWED_HOSTS = set()
+    # Shared demo accounts must not be forced through MFA enrolment.
+    MFA_REQUIRED = False
