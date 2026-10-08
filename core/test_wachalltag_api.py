@@ -116,6 +116,34 @@ class WachalltagApiTests(TestCase):
         listed = self.client.get("/api/v1/defects/", **self.auth).json()["results"]
         self.assertFalse(any(row["title"] == "Unsichtbar" for row in listed))
 
+    def test_defect_create_requires_title(self):
+        response = self._json("post", "/api/v1/defects/", {"description": "ohne Titel"})
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(Defect.objects.count(), 0)
+
+    def test_defect_patch_applies_only_the_documented_fields(self):
+        """Locks the documented PATCH contract: title/category are not editable."""
+        create = self._json(
+            "post",
+            "/api/v1/defects/",
+            {"title": "Titel bleibt", "description": "alt", "category": "device"},
+        )
+        self.assertEqual(create.status_code, 201)
+        defect_id = create.json()["id"]
+
+        creation_only = self._json("patch", f"/api/v1/defects/{defect_id}/", {"title": "Neuer Titel"})
+        self.assertEqual(creation_only.status_code, 422)
+
+        mixed = self._json(
+            "patch",
+            f"/api/v1/defects/{defect_id}/",
+            {"title": "Neuer Titel", "category": "task", "description": "neu"},
+        )
+        self.assertEqual(mixed.status_code, 200)
+        self.assertEqual(mixed.json()["title"], "Titel bleibt")
+        self.assertEqual(mixed.json()["category"], "device")
+        self.assertEqual(mixed.json()["description"], "neu")
+
     def test_assets_inventory_and_ack_workflows(self):
         asset = self._json(
             "post",

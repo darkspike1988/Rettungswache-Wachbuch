@@ -125,6 +125,70 @@ def concrete_url(normalised_path):
     return API_PREFIX + re.sub(r"\{\}", "1", normalised_path)
 
 
+def parse_schema(text, name):
+    """Return {'required': [...], 'properties': {...}} for one schema block.
+
+    Hand-rolled for the same reason as parse_spec: the project has no YAML
+    dependency. Assumes the formatting used in openapi_v1.yaml - schema header
+    at indent 4, `properties:` at indent 6, property keys at indent 8.
+    """
+    lines = text.splitlines()
+    header = f"    {name}:"
+    start = next((index for index, line in enumerate(lines) if line.rstrip() == header), None)
+    if start is None:
+        raise AssertionError(f"Schema {name} fehlt in openapi_v1.yaml")
+    required = []
+    properties = set()
+    in_properties = False
+    for line in lines[start + 1:]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip())
+        if indent <= 4:
+            break
+        if indent == 6 and stripped == "properties:":
+            in_properties = True
+            continue
+        if indent == 6 and stripped.startswith("required:"):
+            raw = stripped[len("required:"):].strip().strip("[]")
+            required = [part.strip() for part in raw.split(",") if part.strip()]
+            continue
+        if not in_properties:
+            continue
+        if indent == 6:
+            in_properties = False
+            continue
+        if indent == 8 and not stripped.startswith("-"):
+            key = stripped.split(":", 1)[0].strip()
+            if key:
+                properties.add(key)
+    return {"required": required, "properties": properties}
+
+
+def served_version(text):
+    """Read info.version from the spec text without a YAML parser."""
+    match = re.search(r'(?m)^  version:\s*"?([0-9][^"\s]*)"?\s*$', text)
+    if not match:
+        raise AssertionError("openapi_v1.yaml enthält keine version unter info")
+    return match.group(1)
+
+
+def path_block(text, spec_path):
+    """Return the raw YAML block of one path entry from openapi_v1.yaml."""
+    lines = text.splitlines()
+    header = f"  {spec_path}:"
+    start = next((index for index, line in enumerate(lines) if line.rstrip() == header), None)
+    if start is None:
+        raise AssertionError(f"Pfad {spec_path} fehlt in openapi_v1.yaml")
+    block = []
+    for line in lines[start + 1:]:
+        if line.strip() and (len(line) - len(line.lstrip())) <= 2:
+            break
+        block.append(line)
+    return "\n".join(block)
+
+
 class SpecParserTests(TestCase):
     """The parser itself must catch drift, otherwise the guard is worthless."""
 
@@ -180,12 +244,12 @@ class ApiContractTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.spec = parse_spec(SPEC_PATH.read_text(encoding="utf-8"))
+        cls.spec_text = SPEC_PATH.read_text(encoding="utf-8")
+        cls.spec = parse_spec(cls.spec_text)
         cls.routes = implemented_routes()
 
     def test_spec_declares_a_version(self):
-        text = SPEC_PATH.read_text(encoding="utf-8")
-        self.assertRegex(text, r'(?m)^  version: "\d+\.\d+\.\d+"$')
+        self.assertRegex(self.spec_text, r'(?m)^  version: "\d+\.\d+\.\d+"$')
 
     def test_every_documented_path_is_implemented(self):
         missing = sorted(set(self.spec) - set(self.routes))
@@ -214,7 +278,7 @@ class ApiContractTests(TestCase):
         response = self.client.get(f"{API_PREFIX}/openapi.yaml")
         self.assertEqual(response.status_code, 200)
         served = response.content.decode("utf-8")
-        self.assertIn('version: "1.3.0"', served)
+        self.assertIn(served_version(self.spec_text), served)
         self.assertEqual(parse_spec(served), self.spec)
 
     def test_api_doc_table_names_only_documented_methods(self):
@@ -242,6 +306,35 @@ class ApiContractTests(TestCase):
             "docs/API.md nennt Pfade oder Methoden, die openapi_v1.yaml nicht "
             f"dokumentiert: {overclaimed}",
         )
+
+    def test_defect_write_requires_title(self):
+        """The creation schema must name the field the server rejects on.
+
+        POST /defects/ answers 422 without a title. A schema that lists title
+        only as an optional property tells a client author the opposite.
+        """
+        schema = parse_schema(self.spec_text, "DefectWrite")
+        self.assertIn("title", schema["required"])
+
+    def test_defect_patch_schema_matches_the_fields_the_handler_applies(self):
+        """PATCH must not offer fields the handler silently ignores.
+
+        defect_detail() applies exactly description, asset_ref, priority, owner
+        and due_at. title and category are fixed at creation. Documenting the
+        creation schema for PATCH promised editable fields that never change.
+        """
+        schema = parse_schema(self.spec_text, "DefectPatch")
+        self.assertEqual(
+            schema["properties"],
+            {"description", "asset_ref", "priority", "owner", "due_at"},
+        )
+        self.assertNotIn("title", schema["properties"])
+
+    def test_defect_patch_operation_uses_the_patch_schema(self):
+        """The PATCH operation must reference DefectPatch, not DefectWrite."""
+        _, separator, patch = path_block(self.spec_text, "/defects/{id}/").partition("    patch:")
+        self.assertTrue(separator, "PATCH-Operation fehlt unter /defects/{id}/")
+        self.assertIn("#/components/schemas/DefectPatch", patch.split("responses:", 1)[0])
 
     def test_documented_methods_match_accepted_methods(self):
         """Documented methods and actually accepted methods must be identical.

@@ -204,7 +204,7 @@ Nachweise: `makemigrations --check`, 269 Django-Tests (1 skipped),
 `check --deploy` ohne neue Fehler, GitHub-Jobs `django` und `docker` auf dem
 PR-Head grün.
 
-### [x] R-026 API-Vertrag nachgezogen (OpenAPI 1.3.0)
+### [x] R-026 API-Vertrag nachgezogen (OpenAPI 1.3.1)
 
 Ursache: Nachkontrolle zur Modernisierung. `core/api/openapi_v1.yaml` stand auf
 1.2.2 und dokumentierte 14 real vorhandene Endpunkte nicht, die der offizielle
@@ -218,7 +218,7 @@ Client sauber gegen den veröffentlichten Vertrag gebaut oder gegengeprüft werd
 
 Umgesetzt:
 
-- Spezifikation auf **1.3.0**: die 14 Pfade mit Methoden, Scopes sowie Modul- und
+- Spezifikation auf **1.3.1**: die 14 Pfade mit Methoden, Scopes sowie Modul- und
   Rollenvoraussetzungen ergänzt, dazu die Schemas `CryptoIdentityWrite`,
   `EncryptedMessageWrite` und `PinboardNoteWrite`.
 - `docs/API.md`: Endpunkttabelle ergänzt, Scope-Liste um `read:chat`,
@@ -251,15 +251,39 @@ Umgesetzt:
   Test wird rot und nennt `/post/{}/: ['post']`, `/uebergaben/{}/: ['post']`
   und `/uebergaben/{}/status/: ['get']` — also den AGY-Befund plus zwei
   gleichartige Fehler, die die manuelle Prüfung nicht gefunden hatte.
-- Bewusst **nicht** geprüft (Grenze des Vertragstests): ob die in
-  `components/schemas` beschriebenen JSON-Strukturen den tatsächlichen
-  Serializer-Ausgaben entsprechen. Der Vertrag ist auf Pfad-, Methoden- und
-  Sichtbarkeitsebene abgesichert, nicht auf Feldebene.
+- **Feldebene geprüft** (Mistral `mistral-large-4`, dritte Modellfamilie, auf
+  isoliertem Worktree gegen Commit `7564fc2`): Abgleich der Schemas gegen die
+  Serializer in `core/api/wachalltag.py`, `views.py` und `chat.py`. Drei
+  Befunde am Code reproduziert und behoben:
+  1. `DefectWrite` deklarierte `title` nicht als Pflichtfeld, obwohl
+     `POST /defects/` ohne Titel mit 422 antwortet. `required: [title]` ergänzt.
+  2. `PATCH /defects/{id}/` verwendete das Erzeugungsschema `DefectWrite`,
+     obwohl der Handler nur `description`, `asset_ref`, `priority`, `owner` und
+     `due_at` anwendet. `title` und `category` sind bei der Erzeugung fest und
+     wurden stillschweigend ignoriert. Neues Schema `DefectPatch` mit
+     `minProperties: 1`, das Verhalten ist in der Operation beschrieben.
+  3. Antworten ohne Schema ergänzt: `GET /defects/{id}/` (`DefectDetail` mit
+     `events`/`attachments`), `POST /handovers/{id}/ack/` (`HandoverAck`) sowie
+     `GET`/`POST /pinnwand/` (`PinboardNote`).
+  Der Bericht nannte teils falsche Zeilennummern; übernommen wurden nur die am
+  Code nachvollzogenen Befunde.
+- Zusätzliche Tests, die das Verhalten festhalten statt es zu behaupten:
+  `test_defect_create_requires_title` und
+  `test_defect_patch_applies_only_the_documented_fields` in
+  `core/test_wachalltag_api.py` (Titel allein ⇒ 422; Titel zusammen mit einem
+  änderbaren Feld ⇒ 200 und Titel unverändert), dazu die Schemawächter
+  `test_defect_write_requires_title` und
+  `test_defect_patch_schema_matches_the_fields_the_handler_applies`.
 
-Nachweise: 11 Vertragstests grün, Gesamtsuite **315 Django-Tests (1 skipped)**,
+Nachweise: 14 Vertragstests grün, Gesamtsuite **320 Django-Tests (1 skipped)**,
 `makemigrations --check` ohne Änderungen. Reine Dokumentations- und
 Teständerung: keine Migration, keine UI-Änderung, kein Eingriff in die
 öffentliche Demo.
+
+Offen und bewusst nicht Teil von R-026: Die Modul- und Rollenvoraussetzungen
+der Chat- und Pinnwand-Endpunkte stehen nur im Code und in `docs/API.md`; der
+Vertragstest prüft sie nicht. Ebenso ungeprüft bleibt, ob die Schema-**Typen**
+den Serializer-Ausgaben in jedem Einzelfall entsprechen.
 
 ## Wave 3 – Pilot- und Produktionsabnahme
 

@@ -1,6 +1,6 @@
 # API für Mobile- und Drittclients
 
-Stand: 8. Oktober 2026 · Server **0.16.x** · OpenAPI **1.3.0**.
+Stand: 8. Oktober 2026 · Server **0.16.x** · OpenAPI **1.3.1**.
 
 Versionierte JSON-API unter `/api/v1/` für den AGPL-Client [Wachbuch-Client](https://github.com/darkspike1988/Wachbuch-Client) und kontrollierte Drittclients.
 
@@ -111,6 +111,13 @@ Der Vertrag wird durch `core/test_api_contract.py` in beide Richtungen geprüft:
 
 Mängel besitzen Titel, Beschreibung, Bezug zu Fahrzeug/Gerät, Priorität, Kategorie, Zuständigkeit, Frist und Status. Änderungen erzeugen stationsbezogene Ereignisse/Audit-Einträge. Ein identischer Statuswechsel erzeugt keinen zweiten Status-Event.
 
+Verhalten beim Schreiben:
+
+- `POST /api/v1/defects/` verlangt `title`. Ohne Titel antwortet der Server mit `422`.
+- `PATCH /api/v1/defects/<id>/` ändert **nur** `description`, `asset_ref`, `priority`, `owner` und `due_at`. `title` und `category` sind bei der Erzeugung fest. Werden sie mitgeschickt, werden sie ignoriert und zählen **nicht** als Änderung; ein Body ohne mindestens ein änderbares Feld wird mit `422` beantwortet. Ein Client darf daraus nicht schließen, dass ein Titelwechsel stattgefunden hat.
+- `GET /api/v1/defects/<id>/` liefert zusätzlich `events` (höchstens die 100 jüngsten) und `attachments`.
+- `owner: ""` bedeutet „niemandem zugewiesen". Die API liefert hier bewusst einen leeren String und kein `null`.
+
 ### Fotos
 
 Mängelfotos sind authentifiziert und stationsisoliert. Erlaubt sind JPEG, PNG und WebP. Der Server prüft MIME/Format, Signatur und die tatsächliche Decodierbarkeit mit Pillow, bevor Daten persistiert werden. Grenzen:
@@ -130,7 +137,9 @@ Fahrzeuge/Geräte besitzen einen operationalen Status (`ready`, `limited`, `work
 
 ### Quittierungen und Checklisten
 
-Eine Übergabe kann pro Benutzer einmal quittiert werden. Wiederkehrende Checklisten unterstützen täglich, wöchentlich und monatlich. Nach Abschluss wird die konfigurierte Kadenz bis zur ersten Fälligkeit in der Zukunft fortgeschrieben; lange Rückstände bleiben dadurch nicht künstlich weiter überfällig.
+Eine Übergabe kann pro Benutzer einmal quittiert werden; `POST /api/v1/handovers/<id>/ack/` ist idempotent und liefert `handover_id`, `by` und `at` — beim ersten Mal mit `201`, danach unverändert mit `200`. Wiederkehrende Checklisten unterstützen täglich, wöchentlich und monatlich. Nach Abschluss wird die konfigurierte Kadenz bis zur ersten Fälligkeit in der Zukunft fortgeschrieben; lange Rückstände bleiben dadurch nicht künstlich weiter überfällig.
+
+Bekannte Grenze: Die Quittung ist heute an die **Übergabe** gebunden, nicht an deren **Fassung**. Wird eine Übergabe nach einer Quittung geändert, bleibt die Quittung gültig und unterscheidet nicht, welche Fassung bestätigt wurde. Eine fassungsgebundene Quittung ist noch nicht entschieden und deshalb nicht umgesetzt.
 
 ### Reports
 
