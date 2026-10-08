@@ -238,8 +238,25 @@ Umgesetzt:
   undokumentierter Pfad, eine dokumentierte-aber-nicht-bediente Methode und
   eine bediente-aber-nicht-dokumentierte Methode machen den Test jeweils mit
   exakter Pfad-/Methodennennung rot.
+- **Unabhängige Gegenprüfung** (AGY, `gemini-3.1-pro-high`, andere
+  Modellfamilie als der Autor) auf isoliertem Worktree gegen Commit `7c06c5b`.
+  Bestätigter Befund: die Endpunkttabelle in `docs/API.md` gruppierte Pfade in
+  einer Zeile und versprach dadurch Methoden, die es nicht gibt — `GET/POST`
+  für `/post/<id>/` (tatsächlich nur GET) sowie widersprüchliche Zeilen für die
+  Übergaben-Aliase. Behoben; die Zeilen sind jetzt pfadgenau getrennt.
+- Neuer Wächter gegen genau diese Fehlerklasse:
+  `test_api_doc_table_names_only_documented_methods` liest die Tabelle aus
+  `docs/API.md` und verlangt, dass kein Pfad und keine Methode zugesagt wird,
+  die die Spezifikation nicht dokumentiert. Gegen den alten Stand geprüft: der
+  Test wird rot und nennt `/post/{}/: ['post']`, `/uebergaben/{}/: ['post']`
+  und `/uebergaben/{}/status/: ['get']` — also den AGY-Befund plus zwei
+  gleichartige Fehler, die die manuelle Prüfung nicht gefunden hatte.
+- Bewusst **nicht** geprüft (Grenze des Vertragstests): ob die in
+  `components/schemas` beschriebenen JSON-Strukturen den tatsächlichen
+  Serializer-Ausgaben entsprechen. Der Vertrag ist auf Pfad-, Methoden- und
+  Sichtbarkeitsebene abgesichert, nicht auf Feldebene.
 
-Nachweise: 10 Vertragstests grün, Gesamtsuite **314 Django-Tests (1 skipped)**,
+Nachweise: 11 Vertragstests grün, Gesamtsuite **315 Django-Tests (1 skipped)**,
 `makemigrations --check` ohne Änderungen. Reine Dokumentations- und
 Teständerung: keine Migration, keine UI-Änderung, kein Eingriff in die
 öffentliche Demo.

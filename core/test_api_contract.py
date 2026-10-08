@@ -90,6 +90,36 @@ def implemented_routes():
     return routes
 
 
+API_DOC = Path(__file__).resolve().parent.parent / "docs" / "API.md"
+_ROW = re.compile(r"^\|\s*([A-Z/]+)\s*\|(.+?)\|\s*[^|]*\|\s*$")
+_PATH_TOKEN = re.compile(r"`([^`]+)`")
+
+
+def parse_api_doc_table(text):
+    """Extract {normalised path: {methods}} from the endpoint table in API.md.
+
+    The table groups several paths in one row, so the claimed method set applies
+    to every path listed in that row. Rows whose first cell is not a method list
+    (header, separator) are skipped.
+    """
+    claims = {}
+    for line in text.splitlines():
+        match = _ROW.match(line.strip())
+        if not match:
+            continue
+        methods = {part.strip().lower() for part in match.group(1).split("/") if part.strip()}
+        if not methods or not methods <= set(METHODS):
+            continue
+        for token in _PATH_TOKEN.findall(match.group(2)):
+            token = token.strip()
+            if not token.startswith("/"):
+                continue
+            if token.startswith(API_PREFIX):
+                token = token[len(API_PREFIX):]
+            claims.setdefault(normalise_path(token), set()).update(methods)
+    return claims
+
+
 def concrete_url(normalised_path):
     """Build a callable URL, substituting every parameter placeholder."""
     return API_PREFIX + re.sub(r"\{\}", "1", normalised_path)
@@ -186,6 +216,32 @@ class ApiContractTests(TestCase):
         served = response.content.decode("utf-8")
         self.assertIn('version: "1.3.0"', served)
         self.assertEqual(parse_spec(served), self.spec)
+
+    def test_api_doc_table_names_only_documented_methods(self):
+        """docs/API.md must not promise a method the specification does not document.
+
+        The narrative table is what a client author reads first. A row like
+        `GET/POST | /post/, /post/<id>/` claims POST on a GET-only route and
+        sends the reader into a 405. The table may list a subset of the
+        documented methods, never more.
+        """
+        claims = parse_api_doc_table(API_DOC.read_text(encoding="utf-8"))
+        self.assertTrue(claims, "Keine Endpunktzeilen in docs/API.md gefunden")
+        overclaimed = {}
+        for path, methods in sorted(claims.items()):
+            documented = self.spec.get(path)
+            if documented is None:
+                overclaimed[path] = sorted(methods)
+                continue
+            extra = methods - documented
+            if extra:
+                overclaimed[path] = sorted(extra)
+        self.assertEqual(
+            overclaimed,
+            {},
+            "docs/API.md nennt Pfade oder Methoden, die openapi_v1.yaml nicht "
+            f"dokumentiert: {overclaimed}",
+        )
 
     def test_documented_methods_match_accepted_methods(self):
         """Documented methods and actually accepted methods must be identical.

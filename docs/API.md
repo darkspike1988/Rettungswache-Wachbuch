@@ -69,10 +69,11 @@ Kanonische Codes: `validation_error`, `auth_required`, `forbidden`, `mfa_require
 | GET/POST | `/api/v1/handovers/` | Übergaben lesen/anlegen |
 | GET | `/api/v1/handovers/<id>/` | Übergabe-Detail |
 | POST | `/api/v1/handovers/<id>/status/` | Übergabestatus |
-| GET/POST | `/api/v1/uebergaben/` … | Deutsche Handovers-Aliase |
 | GET | `/api/v1/handovers/<id>/acks/` | Quittierungen lesen |
 | POST | `/api/v1/handovers/<id>/ack/` | Pro Benutzer idempotent quittieren |
-| GET/POST | `/api/v1/uebergaben/`, `/uebergaben/<id>/`, `/uebergaben/<id>/status/` | Deutsche Aliase der Handovers-Routen |
+| GET/POST | `/api/v1/uebergaben/` | deutscher Alias für `/handovers/` |
+| GET | `/api/v1/uebergaben/<id>/` | deutscher Alias für `/handovers/<id>/` |
+| POST | `/api/v1/uebergaben/<id>/status/` | deutscher Alias für `/handovers/<id>/status/` |
 | GET/POST | `/api/v1/defects/` | Mängel lesen/anlegen |
 | GET/PATCH | `/api/v1/defects/<id>/` | Mangel + Verlauf/Fotos lesen bzw. Metadaten ändern |
 | POST | `/api/v1/defects/<id>/status/` | Mangelstatus ändern |
@@ -94,7 +95,8 @@ Kanonische Codes: `validation_error`, `auth_required`, `forbidden`, `mfa_require
 | GET | `/api/v1/chat/keys/` | öffentliche Schlüssel der aktiven Stationsmitglieder |
 | GET/POST | `/api/v1/chat/` | Wachenchat lesen/schreiben |
 | GET/POST | `/api/v1/chat/private/`, `/chat/private/<id>/` | private Zweiergespräche |
-| GET/POST | `/api/v1/post/`, `/post/<id>/` | Secure-Mail-Postfach und Einzelnachricht |
+| GET/POST | `/api/v1/post/` | Secure-Mail-Postfach lesen bzw. Nachricht senden |
+| GET | `/api/v1/post/<id>/` | einzelne Secure-Mail lesen (markiert als gelesen) |
 | GET/POST | `/api/v1/chat/groups/`, `/chat/groups/<id>/` | Gruppenräume |
 | POST | `/api/v1/chat/groups/<id>/members/` | Gruppenmitglieder ändern (Ersteller/Admin) |
 | GET/POST | `/api/v1/pinnwand/` | Aushänge der Station |
