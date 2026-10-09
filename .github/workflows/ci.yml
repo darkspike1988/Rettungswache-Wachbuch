@@ -53,6 +53,57 @@ jobs:
           DJANGO_DEBUG: "false"
         run: python manage.py test --settings=config.test_settings
 
+  postgres-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_USER: r1wb
+          POSTGRES_PASSWORD: r1-ci-disposable-only
+          POSTGRES_DB: r1wb
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U r1wb -d r1wb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DJANGO_SECRET_KEY: ci-only-secret
+      R1_DISPOSABLE_DB: "1"
+      R1_PG_HOST: "127.0.0.1"
+
+      R1_PG_DB: r1wb
+      R1_PG_USER: r1wb
+      R1_PG_PASSWORD: r1-ci-disposable-only
+      R1_PG_TEST_DB: r1wb_ci_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install locked dependencies with hash verification
+        run: pip install --require-hashes -r requirements.lock -r requirements-ci.lock
+      - name: PostgreSQL concurrency and acknowledgement contract
+        env:
+          R1_PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          python manage.py test core.test_r1_postgres_concurrency \
+            core.test_handover_ack_revision core.test_handover_ack_s2_verify \
+            core.test_handover_ack_parent \
+            --settings=config.r1_postgres_settings --noinput --verbosity=2
+      - name: Repeat real concurrency tests
+        env:
+          R1_PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          for run in 1 2; do
+            python manage.py test core.test_r1_postgres_concurrency \
+              --settings=config.r1_postgres_settings --noinput --verbosity=2
+          done
+
   docker:
     runs-on: ubuntu-latest
     steps:
