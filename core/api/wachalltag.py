@@ -18,7 +18,7 @@ from urllib.parse import quote
 
 from PIL import Image, UnidentifiedImageError
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Exists, OuterRef, Sum
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -27,8 +27,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from core.access import CONTENT_ROLES
+from core.errors import ERROR_CODE_CONFLICT
 from core.models import Checklist, HandoverEntry, Membership
-from core.services import audit
+from core.services import (
+    InvalidHandoverRevision,
+    StaleHandoverRevision,
+    acknowledge_handover,
+    audit,
+)
 from core.wachalltag_models import (
     AssetEvent,
     ChecklistSchedule,
@@ -176,6 +182,7 @@ def _ack_json(item):
         "handover_id": item.handover_id,
         "by": item.user.username,
         "at": item.created_at.isoformat(),
+        "version": item.version,
     }
 
 
@@ -744,10 +751,19 @@ def handover_ack(request, pk):
     handover = HandoverEntry.objects.filter(pk=pk, station=station).first()
     if handover is None:
         return base._json_error(request, "Uebergabe nicht gefunden.", status=404)
-    item, created = HandoverAck.objects.get_or_create(station=station, handover=handover, user=request.user)
-    if created:
-        audit(request.user, station, "handover.acknowledged", handover, {"handover": handover.pk})
-    return JsonResponse({"ok": True, **_ack_json(item)}, status=201 if created else 200)
+
+    body = _body(request)
+    read_version = body.get("version") if body else None
+    if not isinstance(read_version, int) or isinstance(read_version, bool) or read_version < 1:
+        return base._json_error(request, "version muss eine positive ganze Zahl sein.", status=422)
+
+    try:
+        ack, created = acknowledge_handover(handover, request.membership, read_version)
+    except InvalidHandoverRevision:
+        return base._json_error(request, "Ungueltige oder fehlende Version.", status=422)
+    except StaleHandoverRevision:
+        return base._json_error(request, "Die Uebergabe wurde zwischenzeitlich geaendert.", status=409, code=ERROR_CODE_CONFLICT)
+    return JsonResponse({"ok": True, **_ack_json(ack)}, status=201 if created else 200)
 
 
 # ---- Attachments -----------------------------------------------------------
@@ -914,6 +930,21 @@ def reports(request):
     overdue_defects = open_qs.filter(due_at__lt=now).count()
     oldest = open_qs.order_by("created_at").first()
     oldest_days = (now - oldest.created_at).days if oldest else 0
+    unacknowledged = (
+        HandoverEntry.objects.filter(station=station)
+        .exclude(status=HandoverEntry.Status.DONE)
+        .annotate(
+            is_acked=Exists(
+                HandoverAck.objects.filter(
+                    handover=OuterRef("pk"),
+                    user=request.user,
+                    version=OuterRef("version"),
+                )
+            )
+        )
+        .filter(is_acked=False)
+        .count()
+    )
     return JsonResponse(
         {
             "ok": True,
@@ -926,10 +957,6 @@ def reports(request):
             "assets_ready": asset_ready,
             "asset_ready_percent": round((asset_ready / asset_total) * 100) if asset_total else 0,
             "inventory_out": InventoryItem.objects.filter(station=station, holder__isnull=False).count(),
-            "unacknowledged_active_handovers": max(
-                0,
-                HandoverEntry.objects.filter(station=station).exclude(status=HandoverEntry.Status.DONE).count()
-                - HandoverAck.objects.filter(station=station, user=request.user, handover__status__in=[HandoverEntry.Status.OPEN, HandoverEntry.Status.IN_PROGRESS]).count(),
-            ),
+            "unacknowledged_active_handovers": unacknowledged,
         }
     )

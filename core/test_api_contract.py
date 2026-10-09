@@ -374,3 +374,40 @@ class ApiContractTests(TestCase):
             "Vom Server akzeptierte, aber nicht dokumentierte Methoden: "
             f"{undocumented_served}",
         )
+
+    def test_handover_ack_operation_requires_version(self):
+        """ack-Operation verlangt requestBody.required=true und required:[version] mit integer minimum 1."""
+        _, separator, post = path_block(self.spec_text, "/handovers/{id}/ack/").partition("    post:")
+        self.assertTrue(separator, "POST-Operation fehlt")
+
+        request_body = post.split("responses:", 1)[0]
+        self.assertIn("required: true", request_body)
+        self.assertIn("required: [version]", request_body)
+        self.assertIn("type: integer", request_body)
+        self.assertIn("minimum: 1", request_body)
+
+        # HandoverAck Schema Output:
+        text_lines = self.spec_text.splitlines()
+        ack_idx = next(i for i, line in enumerate(text_lines) if line.startswith("    HandoverAck:"))
+        version_line = next(line for line in text_lines[ack_idx:ack_idx+10] if "version:" in line)
+        self.assertIn("nullable: true", version_line)
+
+        # Stale-Revision -> 409 muss am Endpunkt dokumentiert sein.
+        block = path_block(self.spec_text, "/handovers/{id}/ack/")
+        self.assertIn('"409"', block)
+
+    def test_error_code_enum_covers_conflict(self):
+        """Der Server liefert bei stale Revision code=conflict; der Vertrag muss ihn nennen."""
+        _, separator, block = self.spec_text.partition("    ErrorResponse:")
+        self.assertTrue(separator, "ErrorResponse-Schema fehlt in openapi_v1.yaml")
+        enum_line = next(
+            line for line in block.splitlines()
+            if "enum:" in line and "validation_error" in line
+        )
+        self.assertIn("conflict", enum_line)
+
+        doc_line = next(
+            line for line in API_DOC.read_text(encoding="utf-8").splitlines()
+            if line.startswith("Kanonische Codes:")
+        )
+        self.assertIn("`conflict`", doc_line)

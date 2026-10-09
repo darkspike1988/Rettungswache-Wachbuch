@@ -4,6 +4,8 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from django.core.exceptions import PermissionDenied
+
 from .models import (
     ApiToken,
     AuditEvent,
@@ -14,6 +16,15 @@ from .models import (
     PinboardNote,
 )
 from .push import notify_urgent_handover
+from .wachalltag_models import HandoverAck
+
+
+class InvalidHandoverRevision(Exception):
+    pass
+
+
+class StaleHandoverRevision(Exception):
+    pass
 
 
 def audit(actor, station, action, obj, metadata=None):
@@ -293,3 +304,47 @@ def archive_pinboard_note(note, *, actor):
         "fields": ["is_archived"],
     })
     return locked
+
+
+@transaction.atomic
+def acknowledge_handover(handover, membership, read_version):
+    locked = HandoverEntry.objects.select_for_update().get(pk=handover.pk)
+    if locked.station_id != membership.station_id:
+        raise PermissionDenied("Station mismatch")
+
+    if isinstance(read_version, bool):
+        raise InvalidHandoverRevision("Invalid handover revision")
+
+    if isinstance(read_version, str):
+        if not (read_version.isascii() and read_version.isdecimal()) or len(read_version) > 10:
+            raise InvalidHandoverRevision("Invalid handover revision")
+        try:
+            read_version = int(read_version)
+        except ValueError:
+            raise InvalidHandoverRevision("Invalid handover revision") from None
+    elif isinstance(read_version, int):
+        pass
+    else:
+        raise InvalidHandoverRevision("Invalid handover revision")
+
+    if read_version <= 0:
+        raise InvalidHandoverRevision("Invalid handover revision")
+
+    if read_version != locked.version:
+        raise StaleHandoverRevision("Stale handover revision")
+
+    ack, created = HandoverAck.objects.get_or_create(
+        station=membership.station,
+        handover=locked,
+        user=membership.user,
+        version=locked.version,
+    )
+    if created:
+        audit(
+            membership.user,
+            membership.station,
+            "handover.acknowledged",
+            locked,
+            {"version": locked.version},
+        )
+    return ack, created

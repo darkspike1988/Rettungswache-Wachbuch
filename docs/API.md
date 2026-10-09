@@ -1,6 +1,6 @@
 # API für Mobile- und Drittclients
 
-Stand: 8. Oktober 2026 · Server **0.16.x** · OpenAPI **1.3.1**.
+Stand: 8. Oktober 2026 · Server **0.16.x** · OpenAPI **1.4.0**.
 
 Versionierte JSON-API unter `/api/v1/` für den AGPL-Client [Wachbuch-Client](https://github.com/darkspike1988/Wachbuch-Client) und kontrollierte Drittclients.
 
@@ -53,7 +53,7 @@ Fehlerantworten verwenden:
 }
 ```
 
-Kanonische Codes: `validation_error`, `auth_required`, `forbidden`, `mfa_required`, `mfa_setup_required`, `not_found`, `rate_limit`, `server_error`.
+Kanonische Codes: `validation_error`, `auth_required`, `forbidden`, `mfa_required`, `mfa_setup_required`, `not_found`, `rate_limit`, `conflict`, `server_error`.
 
 ## Endpunkte v1
 
@@ -70,7 +70,7 @@ Kanonische Codes: `validation_error`, `auth_required`, `forbidden`, `mfa_require
 | GET | `/api/v1/handovers/<id>/` | Übergabe-Detail |
 | POST | `/api/v1/handovers/<id>/status/` | Übergabestatus |
 | GET | `/api/v1/handovers/<id>/acks/` | Quittierungen lesen |
-| POST | `/api/v1/handovers/<id>/ack/` | Pro Benutzer idempotent quittieren |
+| POST | `/api/v1/handovers/<id>/ack/` | Pro Benutzer revisionsgebunden idempotent quittieren |
 | GET/POST | `/api/v1/uebergaben/` | deutscher Alias für `/handovers/` |
 | GET | `/api/v1/uebergaben/<id>/` | deutscher Alias für `/handovers/<id>/` |
 | POST | `/api/v1/uebergaben/<id>/status/` | deutscher Alias für `/handovers/<id>/status/` |
@@ -137,13 +137,13 @@ Fahrzeuge/Geräte besitzen einen operationalen Status (`ready`, `limited`, `work
 
 ### Quittierungen und Checklisten
 
-Eine Übergabe kann pro Benutzer einmal quittiert werden; `POST /api/v1/handovers/<id>/ack/` ist idempotent und liefert `handover_id`, `by` und `at` — beim ersten Mal mit `201`, danach unverändert mit `200`. Wiederkehrende Checklisten unterstützen täglich, wöchentlich und monatlich. Nach Abschluss wird die konfigurierte Kadenz bis zur ersten Fälligkeit in der Zukunft fortgeschrieben; lange Rückstände bleiben dadurch nicht künstlich weiter überfällig.
+Eine Übergabe wird revisionsgebunden quittiert. Das Pflichtfeld `version` (positive ganze Zahl) im Request-Body bindet die Quittierung an eine spezifische Fassung der Übergabe (Append-only). Bei fehlender oder ungültiger Version antwortet der Server mit `422 validation_error`. Stimmt die gesendete Version nicht mehr mit der aktuellen Serverversion überein, antwortet der Server mit `409 conflict`. `POST /api/v1/handovers/<id>/ack/` ist idempotent pro Benutzer und Version; es liefert `handover_id`, `by`, `at` und `version` — beim ersten Mal mit `201`, bei identischer Wiederholung unverändert mit `200`. Wird eine Übergabe nach einer Quittung geändert, bleibt die alte Quittung erhalten und die neue Version muss separat quittiert werden. Historische Legacy-Quittungen (ohne Version) behalten `version: null` und quittieren ausdrücklich nicht die aktuelle Revision.
 
-Bekannte Grenze: Die Quittung ist heute an die **Übergabe** gebunden, nicht an deren **Fassung**. Wird eine Übergabe nach einer Quittung geändert, bleibt die Quittung gültig und unterscheidet nicht, welche Fassung bestätigt wurde. Eine fassungsgebundene Quittung ist noch nicht entschieden und deshalb nicht umgesetzt.
+Wiederkehrende Checklisten unterstützen täglich, wöchentlich und monatlich. Nach Abschluss wird die konfigurierte Kadenz bis zur ersten Fälligkeit in der Zukunft fortgeschrieben; lange Rückstände bleiben dadurch nicht künstlich weiter überfällig.
 
 ### Reports
 
-`/reports/` liefert nur leichte Stationsorganisation: offene/überfällige Mängel, überfällige Checks, Asset-Einsatzklarquote, ausgegebene Pools und unquittierte aktive Übergaben. Die Auswertung ist nicht für individuelle Leistungsbewertung vorgesehen.
+`/reports/` liefert nur leichte Stationsorganisation: offene/überfällige Mängel, überfällige Checks, Asset-Einsatzklarquote, ausgegebene Pools und unquittierte aktive Übergaben (revisionsbewusst: eine Quittung zählt nur für die tatsächlich gelesene Fassung). Die Auswertung ist nicht für individuelle Leistungsbewertung vorgesehen.
 
 ## Scopes
 

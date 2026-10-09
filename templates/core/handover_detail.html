@@ -13,6 +13,32 @@
 <div class="content-flow narrow">
   <section class="section-block prose"><h2>Information</h2><p>{{ handover.details|linebreaksbr }}</p></section>
   {% if can_change_status %}<form method="post" action="{% url 'handover_status' handover.pk %}" class="section-block inline-form">{% csrf_token %}<div class="field"><label for="{{ status_form.status.id_for_label }}">Status</label>{{ status_form.status }}</div><button class="button primary" type="submit">Status aktualisieren</button></form>{% endif %}
+  <section class="section-block">
+    <h2>Kenntnisnahme</h2>
+    {% if acked_current_version %}
+      <p>Von Ihnen für Version {{ handover.version }} quittiert.</p>
+    {% else %}
+      <form method="post" action="{% url 'handover_ack' handover.pk %}" class="inline-form">
+        {% csrf_token %}
+        <input type="hidden" name="version" value="{{ handover.version }}">
+        <button class="button primary" type="submit">Zur Kenntnis genommen</button>
+      </form>
+    {% endif %}
+    {% if handover_acks %}
+      <details class="details-block">
+        <summary>Quittierungen ({{ handover_acks|length }})</summary>
+        <div class="revision-list">
+          {% for ack in handover_acks %}
+            <div>
+              <strong>{% if ack.version %}Version {{ ack.version }}{% else %}Version unbekannt (Altbestand){% endif %}</strong>
+              <span>{{ ack.user.first_name|default:ack.user.username }}</span>
+              <time datetime="{{ ack.created_at|date:'c' }}">{{ ack.created_at|date:"d.m.Y H:i" }}</time>
+            </div>
+          {% endfor %}
+        </div>
+      </details>
+    {% endif %}
+  </section>
   <dl class="summary-list"><div><dt>Erstellt von</dt><dd>{{ handover.author.first_name|default:handover.author.username }}</dd></div><div><dt>Erstellt</dt><dd>{{ handover.created_at|date:"d.m.Y H:i" }}</dd></div><div><dt>Aktualisiert</dt><dd>{{ handover.updated_at|date:"d.m.Y H:i" }}</dd></div></dl>
   <details class="details-block"><summary>Änderungshistorie ({{ handover.revisions.count }})</summary><div class="revision-list">{% for revision in handover.revisions.all %}<div><strong>Version {{ revision.version }}</strong><span>{{ revision.changed_by.first_name|default:revision.changed_by.username }}</span><time datetime="{{ revision.created_at|date:'c' }}">{{ revision.created_at|date:"d.m.Y H:i" }}</time></div>{% endfor %}</div></details>
 </div>

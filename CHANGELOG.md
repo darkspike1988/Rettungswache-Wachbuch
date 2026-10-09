@@ -196,6 +196,7 @@
 
 ## Unreleased - Open-Source-Basis
 
+- **S2 / API 1.4.0 (Breaking Change, noch nicht ausgerollt):** Quittierung erfordert die gelesene positive `version`; fehlt sie, folgt 422, bei veralteter Revision 409. Alte Quittungen bleiben historisch. Rollout nur gemeinsam mit einem kompatiblen Client.
 - portable Docker-Konfiguration ohne servergebundene Hosts und Datenbank-URLs
 - sichere, stationsbezogene Einstellungsseite fuer Name und optionale Module
 - lokaler Login und reproduzierbarer Erstadmin-Workflow ergaenzt

@@ -171,12 +171,13 @@ class HandoverAck(models.Model):
     station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name="handover_acks")
     handover = models.ForeignKey(HandoverEntry, on_delete=models.PROTECT, related_name="acknowledgements")
     user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="handover_acknowledgements")
+    version = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["created_at"]
         constraints = [
-            models.UniqueConstraint(fields=["handover", "user"], name="unique_handover_user_ack"),
+            models.UniqueConstraint(fields=["handover", "user", "version"], name="unique_handover_user_version_ack"),
         ]
         indexes = [models.Index(fields=["station", "handover"], name="ack_station_handover_idx")]
 

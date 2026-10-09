@@ -67,7 +67,7 @@ from .models import (
     TotpDevice,
     WebAuthnCredential,
 )
-from .wachalltag_models import ChecklistSchedule, Defect, InventoryItem, StationAsset
+from .wachalltag_models import ChecklistSchedule, Defect, HandoverAck, InventoryItem, StationAsset
 from .mfa import (
     confirm_device,
     create_pending_device,
@@ -79,6 +79,9 @@ from .mfa import (
     verify_totp,
 )
 from .services import (
+    InvalidHandoverRevision,
+    StaleHandoverRevision,
+    acknowledge_handover,
     archive_pinboard_note,
     audit,
     change_handover_status,
@@ -582,12 +585,40 @@ def handover_detail(request, pk):
         Membership.Role.SHIFT_LEAD,
         Membership.Role.ADMIN,
     }
+    handover_acks = list(HandoverAck.objects.filter(handover=handover).select_related("user"))
+    my_acks = {ack.version for ack in handover_acks if ack.user_id == request.user.id}
+    acked_current_version = handover.version in my_acks
     return render(request, "core/handover_detail.html", {
         "handover": handover,
         "status_form": HandoverStatusForm(instance=handover),
         "can_change_status": can_change_status,
         "can_edit_content": can_change_status,
+        "handover_acks": handover_acks,
+        "my_acks": my_acks,
+        "acked_current_version": acked_current_version,
     })
+
+
+@membership_required(CONTENT_ROLES)
+@require_POST
+def handover_ack(request, pk):
+    handover = get_object_or_404(HandoverEntry, pk=pk, station=request.membership.station)
+    read_version = request.POST.get("version")
+    if not read_version:
+        messages.error(request, "Ungueltige oder fehlende Version. Bitte Seite neu laden.")
+        return redirect("handover_detail", pk=handover.pk)
+
+    try:
+        ack, created = acknowledge_handover(handover, request.membership, read_version=read_version)
+        if created:
+            messages.success(request, f"Uebergabe (Version {read_version}) wurde quittiert.")
+        else:
+            messages.info(request, "Bereits quittiert.")
+    except InvalidHandoverRevision:
+        messages.error(request, "Ungueltige oder fehlende Version. Bitte Seite neu laden.")
+    except StaleHandoverRevision:
+        messages.error(request, "Die Uebergabe wurde zwischenzeitlich geaendert. Bitte neu laden und erneut quittieren.")
+    return redirect("handover_detail", pk=handover.pk)
 
 
 @membership_required({Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN})

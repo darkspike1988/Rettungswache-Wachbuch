@@ -5,6 +5,11 @@ Large-4-Review. Dieser Plan ersetzt **nicht** `PRODUKT-FAHRPLAN.md` und
 `REMEDIATION-ROADMAP-2026-08.md`, sondern ordnet die nächsten Arbeitsschritte
 und verteilt sie auf die verfügbaren Coding-Agenten.
 
+## Update 2026-10-09
+- S1 abgeschlossen; S2 hebt den Vertrag auf 1.4.0 (Pflichtrevision).
+- Server-S2 und Webdesign gemeinsam lokal geprüft: 348 Tests, 1 Skip; neun echte HTTP-Anfragen.
+- Clientintegration, Builds und Modellvergleich noch offen. Öffentliche Demo bleibt unverändert.
+
 ## 0. Verifizierter Ausgangsstand
 
 | Gegenstand | Belegter Stand |
@@ -65,11 +70,13 @@ getesteter vertikaler Schnitt mit eigener Roadmap-ID.
 - P0 aus der Research. Modell existiert bereits in
   `core/wachalltag_models.py`; API `/handovers/{id}/ack/` existiert.
 - Fehlt: Web-POST-View, UI („Zur Kenntnis genommen“), Audit-Eintrag.
-- **Wichtige Einschränkung aus der Vorprüfung:** Das bestehende Modell
-  unterscheidet nicht, **welche Version** einer Übergabe quittiert wurde.
-  Vor der Implementierung muss fachlich geklärt werden, ob eine Quittierung
-  bei nachträglicher Änderung der Übergabe ungültig wird. Ohne diese Klärung
-  keine Umsetzung.
+- **Fachliche Entscheidung bestätigt:** Eine Quittierung gilt ausschließlich für
+  die konkret gelesene Übergabeversion. Wird die Übergabe nachträglich geändert,
+  bleibt die bisherige Quittierung historisch erhalten; die neue Version muss
+  erneut quittiert werden. Alte Quittierungen werden weder gelöscht noch auf die
+  neue Version umgebogen.
+- Umsetzung: revisionsgebundene, append-only Quittierungen; Web-POST/UI,
+  API-Vertrag und Stations-/Rollenprüfung gemeinsam absichern.
 
 ### S3 – Restpunkte aus der laufenden Remediation
 Offen laut `docs/ROADMAP.md`:

@@ -1,8 +1,10 @@
 from pathlib import Path
 
 from django.http import HttpResponse, JsonResponse
-from django.test import Client, RequestFactory, SimpleTestCase, override_settings
+from django.test import Client, RequestFactory, SimpleTestCase, TestCase, override_settings
+from django.urls import reverse
 from django.utils.html import json_script
+from core.models import User, Membership, Station
 
 from .errors import (
     CORRELATION_ID_PATTERN,
@@ -194,7 +196,7 @@ class ErrorHandlerRegressionTests(SimpleTestCase):
         self.assertEqual(set(ERROR_CODES), {
             "validation_error", "auth_required", "forbidden",
             "not_found", "rate_limit", "server_error",
-            "mfa_required", "mfa_setup_required",
+            "mfa_required", "mfa_setup_required", "conflict",
         })
         self.assertEqual(ERROR_CODES["forbidden"]["status"], 403)
         self.assertEqual(ERROR_CODES["not_found"]["status"], 404)
@@ -204,6 +206,7 @@ class ErrorHandlerRegressionTests(SimpleTestCase):
         self.assertEqual(ERROR_CODES["server_error"]["status"], 500)
         self.assertEqual(ERROR_CODES["mfa_required"]["status"], 403)
         self.assertEqual(ERROR_CODES["mfa_setup_required"]["status"], 403)
+        self.assertEqual(ERROR_CODES["conflict"]["status"], 409)
 
     def test_api_path_returns_json_for_404(self):
         client = Client(HTTP_ACCEPT="application/json")
@@ -284,10 +287,6 @@ class CryptoUnlockDialogTests(SimpleTestCase):
         self.assertIn("aria-invalid", source)
         self.assertIn("Escape", source)
         self.assertIn("requestCryptoUnlock", source)
-
-from django.test import Client, TestCase
-from django.urls import reverse
-from core.models import User, Membership, Station
 
 class MFAEnforcementMiddlewareTests(TestCase):
     def setUp(self):

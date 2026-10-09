@@ -183,8 +183,8 @@ class WachalltagApiTests(TestCase):
             details="Bitte prüfen",
             author=self.user,
         )
-        first = self._json("post", f"/api/v1/handovers/{handover.pk}/ack/")
-        second = self._json("post", f"/api/v1/handovers/{handover.pk}/ack/")
+        first = self._json("post", f"/api/v1/handovers/{handover.pk}/ack/", {"version": handover.version})
+        second = self._json("post", f"/api/v1/handovers/{handover.pk}/ack/", {"version": handover.version})
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(HandoverAck.objects.filter(handover=handover, user=self.user).count(), 1)
