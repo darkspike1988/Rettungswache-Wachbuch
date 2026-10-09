@@ -39,6 +39,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Patch fixed Debian vulnerabilities in the pinned base without weakening Trivy.
+# Cache mount keeps apt indexes out of the runtime image.
+RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update \
+    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 perl-base \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libpcre2-8-0)" ge '10.42-1+deb12u2' \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' perl-base)" ge '5.36.0-7+deb12u4'
+
 RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --create-home app
 
 COPY --from=builder /opt/venv /opt/venv
