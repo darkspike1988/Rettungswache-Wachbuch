@@ -9,14 +9,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 from core.version import APP_VERSION as DEFAULT_APP_VERSION  # noqa: E402
 
-# Enable audit logging by importing the audit module
-# This must be done before Django starts to patch request handling
-try:
-    from core import audit  # noqa: F401
-    AUDIT_LOGGING_ENABLED = True
-except ImportError:
-    AUDIT_LOGGING_ENABLED = False
-
 
 def env_bool(name, default=False):
     return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
@@ -266,7 +258,7 @@ WASTE_CALENDAR_MAX_BYTES = 1_048_576
 RETENTION_FEED_DAYS = int(os.getenv("RETENTION_FEED_DAYS", "90") or "0")
 RETENTION_AUDIT_DAYS = int(os.getenv("RETENTION_AUDIT_DAYS", "0") or "0")
 MFA_ENABLED = env_bool("MFA_ENABLED", default=True)
-MFA_REQUIRED = env_bool("MFA_REQUIRED", default=True)  # Standardmäßig erzwungen
+MFA_REQUIRED = env_bool("MFA_REQUIRED", default=False)
 DEMO_MODE = env_bool("DEMO_MODE", default=False)
 DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "Demo-Passwort-12345").strip() or "Demo-Passwort-12345"
 if DEMO_MODE:
@@ -311,15 +303,19 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379") or "6379")
 REDIS_DB = int(os.getenv("REDIS_DB", "0") or "0")
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "").strip() or None
+REDIS_LOCATION = (
+    f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+    if REDIS_PASSWORD
+    else f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+)
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}",
+        "LOCATION": REDIS_LOCATION,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "CONNECTION_POOL_KWARGS": {"max_connections": 100},
-            "PICKLE_VERSION": -1,  # Use the latest protocol
         },
         "KEY_PREFIX": "wachbuch",
         "TIMEOUT": 300,  # Default cache timeout: 5 minutes

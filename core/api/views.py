@@ -17,13 +17,11 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
-from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
-from django.views.decorators.vary import vary_on_cookie, vary_on_headers
 
 from ..rate_limit import consume
-from ..services import get_client_ip
+
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -86,7 +84,7 @@ def api_rate_limit(bucket: str, get_key: callable = None):
             if get_key:
                 raw_key = get_key(request)
             else:
-                raw_key = get_client_ip(request)
+                raw_key = getattr(request, "client_ip", None) or "unknown"
             
             # Check rate limit
             if not consume(bucket, raw_key, limit=limit, window_seconds=window_seconds):
@@ -286,7 +284,7 @@ def token_endpoint(request):
 
 @csrf_exempt
 @require_POST
-@api_rate_limit("token", get_key=lambda r: r.POST.get("username", ""))
+@api_rate_limit("token", get_key=lambda r: f"{getattr(r, 'client_ip', 'unknown')}|{r.POST.get('username', '')}")
 def obtain_token(request):
     """Paperless-style token exchange: username + password → API token."""
     body = _parse_json(request)
@@ -441,8 +439,6 @@ def _handover_json(item, *, detail=False):
 @require_http_methods(["GET", "POST"])
 @api_token_required
 @api_rate_limit("handovers_list")
-@cache_page(settings.HANDOVER_CACHE_TIMEOUT)
-@vary_on_headers("Authorization",)
 def handovers_list(request):
     if request.method == "POST":
         return handover_create(request)
@@ -508,8 +504,6 @@ def api_status(request):
 @require_GET
 @api_token_required
 @api_rate_limit("overview")
-@cache_page(settings.DASHBOARD_CACHE_TIMEOUT)
-@vary_on_headers("Authorization",)
 def overview(request):
     """Dashboard summary (German alias: /uebersicht/)."""
     if not _scope_allowed(request.api_token, "read:me"):
