@@ -33,8 +33,10 @@ from ..errors import (
     ERROR_CODE_FORBIDDEN,
     ERROR_CODE_NOT_FOUND,
     ERROR_CODE_RATE_LIMIT,
+    ERROR_CODE_SERVER_ERROR,
     ERROR_CODE_VALIDATION,
     json_error,
+    log_exception,
 )
 from ..forms import CalendarEventForm, CoffeeEntryForm, HandoverForm, HandoverStatusForm, PinboardNoteForm
 from ..models import (
@@ -922,11 +924,14 @@ def check_update(request):
             "force_update": force_update,
             "min_required_version": latest_version_obj.min_required_version,
         })
-    except Exception as e:
-        return JsonResponse({
-            "ok": False,
-            "error": str(e),
-        }, status=500)
+    except Exception:
+        log_exception(request, message="check_update_failed")
+        return _json_error(
+            request,
+            "Update-Check fehlgeschlagen.",
+            status=500,
+            code=ERROR_CODE_SERVER_ERROR,
+        )
 
 
 def _compare_versions(v1: str, v2: str) -> int:
