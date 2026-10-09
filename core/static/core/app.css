@@ -34,7 +34,7 @@
 
   /* Text */
   --text: #172033;
-  --muted: #445066;
+  --muted: #47536a;
   --line: #dce4ef;
   --line-strong: #6f7a8f;
 
@@ -64,9 +64,16 @@
   --priority-normal: #2563eb;
   --priority-done: #16a34a;
 
-  --focus: #f0b429;
-  --radius: .625rem;
+  /* Focus – OpenDesign: brand-blue ring (OD --accent #0d47a1). The previous
+     #f0b429 amber measured ~1.8:1 on --bg/--surface and failed WCAG 1.4.11. */
+  --focus: var(--brand);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 5px var(--brand);
+  /* Radius scale (OD --radius-sm/md/lg); --radius kept as the general alias. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
   --radius-lg: 1rem;
+  --radius-pill: 9999px;
+  --radius: var(--radius-md);
   --shadow: none;
   --shadow-soft: 0 1px 0 rgba(8, 46, 99, .04);
   --content: 70rem;
@@ -76,6 +83,44 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --nav-height: 4.75rem;
   --touch: 3rem; /* 48px – Client / WCAG 2.5.5 */
+
+  /* ── OpenDesign „Wachbuch Klar“ tokens ──────────────────────────────
+     Source: design-system/wachbuch/tokens.css (OpenDesign v0.24.1).
+     Reconciled onto the existing app.css names — no second palette.
+     OD --accent == project --brand; OD --info == project --accent. */
+  --surface-warm: #eef4ff;
+  --fg-2: #2b3648;
+  --meta: #3f4b63;
+  --border-soft: #e9eef6;
+  --accent-hover: #082e63;
+  --accent-active: #06234a;
+  --status-open: #2563eb;
+  --status-progress: #b45309;
+  --status-blocked: #6d28d9;
+  --status-done: #15803d;
+  /* Status/priority pairs: soft bg + >=3:1 line/dot. Chip text is always --text. */
+  --tag-bg-urgent: #fee2e2;    --tag-line-urgent: #b91c1c;
+  --tag-bg-important: #fef3c7; --tag-line-important: #b45309;
+  --tag-bg-normal: #dbeafe;    --tag-line-normal: #1d4ed8;
+  --tag-bg-done: #dcfce7;      --tag-line-done: #15803d;
+  --tag-bg-blocked: #ede9fe;   --tag-line-blocked: #6d28d9;
+  --tag-bg-muted: #e9eef6;     --tag-line-muted: #47536a;
+  --font-display: "Source Sans 3", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --text-xs: 12px; --text-sm: 14px; --text-base: 16px; --text-lg: 18px;
+  --text-xl: 22px; --text-2xl: 28px; --text-3xl: 34px; --text-4xl: 44px;
+  --leading-body: 1.5; --leading-tight: 1.2; --tracking-display: -.01em;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
+  --section-y-desktop: 40px; --section-y-tablet: 32px; --section-y-phone: 24px;
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--line);
+  --elev-raised: 0 8px 24px rgba(8, 46, 99, .10);
+  --motion-fast: 150ms; --motion-base: 200ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --container-max: 1120px;
+  --container-gutter-desktop: 24px; --container-gutter-tablet: 20px; --container-gutter-phone: 16px;
 
   font-family: "Source Sans 3", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
   color: var(--text);
@@ -111,7 +156,7 @@ h1, h2, h3 {
 a { color: var(--accent-dark); text-underline-offset: .18em; }
 button, input, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
-:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: no-preference) {
   .page-shell > *:not(.messages) {
@@ -1378,6 +1423,103 @@ button, a { -webkit-tap-highlight-color: transparent; }
   margin: .5rem 0 1rem;
 }
 .passkey-login { margin-top: 1.5rem; }
+
+/* ── OpenDesign „Wachbuch Klar“ alignment ────────────────────────────────────
+   Token layer lives in :root above; this block binds the existing components to
+   it. Styling only — no markup, route or feature changes. */
+
+/* Status/priority chips — soft tag surface + ≥3:1 line token, literal text in
+   --text (never the state colour itself), per design-system/wachbuch/DESIGN.md. */
+.status-label {
+  color: var(--text);
+  background: var(--tag-bg-muted);
+  border-color: var(--tag-line-muted);
+}
+.status-label.priority-urgent {
+  color: var(--text);
+  background: var(--tag-bg-urgent);
+  border-color: var(--tag-line-urgent);
+}
+.status-label.priority-important {
+  color: var(--text);
+  background: var(--tag-bg-important);
+  border-color: var(--tag-line-important);
+}
+.status-label.priority-normal,
+.status-label.neutral {
+  color: var(--text);
+  background: var(--tag-bg-normal);
+  border-color: var(--tag-line-normal);
+}
+.status-label.success {
+  color: var(--text);
+  background: var(--tag-bg-done);
+  border-color: var(--tag-line-done);
+}
+.status-pill.danger {
+  color: var(--text);
+  background: var(--tag-bg-urgent);
+  border-color: var(--tag-line-urgent);
+}
+
+/* Cards keep a hairline border (no heavy shadow); radius-md per OD tokens. */
+.section-block { border-radius: var(--radius-md); }
+
+/* Interactive controls: 8px radius, ≥48px touch target (WCAG 2.5.5). */
+.button,
+.filter-nav a,
+.status-pill,
+.status-label {
+  border-radius: var(--radius-sm);
+}
+
+/* Dark variant — semantic token overrides only (OD tokens.css § Dark variant,
+   mirrored from the Flutter _darkScheme). Inert until a product decision sets
+   data-theme="dark" on <html>; base.html currently pins color-scheme: light. */
+[data-theme="dark"] {
+  --bg: #0b1220;
+  --surface: #121c2e;
+  --surface-soft: #16233a;
+  --surface-raised: #121c2e;
+  --surface-warm: #16233a;
+  --text: #e5eaf3;
+  --fg-2: #c2cad8;
+  --muted: #9aa6bc;
+  --meta: #aeb9ce;
+  --line: #263650;
+  --line-strong: #7f8ba3;
+  --border-soft: #1e2b42;
+  --brand: #9ecaff;
+  --brand-deep: #06203f;
+  --brand-ink: #d3e5ff;
+  --accent: #93c5fd;
+  --accent-dark: #9ecaff;
+  --accent-soft: #14304f;
+  --primary-container: #14304f;
+  --on-primary: #00315d;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #93c5fd;
+  --info-soft: #14304f;
+  --focus: #9ecaff;
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 5px #9ecaff;
+  --priority-urgent: #f87171;
+  --priority-important: #fbbf24;
+  --priority-normal: #93c5fd;
+  --priority-done: #4ade80;
+  --status-open: #93c5fd;
+  --status-progress: #fcd34d;
+  --status-blocked: #c4b5fd;
+  --status-done: #86efac;
+  --tag-bg-urgent: #3a1520;    --tag-line-urgent: #ffb4ab;
+  --tag-bg-important: #3b2f0e; --tag-line-important: #fcd34d;
+  --tag-bg-normal: #0f2740;    --tag-line-normal: #93c5fd;
+  --tag-bg-done: #0e2a18;      --tag-line-done: #86efac;
+  --tag-bg-blocked: #241b3d;   --tag-line-blocked: #c4b5fd;
+  --tag-bg-muted: #1e2b42;     --tag-line-muted: #aeb9ce;
+  --elev-raised: 0 8px 24px rgba(0, 0, 0, .45);
+}
 .agenda-holiday { background: var(--primary-container); }
 .agenda-holiday h2, .agenda-holiday strong { color: var(--brand-deep); }
 .agenda-waste { background: #f8f4e8; }

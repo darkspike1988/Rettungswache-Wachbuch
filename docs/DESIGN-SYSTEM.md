@@ -47,10 +47,19 @@ Voraussetzung fuer die Kernablaeufe.
 | `urgent` | `#DC2626` | Dringend / Fehler (nur semantisch) |
 | `important` | `#F59E0B` | Wichtig / Warnung |
 | `done` / success | `#16A34A` | Erledigt / Erfolg |
-| `focus` | `#F0B429` | Tastaturfokus und Service-Akzentstreifen |
+| `focus` | `#0D47A1` (`brand`) | Tastaturfokus als Akzentring (>=3:1); seit OpenDesign-Abgleich statt Gelb `#F0B429` |
 
 Flaechen nutzen Rand statt schwerer Schatten. Touch-Ziele: mindestens **48 x 48
 CSS-Pixel** (Client und WCAG 2.5.5).
+
+Die Tokens dieser Tabelle sind mit dem OpenDesign-Paket
+`design-system/wachbuch/tokens.css` (v0.24.1) und den Clientwerten in
+`clients/wachbuch-mobile/lib/theme/design_tokens.dart` abgeglichen
+(Stand 2026-10-09). Hinzugekommene Token-Tiers: `--fg-2`/`--meta`,
+`--tag-bg-*`/`--tag-line-*`, 4px-Raster `--space-*`, Typo-Skala `--text-*`,
+Radius `--radius-sm|md|lg` und `--focus-ring`. Die dunkle Variante
+(`[data-theme="dark"]`) ist als Token-Block vorhanden, aber ohne Umschalter
+inaktiv (Produktentscheidung).
 
 ## Zehn verbindliche Regeln
 

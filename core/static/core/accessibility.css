@@ -4,7 +4,9 @@
 :focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
-  box-shadow: 0 0 0 6px var(--brand-deep);
+  /* Two-tone ring: 2px page-coloured gap + 3px --focus (OD --accent), so the
+     indicator stays >=3:1 on the blue primary button (WCAG 1.4.11). */
+  box-shadow: 0 0 0 5px var(--bg);
 }
 
 .chat-tabs a,
