@@ -1,5 +1,5 @@
 Pillow==12.3.0
-Django==6.1
+Django==6.1.1
 django-axes==8.3.1
 dj-database-url==3.1.2
 django-redis==7.0.0
@@ -9,7 +9,9 @@ gunicorn==26.0.0
 psycopg[binary]==3.3.4
 pyotp==2.10.0
 pywebpush==2.4.0
-urllib3==2.7.0
+urllib3==2.8.0
+# Security floor for aiohttp's transitive dependency (CVE-2026-104874).
+multidict==6.9.1
 webauthn==3.0.0
 whitenoise==6.12.0
 qrcode==8.2

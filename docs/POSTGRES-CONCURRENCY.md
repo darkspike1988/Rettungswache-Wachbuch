@@ -82,7 +82,11 @@ diesen Remote-Nachweis und setzt dessen GitHub-Kontext nicht voraus.
 
 ## Lokale Parent-Abnahme
 
-- Python 3.13.5 / Django 6.1 / psycopg 3.3.4 / PostgreSQL 17.10.
+- Python 3.13.5 / Django 6.1.1 / psycopg 3.3.4 / PostgreSQL 17.10.
+  Nach erster CI wurden Django, urllib3 und multidict wegen gemeldeter CVEs
+  gezielt aktualisiert und die Hash-Lockfiles regeneriert. Versionsdiff:
+  ausschließlich diese drei Pakete. Suite und PG-Bundle erneut grün;
+  pip-audit --strict meldet keine bekannten Lücken. Sicherheitsgates bleiben aktiv.
 - 34 PostgreSQL-Tests (8 Konkurrenz + 26 Vertrags-/Web-/APItests): OK ohne Skips.
 - Zwei zusätzliche Durchläufe mit jeweils 8 Konkurrenztests: OK ohne Skips.
 - SQLite-Gesamtsuite: 360 Tests, OK (9 Skips: 8 PG-Fälle und 1 bestehender Skip).
