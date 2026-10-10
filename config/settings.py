@@ -328,10 +328,17 @@ DASHBOARD_CACHE_TIMEOUT = 30  # 30 seconds for dashboard
 CALENDAR_CACHE_TIMEOUT = 120  # 2 minutes for calendar
 COFFEE_CACHE_TIMEOUT = 60  # 1 minute for coffee ledger
 
-# Use cached template loader for production
+# Use cached template loader for production.
+# APP_DIRS and loaders are mutually exclusive; keep app_dirs semantics by
+# listing the appDirectories loader explicitly alongside the filesystem loader.
 if not DEBUG:
     TEMPLATES[0]["OPTIONS"]["loaders"] = [
-        ("django.template.loaders.cached.Loader", [
-            "django.template.backends.django.DjangoTemplates",
-        ]),
+        (
+            "django.template.loaders.cached.Loader",
+            [
+                "django.template.loaders.filesystem.Loader",
+                "django.template.loaders.app_directories.Loader",
+            ],
+        ),
     ]
+    TEMPLATES[0]["OPTIONS"].pop("app_dirs", None)

@@ -144,6 +144,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     ports:
       - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8090}:8000"
     healthcheck:
@@ -155,9 +157,6 @@ services:
     networks:
       - app-db
       - web-ingress
-    depends_on:
-      redis:
-        condition: service_healthy
     tmpfs:
       - /tmp
     read_only: true
