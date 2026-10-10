@@ -213,7 +213,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.15.0")
+        self.assertEqual(response.json()["version"], settings.APP_VERSION)
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -232,7 +232,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "364 Tage")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.15.0")
+        self.assertContains(response, f"Version {settings.APP_VERSION}")
         self.assertNotContains(response, "Google Analytics")
         self.assertNotContains(response, "Alle akzeptieren")
 
