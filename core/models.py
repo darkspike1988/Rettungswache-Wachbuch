@@ -123,12 +123,7 @@ class HandoverEntry(models.Model):
 
     class Meta:
         ordering = ["status", "-created_at"]
-        indexes = [
-            models.Index(fields=["station", "status", "-created_at"], name="hx_station_status_created"),
-            models.Index(fields=["station", "priority", "-created_at"], name="hx_station_priority_created"),
-            models.Index(fields=["station", "category"], name="hx_station_category"),
-            models.Index(fields=["author", "-created_at"], name="hx_author_created"),
-        ]
+        indexes = [models.Index(fields=["station", "status", "-created_at"])]
 
     def __str__(self):
         return self.title
@@ -167,10 +162,6 @@ class CalendarEvent(models.Model):
 
     class Meta:
         ordering = ["starts_at"]
-        indexes = [
-            models.Index(fields=["station", "starts_at"], name="cal_station_starts"),
-            models.Index(fields=["created_by", "-created_at"], name="cal_created_by_created"),
-        ]
 
     def clean(self):
         if self.ends_at and self.starts_at and self.ends_at < self.starts_at:
@@ -240,11 +231,6 @@ class CoffeeEntry(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["station", "-created_at"], name="cf_station_created"),
-            models.Index(fields=["member", "-created_at"], name="cf_member_created"),
-            models.Index(fields=["created_by", "-created_at"], name="cf_created_by_created"),
-        ]
         constraints = [
             models.CheckConstraint(condition=~Q(amount_cents=0), name="coffee_amount_nonzero"),
             models.UniqueConstraint(
@@ -364,11 +350,6 @@ class StationTaskCompletion(models.Model):
 
     class Meta:
         ordering = ["-work_date", "-completed_at"]
-        indexes = [
-            models.Index(fields=["station", "work_date"], name="tc_station_date"),
-            models.Index(fields=["task", "work_date"], name="tc_task_date"),
-            models.Index(fields=["completed_by", "-completed_at"], name="tc_completed_by"),
-        ]
         constraints = [
             models.UniqueConstraint(fields=["task", "work_date"], name="unique_task_completion_day"),
         ]
@@ -429,11 +410,7 @@ class FeedItem(models.Model):
             models.UniqueConstraint(fields=["source", "external_id"], name="unique_feed_item")
         ]
         ordering = [F("published_at").desc(nulls_last=True), "-last_seen_at"]
-        indexes = [
-            models.Index(fields=["source", "-published_at"], name="feed_source_published"),
-            models.Index(fields=["-last_seen_at"], name="feed_last_seen"),
-            models.Index(fields=["starts_on"], name="feed_starts_on"),
-        ]
+        indexes = [models.Index(fields=["source", "-published_at"])]
 
     def __str__(self):
         return self.title
@@ -533,9 +510,8 @@ class PushOutbox(models.Model):
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["status", "next_attempt_at"], name="pushoutbox_status_next"),
-            models.Index(fields=["station", "status"], name="pushoutbox_station_status"),
-            models.Index(fields=["user", "status"], name="pushoutbox_user_status"),
+            models.Index(fields=["status", "next_attempt_at"]),
+            models.Index(fields=["station", "status"]),
         ]
 
     def __str__(self):
