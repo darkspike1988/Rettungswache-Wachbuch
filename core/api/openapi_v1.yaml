@@ -348,6 +348,48 @@ paths:
       summary: Lightweight station Wachalltag report
       responses:
         "200": { description: Aggregated counts and readiness percentage }
+        "201":
+          description: Completion recorded
+  /check-update/:
+    get:
+      summary: Client update check (public, rate-limited)
+      description: |
+        Returns the latest active app version for a platform with changelog,
+        download URL and force-update flag. Public endpoint, rate limited per IP.
+      security: []
+      parameters:
+        - in: query
+          name: current_version
+          required: false
+          schema: { type: string }
+        - in: query
+          name: platform
+          required: false
+          schema: { type: string, enum: [web, android, ios] }
+      responses:
+        "200":
+          description: Update information (has_update false when no active version exists)
+        "429":
+          description: Rate limit exceeded
+  /update/:
+    get:
+      summary: English alias for /check-update/
+      security: []
+      parameters:
+        - in: query
+          name: current_version
+          required: false
+          schema: { type: string }
+        - in: query
+          name: platform
+          required: false
+          schema: { type: string, enum: [web, android, ios] }
+      responses:
+        "200":
+          description: Update information
+        "429":
+          description: Rate limit exceeded
+
 components:
   securitySchemes:
     TokenAuth:
@@ -410,3 +452,4 @@ components:
         handover_id: { type: integer }
         by: { type: string }
         at: { type: string, format: date-time }
+      description: "Format: Token <secret> or Bearer <secret>"
