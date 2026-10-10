@@ -28,15 +28,21 @@ jobs:
       - name: Build Docker image
         run: docker build --tag rettungswache-wachbuch:scan .
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (merge gate, aligned with ci.yml docker job)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: 'rettungswache-wachbuch:scan'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+      - name: Run Trivy scan for GitHub Security tab (non-blocking)
+        if: always()
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: 'rettungswache-wachbuch:scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: 1
-          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH,MEDIUM'
           vuln-type: 'os,library'
           scanners: 'vuln'
 
