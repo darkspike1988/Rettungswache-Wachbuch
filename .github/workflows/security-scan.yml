@@ -80,8 +80,8 @@ jobs:
   snyk-scan:
     name: Snyk Dependency Scan
     runs-on: ubuntu-latest
-    # Requires SNYK_TOKEN; non-blocking until the repository secret is configured.
-    continue-on-error: true
+    # Runs only when SNYK_TOKEN is configured; otherwise reports success (neutral).
+    if: ${{ secrets.SNYK_TOKEN != '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
