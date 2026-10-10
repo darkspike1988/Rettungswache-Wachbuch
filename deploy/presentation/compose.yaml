@@ -1,0 +1,27 @@
+services:
+  presentation:
+    image: local/wachbuch-presentation:20261010
+    build: .
+    container_name: wachbuch-presentation-preview
+    restart: unless-stopped
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    ports: ["127.0.0.1:18091:8080"]
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.25
+    pids_limit: 64
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

@@ -132,15 +132,23 @@ class ProgressiveWebAppTests(PilotTestCase):
         self.assertIn("border-color: rgba(255, 255, 255, .55) !important;", css)
         self.assertIn(".header-login:hover { background: rgba(255, 255, 255, .12) !important; }", css)
 
-    def test_landing_shows_name_once_with_hero_art_and_webapp_copy(self):
+    def test_landing_shows_name_once_with_presentation_shell_and_preview(self):
         self.client.logout()
         response = self.client.get(reverse("landing"))
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<strong>Wachwerk</strong>", html=False, count=1)
-        self.assertNotContains(response, "brand-hero")
-        self.assertContains(response, "landing-hero-art")
-        self.assertContains(response, "Pexels")
+        self.assertContains(response, "<h1>Die nächste Schicht. Schon im Bild.</h1>", html=False, count=1)
+        self.assertContains(
+            response,
+            "Interaktive Produktvorschau · fiktive Beispieldaten · keine echte App-Sitzung",
+        )
+        self.assertContains(response, "Im Browser ausprobieren")
+        self.assertContains(response, "core/presentation.css")
+        self.assertContains(response, "core/presentation.js")
+        self.assertContains(response, "data-pw-demo")
         self.assertContains(response, "Was die Web-App leistet")
-        self.assertContains(response, "native Apps als mobile Schnittstelle")
+        self.assertNotContains(response, "brand-hero")
+        self.assertNotContains(response, "landing-hero-art")
         self.assertNotContains(response, "Zur Anmeldung")
 
     def test_demo_one_click_login_requires_demo_mode(self):
