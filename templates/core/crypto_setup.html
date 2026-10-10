@@ -11,6 +11,13 @@
   <p class="hint" data-crypto-status hidden></p>
   {% if has_keys %}
     <p class="notice">Schlüssel sind eingerichtet. Zum Lesen und Schreiben wird die Passphrase einmal pro Browsersitzung benötigt.</p>
+    {% if fingerprint %}
+    <div class="form-card" data-key-fingerprint>
+      <p><strong>Sicherheitsnummer deines Schlüssels</strong></p>
+      <p class="app-version" style="font-family: var(--mono, monospace); letter-spacing: 0.04em;">{{ fingerprint }}</p>
+      <p class="hint">Vergleiche diese Sicherheitsnummer persönlich mit Kolleginnen und Kollegen (App: Gruppen → Schlüssel verifizieren). Stimmen die Nummern überein, ist der Schlüssel echt.</p>
+    </div>
+    {% endif %}
     <form data-crypto-unlock class="form-card">
       <p><label>Passphrase <input type="password" name="passphrase" required autocomplete="current-password"></label></p>
       <button class="button primary" type="submit">Für diese Sitzung entsperren</button>

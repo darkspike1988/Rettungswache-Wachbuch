@@ -95,9 +95,12 @@ def crypto_setup(request):
                 {"fields": ["public_jwk"]},
             )
         return JsonResponse({"ok": True})
+    from .messaging import key_fingerprint
+
     return render(request, "core/crypto_setup.html", {
         "identity": identity,
         "has_keys": identity is not None,
+        "fingerprint": key_fingerprint(identity.public_jwk) if identity else None,
     })
 
 
