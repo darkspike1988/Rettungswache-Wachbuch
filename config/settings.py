@@ -341,4 +341,4 @@ if not DEBUG:
             ],
         ),
     ]
-    TEMPLATES[0]["OPTIONS"].pop("app_dirs", None)
+    TEMPLATES[0].pop("APP_DIRS", None)
