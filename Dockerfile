@@ -26,6 +26,11 @@ RUN SECRET_KEY=build-only-secret-key-not-used-at-runtime \
 
 # --- Runtime: slim image ---
 FROM python:3.14.6-slim-bookworm@sha256:86f975aca15cf04a40b399eebede9aea7c82eae084d1f1a0a6ef6bcaae871a30 AS runtime
+# Patch OS packages so the runtime image does not ship known HIGH/CRITICAL CVEs
+# (perl-base/openssl advisories are fixed in bookworm-updates).
+RUN apt-get update \
+    && apt-get upgrade --yes --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 LABEL org.opencontainers.image.title="Rettungswache-Wachbuch" \
       org.opencontainers.image.description="Selbst gehostetes Wachbuch fuer Rettungswachen" \
