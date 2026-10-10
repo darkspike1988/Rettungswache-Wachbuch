@@ -80,8 +80,6 @@ jobs:
   snyk-scan:
     name: Snyk Dependency Scan
     runs-on: ubuntu-latest
-    # Runs only when SNYK_TOKEN is configured; otherwise reports success (neutral).
-    if: ${{ secrets.SNYK_TOKEN != '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -96,6 +94,7 @@ jobs:
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/python@master
+        if: env.SNYK_TOKEN != ''
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
