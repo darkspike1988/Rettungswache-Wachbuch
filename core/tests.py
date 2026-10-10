@@ -213,7 +213,7 @@ class SecurityAndAccessTests(PilotTestCase):
         response = self.client.get(reverse("healthz"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
-        self.assertEqual(response.json()["version"], "0.15.0")
+        self.assertEqual(response.json()["version"], settings.APP_VERSION)
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("publickey-credentials-get=(self)", response.headers["Permissions-Policy"])
@@ -232,7 +232,7 @@ class SecurityAndAccessTests(PilotTestCase):
         self.assertContains(response, "364 Tage")
         self.assertContains(response, "TDDDG")
         self.assertContains(response, "AI Act")
-        self.assertContains(response, "Version 0.15.0")
+        self.assertContains(response, f"Version {settings.APP_VERSION}")
         self.assertNotContains(response, "Google Analytics")
         self.assertNotContains(response, "Alle akzeptieren")
 
@@ -3024,3 +3024,26 @@ class PushOutboxRetentionTests(_PushOutboxBase):
         self._create_old(PushOutbox.Status.SENT)
         call_command("cleanup_pushoutbox", "--dry-run")
         self.assertEqual(PushOutbox.objects.count(), 1)
+
+
+class CryptoSetupFingerprintTests(PilotTestCase):
+    def test_setup_page_shows_fingerprint_when_keys_exist(self):
+        from .models import UserCryptoIdentity
+
+        UserCryptoIdentity.objects.create(
+            user=self.user,
+            public_jwk={"kty": "EC", "crv": "P-256", "x": "AAAA", "y": "BBBB"},
+            wrapped_private_jwk="AAAA.BBBBCCCC",
+            kdf_salt="c2FsdHNhbHRzYWx0",
+            kdf_iterations=210000,
+        )
+        response = self.client.get(reverse("crypto_setup"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sicherheitsnummer")
+        self.assertContains(response, response.context["fingerprint"])
+
+    def test_setup_page_without_keys_has_no_fingerprint_block(self):
+        response = self.client.get(reverse("crypto_setup"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Sicherheitsnummer")
+        self.assertIsNone(response.context["fingerprint"])

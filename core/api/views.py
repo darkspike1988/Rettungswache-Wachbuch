@@ -20,6 +20,9 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from ..rate_limit import consume
+
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Sum
@@ -30,8 +33,10 @@ from ..errors import (
     ERROR_CODE_FORBIDDEN,
     ERROR_CODE_NOT_FOUND,
     ERROR_CODE_RATE_LIMIT,
+    ERROR_CODE_SERVER_ERROR,
     ERROR_CODE_VALIDATION,
     json_error,
+    log_exception,
 )
 from ..forms import CalendarEventForm, CoffeeEntryForm, HandoverForm, HandoverStatusForm, PinboardNoteForm
 from ..models import (
@@ -49,6 +54,52 @@ from ..version import APP_VERSION
 
 API_VERSION = "v1"
 TOKEN_PREFIX = "wb_"
+
+
+# Rate Limiting Configuration for API Endpoints
+API_RATE_LIMITS = {
+    "token": {"limit": 10, "window_seconds": 60},  # 10 requests per minute
+    "handovers_list": {"limit": 100, "window_seconds": 60},  # 100 requests per minute
+    "handovers_create": {"limit": 30, "window_seconds": 60},  # 30 requests per minute
+    "overview": {"limit": 60, "window_seconds": 60},  # 60 requests per minute
+    "me": {"limit": 60, "window_seconds": 60},  # 60 requests per minute
+    "default": {"limit": 120, "window_seconds": 60},  # 120 requests per minute
+}
+
+
+def api_rate_limit(bucket: str, get_key: callable = None):
+    """Decorator to apply rate limiting to API endpoints.
+    
+    Args:
+        bucket: The rate limit bucket name
+        get_key: Function to extract rate limit key from request (default: IP address)
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped_view(request, *args, **kwargs):
+            # Get rate limit configuration
+            config = API_RATE_LIMITS.get(bucket, API_RATE_LIMITS["default"])
+            limit = config["limit"]
+            window_seconds = config["window_seconds"]
+            
+            # Extract key from request
+            if get_key:
+                raw_key = get_key(request)
+            else:
+                raw_key = getattr(request, "client_ip", None) or "unknown"
+            
+            # Check rate limit
+            if not consume(bucket, raw_key, limit=limit, window_seconds=window_seconds):
+                return _json_error(
+                    request,
+                    "Zu viele Anfragen. Bitte später erneut versuchen.",
+                    status=429,
+                    code=ERROR_CODE_RATE_LIMIT,
+                )
+            
+            return view_func(request, *args, **kwargs)
+        return wrapped_view
+    return decorator
 DEFAULT_TOKEN_TTL_DAYS = 90
 WRITE_ROLES = {Membership.Role.SHIFT_LEAD, Membership.Role.ADMIN}
 CASHIER_ROLES = {Membership.Role.CASHIER, Membership.Role.ADMIN}
@@ -120,6 +171,24 @@ def _parse_json(request):
         return json.loads(request.body.decode("utf-8") or "{}")
     except (UnicodeDecodeError, json.JSONDecodeError):
         return None
+
+
+def _token_rate_limit_key(request):
+    """Rate-limit key for the /token/ endpoint: client IP plus attempted username.
+
+    openapi_v1.yaml documents /token/ as an ``application/json`` POST, in which
+    case ``request.POST`` is empty and the username only exists in the JSON
+    body. Read the JSON body too so the per-account bucket is honoured for both
+    JSON and form-encoded clients; otherwise the key collapses to IP-only and
+    the documented per-username limiting silently disappears.
+    """
+    username = (request.POST.get("username") or "").strip()
+    if not username:
+        body = _parse_json(request)
+        if isinstance(body, dict):
+            username = str(body.get("username") or "").strip()
+    client_ip = getattr(request, "client_ip", None) or "unknown"
+    return f"{client_ip}|{username}"
 
 
 def _extract_bearer_token(request):
@@ -235,6 +304,7 @@ def token_endpoint(request):
 
 @csrf_exempt
 @require_POST
+@api_rate_limit("token", get_key=_token_rate_limit_key)
 def obtain_token(request):
     """Paperless-style token exchange: username + password → API token."""
     body = _parse_json(request)
@@ -316,6 +386,7 @@ def revoke_current_token(request):
 @csrf_exempt
 @require_GET
 @api_token_required
+@api_rate_limit("me")
 def me(request):
     if not _scope_allowed(request.api_token, "read:me"):
         return _json_error(request, "Scope read:me fehlt.", status=403)
@@ -387,6 +458,7 @@ def _handover_json(item, *, detail=False):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 @api_token_required
+@api_rate_limit("handovers_list")
 def handovers_list(request):
     if request.method == "POST":
         return handover_create(request)
@@ -451,6 +523,7 @@ def api_status(request):
 @csrf_exempt
 @require_GET
 @api_token_required
+@api_rate_limit("overview")
 def overview(request):
     """Dashboard summary (German alias: /uebersicht/)."""
     if not _scope_allowed(request.api_token, "read:me"):
@@ -805,3 +878,115 @@ def pinboard_api(request):
         "count": len(results),
         "results": results,
     })
+@csrf_exempt
+@require_GET
+@api_rate_limit("default")
+def check_update(request):
+    """Check if a new version is available for the client.
+    
+    This endpoint allows clients to check if there's a newer version available.
+    It returns version information, changelog, and download URL if applicable.
+    
+    Query Parameters:
+    - current_version: The current version of the client
+    - platform: The platform (web, android, ios)
+    
+    Returns:
+    - has_update: Whether a newer version is available
+    - latest_version: The latest version available
+    - changelog: List of changes since the current version
+    - download_url: URL to download the latest version (if applicable)
+    - force_update: Whether the update is mandatory
+    """
+    from ..models import AppVersion
+
+    current_version = request.GET.get("current_version", "")
+    platform = request.GET.get("platform", "web")
+
+    try:
+        # Get the latest active version for this platform. Order by release_date
+        # and break ties by id so the "latest" row is deterministic instead of
+        # depending on undefined database row order.
+        latest_version_obj = AppVersion.objects.filter(
+            platform=platform,
+            is_active=True
+        ).order_by("-release_date", "-id").first()
+
+        if latest_version_obj is None:
+            return JsonResponse({
+                "ok": True,
+                "has_update": False,
+                "message": "No version information available for this platform",
+                "current_version": current_version,
+                "platform": platform,
+            })
+
+        # A client only needs an update when the published latest version is
+        # strictly newer. Comparing version order (not text) prevents telling a
+        # client that is already newer than the published build to "update",
+        # i.e. downgrade (release-109 regression).
+        has_update = _compare_versions(current_version, latest_version_obj.version) < 0
+        
+        # Check if this is a forced update
+        force_update = latest_version_obj.is_forced
+        
+        # Check if current version is below minimum required
+        if latest_version_obj.min_required_version:
+            if _compare_versions(current_version, latest_version_obj.min_required_version) < 0:
+                force_update = True
+
+        return JsonResponse({
+            "ok": True,
+            "has_update": has_update,
+            "current_version": current_version,
+            "latest_version": latest_version_obj.version,
+            "version_code": latest_version_obj.version_code,
+            "platform": platform,
+            "release_date": latest_version_obj.release_date.isoformat(),
+            "changelog": latest_version_obj.parsed_changelog,
+            "download_url": latest_version_obj.download_url,
+            "force_update": force_update,
+            "min_required_version": latest_version_obj.min_required_version,
+        })
+    except Exception:
+        log_exception(request, message="check_update_failed")
+        return _json_error(
+            request,
+            "Update-Check fehlgeschlagen.",
+            status=500,
+            code=ERROR_CODE_SERVER_ERROR,
+        )
+
+
+def _compare_versions(v1: str, v2: str) -> int:
+    """Compare two version strings.
+    
+    Returns:
+    - 1 if v1 > v2
+    - 0 if v1 == v2
+    - -1 if v1 < v2
+    """
+    def parse_version(v: str) -> tuple:
+        # Split version string and convert to integers
+        parts = []
+        for part in v.split('.'):
+            try:
+                parts.append(int(part))
+            except ValueError:
+                parts.append(0)
+        return tuple(parts)
+    
+    v1_parts = parse_version(v1)
+    v2_parts = parse_version(v2)
+    
+    # Pad with zeros to make equal length
+    max_len = max(len(v1_parts), len(v2_parts))
+    v1_parts = v1_parts + (0,) * (max_len - len(v1_parts))
+    v2_parts = v2_parts + (0,) * (max_len - len(v2_parts))
+    
+    if v1_parts > v2_parts:
+        return 1
+    elif v1_parts < v2_parts:
+        return -1
+    else:
+        return 0

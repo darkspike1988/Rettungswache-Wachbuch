@@ -34,6 +34,8 @@ jobs:
         run: |
           node --check core/static/core/app.js
           node --check core/static/core/json_data.js
+      - name: Test fail-closed Dependabot gate offline on every PR
+        run: bash scripts/tests/test_check_dependabot_alerts.sh
       - name: Check migrations
         env:
           DJANGO_SECRET_KEY: ci-only-secret
@@ -83,6 +85,16 @@ jobs:
             test "$attempt" -lt 30
             sleep 2
           done
+          # The db service must load the mounted config/postgresql.conf. Assert
+          # the EXACT config_file path the compose command sets, otherwise the
+          # read-only mount would be silently ignored and the official image
+          # would fall back to $PGDATA defaults (shared_buffers=128MB).
+          test "$(docker compose exec -T db psql -U rwsth_owner -d rwsth -tAc \
+            'SHOW config_file')" = "/etc/postgresql/postgresql.conf"
+          test "$(docker compose exec -T db psql -U rwsth_owner -d rwsth -tAc \
+            'SHOW shared_buffers')" = "2GB"
+          test "$(docker compose exec -T db psql -U rwsth_owner -d rwsth -tAc \
+            'SHOW max_connections')" = "200"
           test "$(docker compose exec -T db psql -U rwsth_owner -d rwsth -tAc \
             "SELECT has_table_privilege('rwsth_app', 'core_auditevent', 'UPDATE')")" = "f"
           test "$(docker compose exec -T db psql -U rwsth_owner -d rwsth -tAc \

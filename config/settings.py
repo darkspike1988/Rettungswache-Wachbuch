@@ -55,6 +55,18 @@ MIDDLEWARE = [
 # Optional Redis cache. Keep serialized values non-executable: django-redis uses
 # pickle by default, so Wachbuch selects the built-in JSON serializer instead.
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
+REDIS_HOST = os.getenv("REDIS_HOST", "").strip()
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "").strip()
+
+# REDIS_URL is the single source of truth. The discrete REDIS_HOST/PORT/DB/
+# PASSWORD variables are only a local-development fallback. With no Redis
+# configured the site uses the process-local locmem cache and database-backed
+# sessions instead of being forced onto Redis.
+if not REDIS_URL and REDIS_HOST:
+    _redis_port = os.getenv("REDIS_PORT", "6379").strip() or "6379"
+    _redis_db = os.getenv("REDIS_DB", "0").strip() or "0"
+    _redis_auth = f":{REDIS_PASSWORD}@" if REDIS_PASSWORD else ""
+    REDIS_URL = f"redis://{_redis_auth}{REDIS_HOST}:{_redis_port}/{_redis_db}"
 
 if REDIS_URL:
     CACHES = {
@@ -91,6 +103,13 @@ if REDIS_URL:
         "dashboard": 30,
     }
 else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "wachbuch-locmem",
+            "TIMEOUT": 300,
+        }
+    }
     SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 # Strukturierte Logs: Korrelations-ID ohne personenbezogene Nutzdaten.
@@ -297,3 +316,18 @@ CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 60 * 60 * 12
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = False
+
+# Use cached template loader for production.
+# APP_DIRS and loaders are mutually exclusive; keep app_dirs semantics by
+# listing the appDirectories loader explicitly alongside the filesystem loader.
+if not DEBUG:
+    TEMPLATES[0]["OPTIONS"]["loaders"] = [
+        (
+            "django.template.loaders.cached.Loader",
+            [
+                "django.template.loaders.filesystem.Loader",
+                "django.template.loaders.app_directories.Loader",
+            ],
+        ),
+    ]
+    TEMPLATES[0].pop("APP_DIRS", None)

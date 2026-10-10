@@ -262,3 +262,38 @@ class SecureMailTests(ChatApiBase):
             reverse("api_v1_post_detail", args=[mail_id]), **self._auth(raw_third)
         )
         self.assertEqual(response.status_code, 404)
+
+    def test_member_keys_include_fingerprints(self):
+        self._identity(self.alex)
+        raw = self._token(self.alex)
+        response = self.client.get(reverse("api_v1_chat_keys"), **self._auth(raw))
+        self.assertEqual(response.status_code, 200)
+        members = {m["user_id"]: m for m in response.json()["members"]}
+        alex = members[self.alex.id]
+        self.assertTrue(alex["has_keys"])
+        self.assertIsNotNone(alex["fingerprint"])
+        self.assertEqual(len(alex["fingerprint"].replace(" ", "")), 32)
+        # unconfigured member has no fingerprint
+        mara = members[self.mara.id]
+        self.assertFalse(mara["has_keys"])
+        self.assertIsNone(mara["fingerprint"])
+
+    def test_identity_returns_own_fingerprint(self):
+        self._identity(self.alex)
+        raw = self._token(self.alex)
+        bundle = self.client.get(reverse("api_v1_chat_identity"), **self._auth(raw)).json()
+        self.assertTrue(bundle["configured"])
+        self.assertIsNotNone(bundle["fingerprint"])
+        # identical fingerprint from member_keys for the same key
+        keys = self.client.get(reverse("api_v1_chat_keys"), **self._auth(raw)).json()
+        alex_key = next(m for m in keys["members"] if m["user_id"] == self.alex.id)
+        self.assertEqual(bundle["fingerprint"], alex_key["fingerprint"])
+
+    def test_fingerprint_changes_with_key(self):
+        from core.messaging import key_fingerprint
+
+        a = key_fingerprint({"kty": "EC", "crv": "P-256", "x": "AAAA", "y": "BBBB"})
+        b = key_fingerprint({"kty": "EC", "crv": "P-256", "x": "AAAA", "y": "CCCC"})
+        self.assertIsNotNone(a)
+        self.assertNotEqual(a, b)
+        self.assertIsNone(key_fingerprint(None))

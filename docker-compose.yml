@@ -7,10 +7,15 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
+
   db:
     image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     restart: unless-stopped
     logging: *default-logging
+    # The official image reads its configuration from $PGDATA/postgresql.conf,
+    # NOT from /etc/postgresql. Without this explicit config_file the read-only
+    # mount below is silently ignored, so the tuning settings never apply.
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -31,6 +36,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/10-rwsth-roles.sh:ro
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     networks:
       - app-db
       - worker-db
@@ -110,6 +116,9 @@ services:
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
       SECURE_COOKIES: ${SECURE_COOKIES:-true}
       DB_HOST: db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
       DB_NAME: ${POSTGRES_DB}
       DB_USER: ${APP_DB_USER}
       DB_PASSWORD: ${APP_DB_PASSWORD}
@@ -139,6 +148,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     ports:
       - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8090}:8000"
     healthcheck:
@@ -325,3 +336,4 @@ networks:
 volumes:
   postgres-data:
   backups-data:
+  redis-data:

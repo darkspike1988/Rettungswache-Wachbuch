@@ -31,6 +31,39 @@ def station_content_users(station):
     ).distinct().order_by("first_name", "username")
 
 
+def key_fingerprint(public_jwk):
+    """Deterministic fingerprint of an EC P-256 public key.
+
+    Computed over the canonical form ``crv|x|y`` (base64url values as stored),
+    first 128 bits of hex-encoded SHA-256, grouped into 4 blocks of 8 hex characters. Identical
+    on server and client so colleagues can compare visually or via QR.
+    """
+    import base64
+    import hashlib
+
+    if not isinstance(public_jwk, dict):
+        return None
+    crv = public_jwk.get("crv") or ""
+    x = public_jwk.get("x") or ""
+    y = public_jwk.get("y") or ""
+    if not x or not y:
+        return None
+    canonical = f"{crv}|{x}|{y}".encode("utf-8")
+    digest = hashlib.sha256(canonical).hexdigest()
+    return " ".join(digest[i : i + 8] for i in range(0, 32, 8))
+
+
+def _fingerprint_payload(user_id, label, public_jwk):
+    fingerprint = key_fingerprint(public_jwk)
+    return {
+        "user_id": user_id,
+        "label": label,
+        "public_jwk": public_jwk,
+        "has_keys": public_jwk is not None,
+        "fingerprint": fingerprint,
+    }
+
+
 def public_keys_for_users(users):
     identities = {
         item.user_id: item.public_jwk
@@ -38,12 +71,13 @@ def public_keys_for_users(users):
     }
     payload = []
     for user in users:
-        payload.append({
-            "user_id": user.id,
-            "label": (user.first_name or user.username),
-            "public_jwk": identities.get(user.id),
-            "has_keys": user.id in identities,
-        })
+        payload.append(
+            _fingerprint_payload(
+                user.id,
+                (user.first_name or user.username),
+                identities.get(user.id),
+            )
+        )
     return payload
 
 
