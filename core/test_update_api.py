@@ -45,6 +45,52 @@ class CheckUpdateTests(PilotTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["has_update"])
 
+    def test_newer_client_is_not_asked_to_downgrade(self):
+        # Regression (release-109): has_update used string inequality, so a
+        # client NEWER than the published latest was told to "update"
+        # (i.e. downgrade). has_update must follow version order, not text.
+        AppVersion.objects.create(
+            platform=AppVersion.Platform.ANDROID,
+            version="0.2.0",
+            release_date=date.today(),
+        )
+        response = self.client.get(self._url(current="0.3.0"))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["has_update"])
+        self.assertEqual(payload["latest_version"], "0.2.0")
+
+    def test_numeric_version_ordering_not_lexicographic(self):
+        # "0.10.0" is newer than "0.9.0" even though it sorts lower as text.
+        AppVersion.objects.create(
+            platform=AppVersion.Platform.ANDROID,
+            version="0.9.0",
+            release_date=date.today(),
+        )
+        response = self.client.get(self._url(current="0.10.0"))
+        self.assertFalse(response.json()["has_update"])
+
+    def test_release_date_tie_is_deterministic(self):
+        # Two active versions on the same release_date must resolve to a single
+        # deterministic "latest" instead of relying on undefined row order.
+        AppVersion.objects.create(
+            platform=AppVersion.Platform.ANDROID,
+            version="0.2.0",
+            version_code=2,
+            release_date=date.today(),
+        )
+        AppVersion.objects.create(
+            platform=AppVersion.Platform.ANDROID,
+            version="0.3.0",
+            version_code=3,
+            release_date=date.today(),
+        )
+        first = self.client.get(self._url(current="0.1.0")).json()["latest_version"]
+        second = self.client.get(self._url(current="0.1.0")).json()["latest_version"]
+        self.assertEqual(first, second)
+        # Documented rule: highest id wins the tie (most recently created row).
+        self.assertEqual(first, "0.3.0")
+
     def test_min_required_version_forces_update(self):
         AppVersion.objects.create(
             platform=AppVersion.Platform.ANDROID,

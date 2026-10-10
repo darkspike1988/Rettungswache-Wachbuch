@@ -17,6 +17,17 @@ concurrency:
   group: security-scan
   cancel-in-progress: false
 
+# Gate semantics (documented, see docs/WAVE-3-READINESS.md):
+#   * BLOCKING: trivy-docker-scan (HIGH/CRITICAL, exit-code 1) and
+#     dependabot-alerts (fail-closed high/critical gate; an API error is never
+#     silently treated as "0 alerts").
+#   * INFORMATIONAL: trivy-fs-scan (exit-code 0) only feeds the GitHub
+#     Security tab and does not block.
+#   * CONDITIONAL / NOT A GATE without a secret: snyk-scan runs only when the
+#     SNYK_TOKEN secret exists. Without it the job emits an explicit skip
+#     warning. The effective dependency/image gates are pip-audit (ci.yml) and
+#     the blocking Docker Trivy scan.
+
 jobs:
   trivy-docker-scan:
     name: Trivy Docker Image Scan
@@ -48,19 +59,21 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@b8d3b6e8af63cde30bdc382c0bc28114f4346c88 # v2 (pinned)
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy-docker'
 
   trivy-fs-scan:
-    name: Trivy Filesystem Scan
+    name: Trivy Filesystem Scan (informational)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Run Trivy filesystem scanner
+        # exit-code 0: this scan is informational and does NOT block. Only the
+        # Docker image scan above is a blocking vulnerability gate.
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: 'fs'
@@ -72,13 +85,13 @@ jobs:
 
       - name: Upload Trivy filesystem scan results
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@b8d3b6e8af63cde30bdc382c0bc28114f4346c88 # v2 (pinned)
         with:
           sarif_file: 'trivy-fs-results.sarif'
           category: 'trivy-filesystem'
 
   snyk-scan:
-    name: Snyk Dependency Scan
+    name: Snyk Dependency Scan (conditional, non-blocking without token)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -89,11 +102,23 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Report Snyk availability (no invented secret)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "${SNYK_TOKEN}" ]; then
+            echo "::warning title=Snyk scan skipped::SNYK_TOKEN is not configured. Snyk did NOT run and this job is not a security gate. pip-audit (ci.yml) and the blocking Docker Trivy scan are the effective gates."
+          else
+            echo "SNYK_TOKEN present: Snyk will run."
+          fi
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 
       - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/python@master
+        # Only runs with a configured token. Do NOT treat a skipped step as a
+        # passing scan (see the availability warning step above).
+        uses: snyk/actions/python@11b673cfb4b0dc0d860a1323caa199d54950dcce # verified upstream commit
         if: env.SNYK_TOKEN != ''
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -110,14 +135,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
+      - name: Unit-test the fail-closed gate (mocked gh, no network/secrets)
+        run: bash scripts/tests/test_check_dependabot_alerts.sh
+
       - name: Check for blocking Dependabot alerts (high/critical)
-        run: |
-          ALERTS=$(gh api "repos/${{ github.repository }}/dependabot/alerts?state=open&per_page=100" \
-            --jq '[.[] | select(.security_advisory.severity == "high" or .security_advisory.severity == "critical")] | length' 2>/dev/null || echo "0")
-          if [ "$ALERTS" != "0" ]; then
-            echo "::error::Open high/critical Dependabot alerts found: $ALERTS"
-            echo "Please fix these vulnerabilities before merging."
-            exit 1
-          fi
+        # Fails closed (exit 2) on auth/network/HTTP error, invalid JSON or an
+        # unexpected response shape; never converts an API error into "0".
+        # Paginates, so >100 alerts are still counted.
+        run: bash scripts/check_dependabot_alerts.sh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

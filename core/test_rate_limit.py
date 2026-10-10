@@ -1,5 +1,8 @@
+import json
+
 from django.test import RequestFactory, TestCase, override_settings
 
+from .api.views import _token_rate_limit_key
 from .middleware import ClientIPMiddleware
 from .rate_limit import consume, hash_key
 
@@ -65,3 +68,39 @@ class RateLimitConsumeTests(TestCase):
             hash_b = hash_key("k1")
         self.assertNotEqual(hash_a, hash_b)
         self.assertEqual(len(hash_a), 64)
+
+
+class TokenRateLimitKeyTests(TestCase):
+    """Regression: /token/ is documented (openapi_v1.yaml) as a JSON POST, but
+    the key used request.POST, which is empty for JSON bodies, so the
+    per-username bucket silently collapsed to IP-only."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def _json_post(self, payload, ip="10.0.0.9"):
+        request = self.factory.post(
+            "/api/v1/token/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        request.client_ip = ip
+        return request
+
+    def test_json_body_username_is_part_of_key(self):
+        key = _token_rate_limit_key(self._json_post({"username": "alice", "password": "x"}))
+        self.assertEqual(key, "10.0.0.9|alice")
+
+    def test_distinct_usernames_from_same_ip_get_distinct_keys(self):
+        alice = _token_rate_limit_key(self._json_post({"username": "alice"}))
+        bob = _token_rate_limit_key(self._json_post({"username": "bob"}))
+        self.assertNotEqual(alice, bob)
+
+    def test_form_encoded_username_still_works(self):
+        request = self.factory.post("/api/v1/token/", data={"username": "carol"})
+        request.client_ip = "10.0.0.9"
+        self.assertEqual(_token_rate_limit_key(request), "10.0.0.9|carol")
+
+    def test_missing_username_is_empty_component(self):
+        key = _token_rate_limit_key(self._json_post({"password": "x"}))
+        self.assertEqual(key, "10.0.0.9|")

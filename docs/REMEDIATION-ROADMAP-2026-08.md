@@ -233,17 +233,42 @@ Gunicorn/DB-Grenzen, große Teams, Chat-/Auditwachstum, Feedfehler, langsame Pus
 
 ## Wave 4 – stärkeres E2EE-Vertrauensmodell
 
-### [ ] R-020 Schlüsselverifikation und unabhängiger Client
+### [~] R-020 Schlüsselverifikation und unabhängiger Client
 
-Optionen bewerten und dokumentieren:
+Teilweise umgesetzt (Fingerprint-/Sicherheitsnummern sichtbar), Rest offen:
 
-- sichtbare Schlüssel-Fingerprints/Sicherheitsnummern
-- QR-Verifikation zwischen Kollegen
-- Key-Change-Warnungen und nachvollziehbares Schlüsselverzeichnis
-- signierter nativer Client mit reproduzierbaren Builds
-- Migration/Backup bei Schlüsselwechsel
+- **umgesetzt** – sichtbare Schlüssel-Fingerprints im Chat (R-020 Teil 1) und
+  eine Sicherheitsnummer im Web-Crypto-Setup (R-020 Teil 3). Vergleich „Nummern
+  gleich = Schlüssel echt" ist damit möglich.
+- **offen** – QR-Verifikation zwischen Kolleginnen und Kollegen (Web + App).
+- **offen** – Key-Change-Warnungen und ein nachvollziehbares Schlüsselverzeichnis.
+- **offen** – signierter nativer Client mit reproduzierbaren Builds.
+- **offen** – Migration/Backup-Beschreibung bei Schlüsselwechsel.
+- **offen/extern** – unabhängige Abnahme (siehe `docs/WAVE-3-READINESS.md`).
 
-Erst danach darf ein Schutzversprechen gegen einen aktiv böswilligen Serverbetreiber erwogen werden.
+Erst nach diesen Restpunkten darf ein Schutzversprechen gegen einen aktiv
+böswilligen Serverbetreiber erwogen werden.
+
+## Bekannter Backlog (nicht blockierend, dokumentiert)
+
+- **Redis scheinbar ungenutzt / Volume ohne Funktion:** `docker-compose.yml`
+  deklariert ein Named Volume `redis-data`, der `redis`-Service läuft aber
+  bewusst nicht-persistent (`--save "" --appendonly "no"`). Das Volume hat
+  damit keine Funktion und sollte entfernt **oder** mit Begründung versehen
+  werden. Zusätzlich ist der diskrete `REDIS_HOST/PORT/DB/PASSWORD`-Fallback in
+  `config/settings.py` nur ein Local-Dev-Pfad; in Compose wird `REDIS_URL`
+  direkt gesetzt, sodass der Fallback im Betrieb nicht greift.
+- **AppVersion.parsed_changelog:** Eine Umstellung auf `cached_property` ist
+  ein offener Optimierungspunkt, keine Voraussetzung der Releaseabnahme.
+- **Client UpdateService:** Netzwerk-Retry bleibt als nicht blockierender
+  Backlog offen; das 24-Stunden-Intervall ersetzt keine Retry-Strategie.
+- **R-015 bis R-019:** Pentest, Monitoring-/Incident-Probe, Offsite-Restore,
+  Accessibility und Last-/Resilienztest benötigen die externen bzw. echten
+  Betriebsabnahmen aus `docs/WAVE-3-READINESS.md`.
+- **Client PR67 / R-020:** App-QR, persistierte Verifikation und App-Key-Change
+  sind im separaten Client-PR implementiert, aber noch nicht final abgenommen.
+  Web-QR und Web-Key-Change bleiben offen. Die bloße Gleichheit vom Server
+  gelieferter Fingerprint-Strings ist kein unabhängiger Schlüsselnachweis.
 
 ## Agenten-Handoff
 

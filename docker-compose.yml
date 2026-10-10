@@ -12,6 +12,10 @@ services:
     image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     restart: unless-stopped
     logging: *default-logging
+    # The official image reads its configuration from $PGDATA/postgresql.conf,
+    # NOT from /etc/postgresql. Without this explicit config_file the read-only
+    # mount below is silently ignored, so the tuning settings never apply.
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}

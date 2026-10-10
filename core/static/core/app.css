@@ -449,6 +449,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   align-items: center;
 }
 .app-version { color: var(--muted); }
+.key-fingerprint { font-family: var(--mono, monospace); letter-spacing: 0.04em; overflow-wrap: anywhere; }
 .messages { max-width: 48rem; margin-bottom: 1.5rem; }
 .message {
   padding: .85rem 1rem;

@@ -35,7 +35,7 @@ def key_fingerprint(public_jwk):
     """Deterministic fingerprint of an EC P-256 public key.
 
     Computed over the canonical form ``crv|x|y`` (base64url values as stored),
-    hex-encoded SHA-256, grouped into 8 blocks of 8 hex characters. Identical
+    first 128 bits of hex-encoded SHA-256, grouped into 4 blocks of 8 hex characters. Identical
     on server and client so colleagues can compare visually or via QR.
     """
     import base64

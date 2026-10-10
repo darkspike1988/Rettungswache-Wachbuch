@@ -173,6 +173,24 @@ def _parse_json(request):
         return None
 
 
+def _token_rate_limit_key(request):
+    """Rate-limit key for the /token/ endpoint: client IP plus attempted username.
+
+    openapi_v1.yaml documents /token/ as an ``application/json`` POST, in which
+    case ``request.POST`` is empty and the username only exists in the JSON
+    body. Read the JSON body too so the per-account bucket is honoured for both
+    JSON and form-encoded clients; otherwise the key collapses to IP-only and
+    the documented per-username limiting silently disappears.
+    """
+    username = (request.POST.get("username") or "").strip()
+    if not username:
+        body = _parse_json(request)
+        if isinstance(body, dict):
+            username = str(body.get("username") or "").strip()
+    client_ip = getattr(request, "client_ip", None) or "unknown"
+    return f"{client_ip}|{username}"
+
+
 def _extract_bearer_token(request):
     header = request.META.get("HTTP_AUTHORIZATION", "")
     if not header:
@@ -286,7 +304,7 @@ def token_endpoint(request):
 
 @csrf_exempt
 @require_POST
-@api_rate_limit("token", get_key=lambda r: f"{getattr(r, 'client_ip', 'unknown')}|{r.POST.get('username', '')}")
+@api_rate_limit("token", get_key=_token_rate_limit_key)
 def obtain_token(request):
     """Paperless-style token exchange: username + password → API token."""
     body = _parse_json(request)
@@ -886,11 +904,13 @@ def check_update(request):
     platform = request.GET.get("platform", "web")
 
     try:
-        # Get the latest active version for this platform
+        # Get the latest active version for this platform. Order by release_date
+        # and break ties by id so the "latest" row is deterministic instead of
+        # depending on undefined database row order.
         latest_version_obj = AppVersion.objects.filter(
             platform=platform,
             is_active=True
-        ).order_by("-release_date").first()
+        ).order_by("-release_date", "-id").first()
 
         if latest_version_obj is None:
             return JsonResponse({
@@ -901,7 +921,11 @@ def check_update(request):
                 "platform": platform,
             })
 
-        has_update = current_version != latest_version_obj.version
+        # A client only needs an update when the published latest version is
+        # strictly newer. Comparing version order (not text) prevents telling a
+        # client that is already newer than the published build to "update",
+        # i.e. downgrade (release-109 regression).
+        has_update = _compare_versions(current_version, latest_version_obj.version) < 0
         
         # Check if this is a forced update
         force_update = latest_version_obj.is_forced

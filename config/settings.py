@@ -55,6 +55,18 @@ MIDDLEWARE = [
 # Optional Redis cache. Keep serialized values non-executable: django-redis uses
 # pickle by default, so Wachbuch selects the built-in JSON serializer instead.
 REDIS_URL = os.getenv("REDIS_URL", "").strip()
+REDIS_HOST = os.getenv("REDIS_HOST", "").strip()
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "").strip()
+
+# REDIS_URL is the single source of truth. The discrete REDIS_HOST/PORT/DB/
+# PASSWORD variables are only a local-development fallback. With no Redis
+# configured the site uses the process-local locmem cache and database-backed
+# sessions instead of being forced onto Redis.
+if not REDIS_URL and REDIS_HOST:
+    _redis_port = os.getenv("REDIS_PORT", "6379").strip() or "6379"
+    _redis_db = os.getenv("REDIS_DB", "0").strip() or "0"
+    _redis_auth = f":{REDIS_PASSWORD}@" if REDIS_PASSWORD else ""
+    REDIS_URL = f"redis://{_redis_auth}{REDIS_HOST}:{_redis_port}/{_redis_db}"
 
 if REDIS_URL:
     CACHES = {
@@ -91,6 +103,13 @@ if REDIS_URL:
         "dashboard": 30,
     }
 else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "wachbuch-locmem",
+            "TIMEOUT": 300,
+        }
+    }
     SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 # Strukturierte Logs: Korrelations-ID ohne personenbezogene Nutzdaten.
@@ -297,36 +316,6 @@ CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 60 * 60 * 12
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = False
-
-# Redis Cache Configuration
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379") or "6379")
-REDIS_DB = int(os.getenv("REDIS_DB", "0") or "0")
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "").strip() or None
-REDIS_LOCATION = (
-    f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
-    if REDIS_PASSWORD
-    else f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
-)
-
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_LOCATION,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "CONNECTION_POOL_KWARGS": {"max_connections": 100},
-        },
-        "KEY_PREFIX": "wachbuch",
-        "TIMEOUT": 300,  # Default cache timeout: 5 minutes
-    }
-}
-
-# Cache timeouts for specific views (in seconds)
-HANDOVER_CACHE_TIMEOUT = 60  # 1 minute for handover lists
-DASHBOARD_CACHE_TIMEOUT = 30  # 30 seconds for dashboard
-CALENDAR_CACHE_TIMEOUT = 120  # 2 minutes for calendar
-COFFEE_CACHE_TIMEOUT = 60  # 1 minute for coffee ledger
 
 # Use cached template loader for production.
 # APP_DIRS and loaders are mutually exclusive; keep app_dirs semantics by

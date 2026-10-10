@@ -14,8 +14,8 @@
     {% if fingerprint %}
     <div class="form-card" data-key-fingerprint>
       <p><strong>Sicherheitsnummer deines Schlüssels</strong></p>
-      <p class="app-version" style="font-family: var(--mono, monospace); letter-spacing: 0.04em;">{{ fingerprint }}</p>
-      <p class="hint">Vergleiche diese Sicherheitsnummer persönlich mit Kolleginnen und Kollegen (App: Gruppen → Schlüssel verifizieren). Stimmen die Nummern überein, ist der Schlüssel echt.</p>
+      <p class="app-version key-fingerprint">{{ fingerprint }}</p>
+      <p class="hint">Vergleiche diese Sicherheitsnummer persönlich mit Kolleginnen und Kollegen. Stimmen die Nummern überein, ist der Schlüssel echt. (QR-Abgleich und Key-Change-Warnungen sind in Vorbereitung, R-020.)</p>
     </div>
     {% endif %}
     <form data-crypto-unlock class="form-card">
