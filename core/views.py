@@ -414,7 +414,6 @@ def dashboard_profile(station):
 
 @membership_required(CONTENT_ROLES)
 
-
 def dashboard(request):
     station = request.membership.station
     now = timezone.now()

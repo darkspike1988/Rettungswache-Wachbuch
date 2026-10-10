@@ -92,7 +92,7 @@ def api_rate_limit(bucket: str, get_key: callable = None):
             if not consume(bucket, raw_key, limit=limit, window_seconds=window_seconds):
                 return _json_error(
                     request,
-                    "Rate limit exceeded. Please try again later.",
+                    "Zu viele Anfragen. Bitte später erneut versuchen.",
                     status=429,
                     code=ERROR_CODE_RATE_LIMIT,
                 )
