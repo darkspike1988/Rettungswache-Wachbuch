@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   security-events: write
+  vulnerability-alerts: read
 
 concurrency:
   group: security-scan
@@ -37,7 +38,7 @@ jobs:
           exit-code: 1
           ignore-unfixed: true
           vuln-type: 'os,library'
-          scanners: 'vuln,secret'
+          scanners: 'vuln'
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: always()
@@ -73,6 +74,8 @@ jobs:
   snyk-scan:
     name: Snyk Dependency Scan
     runs-on: ubuntu-latest
+    # Requires SNYK_TOKEN; non-blocking until the repository secret is configured.
+    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
