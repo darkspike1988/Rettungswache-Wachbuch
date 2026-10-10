@@ -7,23 +7,6 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
-  redis:
-    image: redis:7.4-alpine@sha256:5833837d9355e2895440a56555155478c21597847357292433004373579637
-    restart: unless-stopped
-    logging: *default-logging
-    volumes:
-      - redis-data:/data
-    networks:
-      - app-db
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
 
   db:
     image: postgres:17.10-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
