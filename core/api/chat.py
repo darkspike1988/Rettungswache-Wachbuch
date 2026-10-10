@@ -18,6 +18,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from ..access import CONTENT_ROLES
 from ..messaging import (
+    key_fingerprint,
     ordered_pair,
     public_keys_for_users,
     serialize_message_for_client,
@@ -141,6 +142,7 @@ def identity(request):
         "wrapped_private_jwk": obj.wrapped_private_jwk,
         "kdf_salt": obj.kdf_salt,
         "kdf_iterations": obj.kdf_iterations,
+        "fingerprint": key_fingerprint(obj.public_jwk),
     })
 
 
