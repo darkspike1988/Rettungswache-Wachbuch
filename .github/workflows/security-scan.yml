@@ -103,6 +103,9 @@ jobs:
   dependabot-alerts:
     name: Check Dependabot Alerts
     runs-on: ubuntu-latest
+    # Dependabot alerts track the default branch; a PR cannot close them by
+    # fixing its own branch. Block merges of pushes to main, inform on PRs.
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
