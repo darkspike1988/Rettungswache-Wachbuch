@@ -124,10 +124,10 @@ class HandoverEntry(models.Model):
     class Meta:
         ordering = ["status", "-created_at"]
         indexes = [
-            models.Index(fields=["station", "status", "-created_at"], name="handover_station_status_created"),
-            models.Index(fields=["station", "priority", "-created_at"], name="handover_station_priority"),
-            models.Index(fields=["station", "category"], name="handover_station_category"),
-            models.Index(fields=["author", "-created_at"], name="handover_author_created"),
+            models.Index(fields=["station", "status", "-created_at"], name="hx_station_status_created"),
+            models.Index(fields=["station", "priority", "-created_at"], name="hx_station_priority_created"),
+            models.Index(fields=["station", "category"], name="hx_station_category"),
+            models.Index(fields=["author", "-created_at"], name="hx_author_created"),
         ]
 
     def __str__(self):
@@ -168,8 +168,8 @@ class CalendarEvent(models.Model):
     class Meta:
         ordering = ["starts_at"]
         indexes = [
-            models.Index(fields=["station", "starts_at"], name="calendar_station_starts"),
-            models.Index(fields=["created_by", "-created_at"], name="calendar_created_by"),
+            models.Index(fields=["station", "starts_at"], name="cal_station_starts"),
+            models.Index(fields=["created_by", "-created_at"], name="cal_created_by_created"),
         ]
 
     def clean(self):
@@ -241,9 +241,9 @@ class CoffeeEntry(models.Model):
     class Meta:
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["station", "-created_at"], name="coffee_station_created"),
-            models.Index(fields=["member", "-created_at"], name="coffee_member_created"),
-            models.Index(fields=["created_by", "-created_at"], name="coffee_created_by"),
+            models.Index(fields=["station", "-created_at"], name="cf_station_created"),
+            models.Index(fields=["member", "-created_at"], name="cf_member_created"),
+            models.Index(fields=["created_by", "-created_at"], name="cf_created_by_created"),
         ]
         constraints = [
             models.CheckConstraint(condition=~Q(amount_cents=0), name="coffee_amount_nonzero"),
@@ -365,9 +365,9 @@ class StationTaskCompletion(models.Model):
     class Meta:
         ordering = ["-work_date", "-completed_at"]
         indexes = [
-            models.Index(fields=["station", "work_date"], name="taskcomp_station_date"),
-            models.Index(fields=["task", "work_date"], name="taskcomp_task_date"),
-            models.Index(fields=["completed_by", "-completed_at"], name="taskcomp_completed_by"),
+            models.Index(fields=["station", "work_date"], name="tc_station_date"),
+            models.Index(fields=["task", "work_date"], name="tc_task_date"),
+            models.Index(fields=["completed_by", "-completed_at"], name="tc_completed_by"),
         ]
         constraints = [
             models.UniqueConstraint(fields=["task", "work_date"], name="unique_task_completion_day"),
@@ -430,9 +430,9 @@ class FeedItem(models.Model):
         ]
         ordering = [F("published_at").desc(nulls_last=True), "-last_seen_at"]
         indexes = [
-            models.Index(fields=["source", "-published_at"], name="feeditem_source_published"),
-            models.Index(fields=["-last_seen_at"], name="feeditem_last_seen"),
-            models.Index(fields=["starts_on"], name="feeditem_starts_on"),
+            models.Index(fields=["source", "-published_at"], name="feed_source_published"),
+            models.Index(fields=["-last_seen_at"], name="feed_last_seen"),
+            models.Index(fields=["starts_on"], name="feed_starts_on"),
         ]
 
     def __str__(self):
